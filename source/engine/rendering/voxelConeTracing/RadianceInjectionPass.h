@@ -27,16 +27,17 @@ public:
     explicit RadianceInjectionPass();
 
     void update() override;
+    Shader* getSelectedShader();
 private:
     void injectByVoxelization(Shader* shader, Texture3D* voxelRadiance, VoxelizationMode voxelizationMode);
 
     void downsample(Texture3D* voxelRadiance) const;
     void copyAlpha(Texture3D* voxelRadiance, Texture3D* voxelOpacity) const;
     void copyAlpha(Texture3D* voxelRadiance, Texture3D* voxelOpacity, int clipLevel) const;
-    Shader* getSelectedShader();
 private:
     std::shared_ptr<Shader> m_conservativeVoxelizationShader;
     std::shared_ptr<Shader> m_msaaVoxelizationShader;
+    std::shared_ptr<Shader> m_pointCloudVoxelizationShader;
     std::shared_ptr<Shader> m_copyAlphaShader;
     VoxelizationMode m_voxelizationMode{VoxelizationMode::CONSERVATIVE};
 

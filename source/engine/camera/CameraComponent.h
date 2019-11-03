@@ -63,6 +63,8 @@ public:
 
     void walk(float d) const noexcept { getComponent<Transform>()->walk(d); }
 
+    void elevate(float d) const noexcept { getComponent<Transform>()->elevate(d); }
+
     void pitch(float angle) const noexcept { getComponent<Transform>()->pitch(angle); }
 
     void rotateY(float angle) const noexcept { getComponent<Transform>()->rotateY(angle); }

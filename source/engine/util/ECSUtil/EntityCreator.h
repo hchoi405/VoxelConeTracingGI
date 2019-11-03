@@ -15,9 +15,7 @@ public:
     static Entity createDefaultSphere(const glm::vec3& pos = glm::vec3(0.0f));
     static Entity createDefaultDirLight();
 
-private:
     static std::shared_ptr<Material> createMaterial();
-
 private:
     static size_t m_boxCounter;
     static size_t m_cylinderCounter;

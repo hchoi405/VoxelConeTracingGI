@@ -23,6 +23,9 @@ RadianceInjectionPass::RadianceInjectionPass()
     m_msaaVoxelizationShader = ResourceManager::getShader("shaders/voxelConeTracing/injectLightByMSAAVoxelization.vert",
         "shaders/voxelConeTracing/injectLightByMSAAVoxelization.frag", "shaders/voxelConeTracing/injectLightByMSAAVoxelization.geom");
 
+    m_pointCloudVoxelizationShader = ResourceManager::getShader("shaders/voxelConeTracing/injectLightByPointCloud.vert",
+        "shaders/voxelConeTracing/injectLightByPointCloud.frag", "shaders/voxelConeTracing/injectLightByPointCloud.geom");
+
     m_copyAlphaShader = ResourceManager::getComputeShader("shaders/voxelConeTracing/copyAlpha6Faces.comp");
 
     m_cachedClipRegions.resize(CLIP_REGION_COUNT);
@@ -131,6 +134,9 @@ Shader* RadianceInjectionPass::getSelectedShader()
     case 1:
         m_voxelizationMode = VoxelizationMode::MSAA;
         return m_msaaVoxelizationShader.get();
+    case 2:
+        m_voxelizationMode = VoxelizationMode::POINTCLOUD;
+        return m_pointCloudVoxelizationShader.get();
     default:
         assert(false);
         return nullptr;

@@ -146,6 +146,9 @@ void Voxelizer::beginVoxelization(const VoxelizationDesc& desc)
     case VoxelizationMode::MSAA: 
         glEnable(GL_MULTISAMPLE);
         break;
+    case VoxelizationMode::POINTCLOUD:
+        glEnable(GL_MULTISAMPLE);
+        break;
     default: break;
     }
 
@@ -188,7 +191,13 @@ void Voxelizer::voxelize(const VoxelRegion& voxelRegion, int clipmapLevel)
         shader->setFloat("u_downsampleTransitionRegionSize", m_voxelizationDesc.downsampleTransitionRegionSize * voxelRegion.voxelSize);
     }
 
-    ECSUtil::renderEntitiesInAABB(BBox(regionMinWorld, regionMaxWorld), shader);
+    if (m_voxelizationDesc.mode == VoxelizationMode::POINTCLOUD) {
+        auto pcEntity = ECS::getEntityByName("PointCloud");
+        ECSUtil::renderEntity(pcEntity, shader);
+    }
+    else {
+        ECSUtil::renderEntitiesInAABB(BBox(regionMinWorld, regionMaxWorld), shader);
+    }
     glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
@@ -210,6 +219,8 @@ Framebuffer* Voxelizer::getFramebuffer(VoxelizationMode mode)
     case VoxelizationMode::CONSERVATIVE:
         return m_framebuffer.get();
     case VoxelizationMode::MSAA:
+        return m_msaaFramebuffer.get();
+    case VoxelizationMode::POINTCLOUD:
         return m_msaaFramebuffer.get();
     default: 
         assert(false);

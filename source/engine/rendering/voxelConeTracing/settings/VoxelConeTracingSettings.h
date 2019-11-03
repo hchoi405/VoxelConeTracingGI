@@ -60,8 +60,8 @@ struct GISettings : VCTSettings
     CheckBox directLighting{ "Direct Lighting", true };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
-    CheckBox ambientOcclusion{ "Ambient Occlusion", true };
-    ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA" }, 1);
+    CheckBox ambientOcclusion{ "Ambient Occlusion", false };
+    ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 2);
     CheckBox visualizeMinLevelSelection{"Visualize Min Level Selection", false};
     SliderInt downsampleTransitionRegionSize{ "Downsample Transition Region Size", 10, 1, VOXEL_RESOLUTION / 4 };
     CheckBox updateOneClipLevelPerFrame{ "Update One Clip Level Per Frame", true };

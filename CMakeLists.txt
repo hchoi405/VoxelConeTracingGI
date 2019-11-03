@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(VCT-GI)
 
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS  true)
 cmake_policy(SET CMP0015 NEW)
 
 if(NOT CMAKE_BUILD_TYPE)

@@ -142,7 +142,7 @@ void Engine::onWindowEvent(const SDL_WindowEvent& windowEvent)
         m_paused = false;
         break;
     case SDL_WINDOWEVENT_FOCUS_LOST:
-        m_paused = true;
+        // m_paused = true;
         break;
     default: break;
     }

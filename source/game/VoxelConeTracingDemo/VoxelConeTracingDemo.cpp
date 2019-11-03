@@ -25,6 +25,7 @@
 #include "engine/util/commands/CommandChain.h"
 #include "engine/util/QueryManager.h"
 #include "engine/rendering/renderer/MeshRenderers.h"
+#include "engine/util/ECSUtil/EntityCreator.h"
 
 VoxelConeTracingDemo::VoxelConeTracingDemo()
 {
@@ -73,6 +74,9 @@ void VoxelConeTracingDemo::initUpdate()
 
 void VoxelConeTracingDemo::update()
 {
+    static bool once = true, twice = true;
+    static int counter = 0;
+
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
     m_clipmapUpdatePolicy->update();
 
@@ -94,9 +98,13 @@ void VoxelConeTracingDemo::update()
     {
         m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
-        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
-        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(true);
+        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once); // Disable this because one initial update is enough for point cloud
+        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(twice); // Disable this because one initial update is enough for point cloud
         m_renderPipeline->getRenderPass<SceneGeometryPass>()->setEnabled(true);
+        if (twice && ++counter > 2) {
+            twice = false;
+        }
+        once = false;
     }
     
     if (forwardPipeline)
@@ -148,6 +156,12 @@ void VoxelConeTracingDemo::moveCamera(Seconds deltaTime) const
 
     if (Input::isKeyDown(SDL_SCANCODE_D))
         MainCamera->strafe(speed);
+
+    if (Input::isKeyDown(SDL_SCANCODE_Q))
+        MainCamera->elevate(-speed);
+
+    if (Input::isKeyDown(SDL_SCANCODE_E))
+        MainCamera->elevate(speed);
 
     if (Input::rightDrag().isDragging())
     {
@@ -245,24 +259,57 @@ void VoxelConeTracingDemo::createDemoScene()
     MainCamera = camComponent;
 
     camComponent->setPerspective(45.0f, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
-    glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
+
+    // CGLAB
+    glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-    camTransform->setEulerAngles(glm::vec3(math::toRadians(10.236f), math::toRadians(-66.0f), 0.0f));
+    camTransform->setEulerAngles(glm::vec3(math::toRadians(0.f), math::toRadians(180.f), math::toRadians(0.f)));
+
+    // For sponza
+    // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
+    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    // camTransform->setEulerAngles(glm::vec3(math::toRadians(10.236f), math::toRadians(-66.0f), 0.0f));
 
     m_engine->registerCamera(camComponent);
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", { "in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv" });
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("meshes/sponza_obj/sponza.obj", shader, "textures/sponza_textures/", glm::vec3(0.01f), true);
+
+    // CGLAB
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/c5bfd97748a84a3cb31690c7a8a30b4f.obj", shader, "cglab/", glm::vec3(1.f), true);
+    sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+
+    // Point Clout Entity
+    std::string pcEntityName = "PointCloud";
+    ResourceManager::getModel("cglab/cloud_binary.ply")->name = pcEntityName;   // load point cloud before loadMeshEntities to give a name
+    auto pcEntityTransform = ECSUtil::loadMeshEntities("cglab/cloud_binary.ply", shader, "cglab/", glm::vec3(1.f), false);
+    pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
+    pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
+
+    auto pcEntity = ECS::getEntityByName(pcEntityName);
+    pcEntity.setActive(false);
+
+    // Virtual object
+    auto sphereEntity = EntityCreator::createSphere("sphere", glm::vec3(1.35, 0.45, -1.3), glm::vec3(0.7f));
+    auto sphereMaterial = EntityCreator::createMaterial();
+    sphereEntity.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+    
+    // For sponza
+    // auto sceneRootEntity = ECSUtil::loadMeshEntities("meshes/sponza_obj/sponza.obj", shader, "textures/sponza_textures/", glm::vec3(0.01f), true);
 
     if (sceneRootEntity)
         sceneRootEntity->setPosition(glm::vec3(m_scenePosition));
 
-    m_directionalLight = ECS::createEntity("Directional Light");
-    m_directionalLight.addComponent<DirectionalLight>();
-    m_directionalLight.addComponent<Transform>();
-    m_directionalLight.getComponent<Transform>()->setPosition(glm::vec3(0.0f, 20.0f, 0.f) + m_scenePosition);
-    m_directionalLight.getComponent<Transform>()->setEulerAngles(glm::vec3(math::toRadians(72.0f), 0.0f, 0.0f));
-    m_directionalLight.getComponent<DirectionalLight>()->intensity = 1.5f;
+    // No lights
+    // m_directionalLight = ECS::createEntity("Directional Light");
+    // m_directionalLight.addComponent<DirectionalLight>();
+    // m_directionalLight.addComponent<Transform>();
+    
+    // // CGLAB
+    // m_directionalLight.getComponent<Transform>()->setPosition(glm::vec3(0.0f, 0.0f, 0.f) + m_scenePosition);
+
+    // m_directionalLight.getComponent<Transform>()->setEulerAngles(glm::vec3(math::toRadians(72.0f), 0.0f, 0.0f));
+    // m_directionalLight.getComponent<DirectionalLight>()->intensity = 1.5f;
 }
 
 void VoxelConeTracingDemo::animateDirLight()

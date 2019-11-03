@@ -128,6 +128,8 @@ public:
 
     void walk(float d) noexcept { setPosition(getPosition() + getForward() * d); }
 
+    void elevate(float d) noexcept { setPosition(getPosition() + getUp() * d); }
+
     void move(const glm::vec3& posDelta) { setPosition(getPosition() + posDelta); }
 
     bool hasChangedSinceLastFrame() const { return (m_changedSinceLastFrame & 1) > 0; }

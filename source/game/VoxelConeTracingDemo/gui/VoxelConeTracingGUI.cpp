@@ -396,7 +396,7 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     ImGui::SameLine();
     ImGui::Checkbox("C6", &m_visualizeClipRegion[5]);
 
-    static int curSelection = 0;
+    static int curSelection = 1;
     static const char* voxelTextures[]
     {
         "Voxel Opacity",

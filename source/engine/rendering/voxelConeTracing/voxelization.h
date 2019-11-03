@@ -9,7 +9,8 @@ struct VoxelRegion;
 enum class VoxelizationMode
 {
     CONSERVATIVE,
-    MSAA
+    MSAA,
+    POINTCLOUD
 };
 
 struct VoxelizationDesc

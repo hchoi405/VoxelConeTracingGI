@@ -86,7 +86,7 @@ std::shared_ptr<Model> AssetImporter::process(const aiScene* scene, const aiNode
             auto tangents = mesh->mTangents;
             auto bitangents = mesh->mBitangents;
             auto uvs = mesh->mTextureCoords[0];
-            //auto colors = mesh->mColors[0];
+            auto colors = mesh->mColors[0];
 
             auto mat = scene->mMaterials[mesh->mMaterialIndex];
             addTextures(aiTextureType_DIFFUSE, mat, materialDesc.diffuseTextures);
@@ -126,10 +126,10 @@ std::shared_ptr<Model> AssetImporter::process(const aiScene* scene, const aiNode
                     subMesh.uvs.push_back(glm::vec2(uvs[j].x, uvs[j].y));
                 }
 
-                //if (mesh->HasVertexColors(0))
-                //{
-                //    subMesh.colors.push_back(glm::vec3(colors[j].r, colors[j].g, colors[j].b));
-                //}
+                if (mesh->HasVertexColors(0))
+                {
+                    subMesh.colors.push_back(glm::vec3(colors[j].r, colors[j].g, colors[j].b));
+                }
             }
 
             for (unsigned int k = 0; k < mesh->mNumFaces; ++k)
