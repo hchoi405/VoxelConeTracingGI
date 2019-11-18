@@ -31,3 +31,5 @@ extern GISettings GI_SETTINGS;
 extern RenderingSettings RENDERING_SETTINGS;
 extern DebugSettings DEBUG_SETTINGS;
 extern DemoSettings DEMO_SETTINGS;
+
+#define CGLAB

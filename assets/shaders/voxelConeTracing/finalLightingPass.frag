@@ -55,7 +55,7 @@ uniform bool u_useNormalMapping;
 
 layout(location = 0) out vec4 out_color;
 
-//#define USE_32_CONES
+// #define USE_32_CONES
 
 #ifdef USE_32_CONES
 // 32 Cones for higher quality (16 on average per hemisphere)
