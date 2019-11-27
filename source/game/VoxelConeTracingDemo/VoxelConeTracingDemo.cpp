@@ -104,7 +104,7 @@ void VoxelConeTracingDemo::update()
 #ifdef CGLAB
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);       // Disable this because one initial update is enough for point cloud
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(twice); // Disable this because one initial update is enough for point cloud
-        if (twice && ++counter > 10)
+        if (twice && ++counter > 100)
         {
             twice = false;
         }
@@ -317,23 +317,40 @@ void VoxelConeTracingDemo::createDemoScene()
     auto sceneRootEntity = ECSUtil::loadMeshEntities("meshes/sponza_obj/sponza.obj", shader, "textures/sponza_textures/", glm::vec3(0.01f), true);
 #endif
 
-    // Virtual object
-    m_sphere = EntityCreator::createSphere("sphere", glm::vec3(0), glm::vec3(1.f));
-    auto sphereMaterial = EntityCreator::createMaterial();
-    sphereMaterial->setFloat("u_shininess", 255.0f);
-    sphereMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-    sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-    sphereMaterial->setColor("u_specularColor", glm::vec3(255.0f));
-    m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+    // // Virtual sphere
+    // m_sphere = EntityCreator::createSphere("sphere", glm::vec3(0), glm::vec3(1.f));
+    // auto sphereMaterial = EntityCreator::createMaterial();
+    // sphereMaterial->setFloat("u_shininess", 255.0f);
+    // sphereMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    // sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
+    // sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
+    // m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+
+    // Virtual Buddha
+    auto buddha = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
+    auto buddhaMaterial = EntityCreator::createMaterial();
+    buddhaMaterial->setFloat("u_shininess", 255.0f);
+    buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
+    buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
+    buddha->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
+
 
 #ifdef CGLAB
-    m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
-    m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
+    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
+    // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
+    buddha->setPosition(glm::vec3(1.35, 0.95, -1.3));
+    buddha->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
 #else
+    // Original
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
 
     // Ringing artifacts
     m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
+
+    // Buddha
+    // buddha->setPosition(glm::vec3(7.035, 5.092, 0.396));
+    // buddha->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
 #endif
 
     if (sceneRootEntity)
