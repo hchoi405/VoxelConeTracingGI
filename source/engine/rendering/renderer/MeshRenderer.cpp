@@ -94,6 +94,13 @@ void MeshRenderer::setMaterial(std::shared_ptr<Material> material, uint8_t index
     m_materials[index] = material;
 }
 
+std::shared_ptr<Material> MeshRenderer::getMaterial(uint8_t index)
+{
+    assert(index < m_materials.size());
+    return m_materials[index];
+}
+
+
 void MeshRenderer::setModelMatrix(const glm::mat4& matrix)
 {
     for (auto m : m_materials)

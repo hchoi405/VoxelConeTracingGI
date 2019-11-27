@@ -29,6 +29,7 @@ private:
 
     void createDemoScene();
     void animateDirLight();
+    void animateSphereRoughness();
 
     void updateCameraClipRegions();
 
@@ -51,4 +52,5 @@ private:
     Entity m_camera;
     glm::vec3 m_scenePosition;
     Entity m_directionalLight;
+    Entity m_sphere;
 };

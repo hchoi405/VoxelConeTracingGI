@@ -58,7 +58,11 @@ struct GISettings : VCTSettings
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 1.0f, 16.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.0f, 0.0f, 8.0f};
     CheckBox directLighting{ "Direct Lighting", true };
+#ifdef CGLAB
+    CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", false };
+#else
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
+#endif
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
     CheckBox ambientOcclusion{ "Ambient Occlusion", true };
 #ifdef CGLAB
@@ -83,9 +87,10 @@ struct DemoSettings : VCTSettings
 {
     DemoSettings()
     {
-        guiElements.insert(guiElements.end(), {&animateLight, &cameraSpeed });
+        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &cameraSpeed });
     }
 
     CheckBox animateLight{ "Animate Light", false };
+    CheckBox animateSphere{ "Animate Sphere Roughness", false };
     SliderFloat cameraSpeed{ "Camera Speed", 5.0f, 1.0f, 15.0f };
 };

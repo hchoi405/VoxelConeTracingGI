@@ -25,6 +25,7 @@ public:
     void setMesh(std::shared_ptr<Mesh> mesh);
     void addMaterial(std::shared_ptr<Material> material);
     void setMaterial(std::shared_ptr<Material> material, uint8_t index);
+    std::shared_ptr<Material> getMaterial(uint8_t index);
 
     void setModelMatrix(const glm::mat4& matrix);
     void performForAllMaterials(std::function<void(Material*)> func);

@@ -22,6 +22,7 @@
 #include "engine/rendering/renderPasses/ForwardScenePass.h"
 #include "engine/rendering/voxelConeTracing/settings/VoxelConeTracingSettings.h"
 #include "engine/util/commands/RotationCommand.h"
+#include "engine/util/commands/MaterialCommand.h"
 #include "engine/util/commands/CommandChain.h"
 #include "engine/util/QueryManager.h"
 #include "engine/rendering/renderer/MeshRenderers.h"
@@ -125,6 +126,7 @@ void VoxelConeTracingDemo::update()
     }
 
     animateDirLight();
+    animateSphereRoughness();
 
     GL::setViewport(MainCamera->getViewport());
 
@@ -275,10 +277,18 @@ void VoxelConeTracingDemo::createDemoScene()
 #else
     // For sponza
     // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
-    glm::vec3 cameraPositionOffset(6.155, 5.614, 0.322);
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
     // camTransform->setEulerAngles(glm::vec3(math::toRadians(10.236f), math::toRadians(-66.0f), 0.0f));
-    camTransform->setEulerAngles(glm::vec3(math::toRadians(29.937), math::toRadians(86.204), 0.0f));
+
+    // glm::vec3 cameraPositionOffset(6.155, 5.614, 0.322);
+    // camTransform->setEulerAngles(glm::vec3(math::toRadians(29.937), math::toRadians(86.204), 0.0f));
+
+    // Ringing artifacts 
+    glm::vec3 cameraPositionOffset(5.807, 4.491, -1.488);
+    camTransform->setEulerAngles(glm::vec3(math::toRadians(24.738), math::toRadians(44.305), 0.0f));
+    
+
+    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+
 #endif
 
     m_engine->registerCamera(camComponent);
@@ -308,19 +318,22 @@ void VoxelConeTracingDemo::createDemoScene()
 #endif
 
     // Virtual object
-    auto sphereEntity = EntityCreator::createSphere("sphere", glm::vec3(0), glm::vec3(1.f));
+    m_sphere = EntityCreator::createSphere("sphere", glm::vec3(0), glm::vec3(1.f));
     auto sphereMaterial = EntityCreator::createMaterial();
     sphereMaterial->setFloat("u_shininess", 255.0f);
     sphereMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     sphereMaterial->setColor("u_specularColor", glm::vec3(255.0f));
-    sphereEntity.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+    m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
 
 #ifdef CGLAB
-    sphereEntity.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
-    sphereEntity.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
+    m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
+    m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
 #else
-    sphereEntity.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
+    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
+
+    // Ringing artifacts
+    m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
 #endif
 
     if (sceneRootEntity)
@@ -348,6 +361,23 @@ void VoxelConeTracingDemo::animateDirLight()
         static std::shared_ptr<RotationCommand> rotationCommand = std::make_shared<RotationCommand>(lightTransform, startRotation, dstRotation, 10.0f);
         static std::shared_ptr<RotationCommand> rotationCommand2 = std::make_shared<RotationCommand>(lightTransform, dstRotation, startRotation, 10.0f);
         static CommandChain commandChain({rotationCommand, rotationCommand2}, true);
+
+        commandChain(Time::deltaTime());
+    }
+}
+
+void VoxelConeTracingDemo::animateSphereRoughness()
+{
+    if (m_sphere && DEMO_SETTINGS.animateSphere)
+    {
+        auto sphereRenderer = m_sphere.getComponent<MeshRenderer>();
+        auto material = sphereRenderer->getMaterial(0);
+        auto startRoughness = glm::vec4(255.f);
+        auto dstRoughness = glm::vec4(0);
+
+        static std::shared_ptr<MaterialCommand> materialCommand = std::make_shared<MaterialCommand>(sphereRenderer, "u_shininess", startRoughness, dstRoughness, 5.0f);
+        static std::shared_ptr<MaterialCommand> materialCommand2 = std::make_shared<MaterialCommand>(sphereRenderer, "u_shininess", dstRoughness, startRoughness, 5.0f);
+        static CommandChain commandChain({materialCommand, materialCommand2}, true);
 
         commandChain(Time::deltaTime());
     }
