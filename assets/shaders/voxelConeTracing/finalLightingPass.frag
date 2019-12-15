@@ -60,7 +60,7 @@ layout(location = 0) out vec4 out_color;
 #ifdef USE_32_CONES
 // 32 Cones for higher quality (16 on average per hemisphere)
 const int DIFFUSE_CONE_COUNT = 32;
-const float DIFFUSE_CONE_APERTURE = 0.628319;
+const float DIFFUSE_CONE_APERTURE = 0.628319; // 36 degree
 
 const vec3 DIFFUSE_CONE_DIRECTIONS[32] = {
     vec3(0.898904, 0.435512, 0.0479745),
@@ -98,7 +98,7 @@ const vec3 DIFFUSE_CONE_DIRECTIONS[32] = {
 };
 #else // 16 cones for lower quality (8 on average per hemisphere)
 const int DIFFUSE_CONE_COUNT = 16;
-const float DIFFUSE_CONE_APERTURE = 0.872665;
+const float DIFFUSE_CONE_APERTURE = 0.872665; // 50 degree
 
 const vec3 DIFFUSE_CONE_DIRECTIONS[16] = {
     vec3(0.57735, 0.57735, 0.57735),
@@ -195,7 +195,10 @@ vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, 
     // Offset startPos in the direction to avoid self occlusion and reduce voxel aliasing
     startPos += direction * voxelSize * u_traceStartOffset * 0.5;
 
+    // Distance from ray origin to current step
     float s = 0.0;
+    
+    // Diameter of cone at s
     float diameter = max(s * coneCoefficient, u_voxelSizeL0);
 
     float stepFactor = max(MIN_STEP_FACTOR, u_stepFactor);
@@ -206,6 +209,7 @@ vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, 
     
     float curSegmentLength = voxelSize;
     
+    // minimum radius from clip region center to position
     float minRadius = u_voxelSizeL0 * u_volumeDimension * 0.5;
     
     // Ray marching - compute occlusion and radiance in one go

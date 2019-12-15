@@ -87,6 +87,7 @@ private:
     float m_padding{ 0.125f };
     float m_voxelSize{ 0.125f };
     Texture3D* m_visualizedVoxelTex{ nullptr };
+    Texture3D* m_visualizedVoxelTextures[2] = { nullptr, nullptr };
     bool m_visualizeClipRegion[6]{ false, false, false, false, false, false };
 
     bool m_showObjectCoordinateSystem{ true };

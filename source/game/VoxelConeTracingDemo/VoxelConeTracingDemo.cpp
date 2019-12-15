@@ -53,16 +53,20 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline->putPtr("VoxelOpacity", &m_voxelOpacity);
     m_renderPipeline->putPtr("VoxelRadiance", &m_voxelRadiance);
     m_renderPipeline->putPtr("ClipRegionBBoxes", &m_clipRegionBBoxes);
+    m_renderPipeline->putPtr("VirtualVoxelOpacity", &m_virtualVoxelOpacity);
+    m_renderPipeline->putPtr("VirtualVoxelRadiance", &m_virtualVoxelRadiance);
+    m_renderPipeline->putPtr("VirtualClipRegionBBoxes", &m_virtualClipRegionBBoxes);
     m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
-
     updateCameraClipRegions();
+    updateVirtualClipRegions();
 
     // Add render passes to the pipeline
     m_renderPipeline->addRenderPasses(
         std::make_shared<SceneGeometryPass>(),
         std::make_shared<VoxelizationPass>(),
-        std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution),
+        // std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution), // Don't use the shadow map
         std::make_shared<RadianceInjectionPass>(),
+        // std::make_shared<SolidVoxelizationPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
         std::make_shared<ForwardScenePass>());
@@ -102,9 +106,10 @@ void VoxelConeTracingDemo::update()
         m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
 #ifdef CGLAB
-        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);       // Disable this because one initial update is enough for point cloud
-        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(twice); // Disable this because one initial update is enough for point cloud
-        if (twice && ++counter > 100)
+        // Disable theses passes because several initial updates are enough for point cloud
+        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);       
+        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(twice);
+        if (twice && ++counter > 10)
         {
             twice = false;
         }
@@ -244,12 +249,32 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_voxelRadiance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_voxelRadiance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
+    m_virtualVoxelOpacity.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_virtualVoxelOpacity.bind();
+    m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
+    m_virtualVoxelRadiance.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_virtualVoxelRadiance.bind();
+    m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
     GL_ERROR_CHECK();
 }
 
-BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel) const
+/**
+ * return: bounding box of clipmapLevel in world coordinate around center
+ */
+BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel, glm::vec3 center) const
 {
-    glm::vec3 center = MainCamera->getPosition();
     float halfSize = 0.5f * m_clipRegionBBoxExtentL0 * std::exp2f(float(clipmapLevel));
 
     return BBox(center - halfSize, center + halfSize);
@@ -297,15 +322,20 @@ void VoxelConeTracingDemo::createDemoScene()
 
     // CGLAB
 #ifdef CGLAB
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/c5bfd97748a84a3cb31690c7a8a30b4f.obj", shader, "cglab/", glm::vec3(1.f), true);
+    ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
     sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
     std::string cloudFilename = "cglab/cloud_binary.ply";
-    // std::string cloudFilename = "cglab/cloud_binary_subsampled1.57.ply";
-    ResourceManager::getModel(cloudFilename)->name = pcEntityName; // load point cloud before loadMeshEntities to give a name
+
+    // Load point cloud before loadMeshEntities to give a name
+    // This is ok because loadMeshEntities() first tries to find 
+    // whether the model given with the filename is already loaded
+    ResourceManager::getModel(cloudFilename)->name = pcEntityName; 
     auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f), false);
+    
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
     pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
@@ -327,30 +357,30 @@ void VoxelConeTracingDemo::createDemoScene()
     // m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
 
     // Virtual Buddha
-    auto buddha = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
+    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "buddha"; 
+    buddhaTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 255.0f);
-    buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    buddhaMaterial->setColor("u_color", glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
-    buddha->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
-
+    buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
 
 #ifdef CGLAB
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
     // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
-    buddha->setPosition(glm::vec3(1.35, 0.95, -1.3));
-    buddha->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    buddhaTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
+    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
 #else
     // Original
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
 
     // Ringing artifacts
-    m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
+    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
 
     // Buddha
-    // buddha->setPosition(glm::vec3(7.035, 5.092, 0.396));
-    // buddha->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    buddhaTransform->setPosition(glm::vec3(7.035, 5.092, 0.396));
+    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
 #endif
 
     if (sceneRootEntity)
@@ -403,8 +433,19 @@ void VoxelConeTracingDemo::animateSphereRoughness()
 void VoxelConeTracingDemo::updateCameraClipRegions()
 {
     m_clipRegionBBoxes.clear();
+    glm::vec3 center = MainCamera->getPosition();
     for (size_t i = 0; i < CLIP_REGION_COUNT; ++i)
-        m_clipRegionBBoxes.push_back(getBBox(i));
+        m_clipRegionBBoxes.push_back(getBBox(i, center));
+}
+
+void VoxelConeTracingDemo::updateVirtualClipRegions()
+{
+    // add bbox for each clip level i around the virtual object
+    m_virtualClipRegionBBoxes.clear();
+    for (size_t i = 0; i < CLIP_REGION_COUNT; ++i) {
+        // m_virtualClipRegionBBoxes.push_back(buddhaTransform->getBBox());
+        m_virtualClipRegionBBoxes.push_back(getBBox(i, buddhaTransform->getPosition()));
+    }
 }
 
 ClipmapUpdatePolicy::Type VoxelConeTracingDemo::getSelectedClipmapUpdatePolicyType() const

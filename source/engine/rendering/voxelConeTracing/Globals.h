@@ -11,7 +11,7 @@ class CameraComponent;
 template<class T>
 class ComponentPtr;
 
-#define VOXEL_RESOLUTION 128
+#define VOXEL_RESOLUTION 256
 #define CLIP_REGION_COUNT 6
 #define FACE_COUNT 6
 #define MAX_DIR_LIGHT_COUNT 3

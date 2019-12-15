@@ -21,8 +21,16 @@ VoxelizationPass::VoxelizationPass()
     	"shaders/voxelConeTracing/conservative6SeparatingOpacityVoxelization.frag", "shaders/voxelConeTracing/conservative6SeparatingOpacityVoxelization.geom");
 
     m_clipRegions.resize(CLIP_REGION_COUNT);
+    m_virtualClipRegions.resize(CLIP_REGION_COUNT);
 }
 
+/**
+ * Example:
+ *    extentWorldLevel0: 16
+ *    VOXEL_RESOLUTION: 256
+ *    CLIP_REGION_COUNT: 6
+ *    voxel sizes: [0.0625, 0.125, 0.25, 0.5, 1, 2] 
+ */
 void VoxelizationPass::init(float extentWorldLevel0)
 {
     int extent = VOXEL_RESOLUTION;
@@ -44,9 +52,26 @@ void VoxelizationPass::init(float extentWorldLevel0)
         auto& clipRegion = m_clipRegions[clipmapLevel];
     
         // Compute the closest delta in voxel coordinates
-        glm::ivec3 delta = computeChangeDeltaV(clipmapLevel, clipRegionBBoxes->at(clipmapLevel));
+        glm::ivec3 delta = computeChangeDeltaV(clipmapLevel, clipRegion, clipRegionBBoxes->at(clipmapLevel));
     
         clipRegion.minPos += delta;
+    }
+
+    // Init for virtual object
+    for (size_t i = 0; i < m_clipRegions.size(); ++i)
+    {
+        m_virtualClipRegions[i].minPos = glm::ivec3(-halfExtent);
+        m_virtualClipRegions[i].extent = glm::ivec3(extent);
+        m_virtualClipRegions[i].voxelSize = (extentWorldLevel0 * std::exp2f(static_cast<float>(i))) / extent;
+    }
+    auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
+    for (uint32_t clipmapLevel = 0; clipmapLevel < CLIP_REGION_COUNT; ++clipmapLevel)
+    {
+        auto& virtualClipRegion = m_virtualClipRegions[clipmapLevel];
+    
+        glm::ivec3 virtualDelta = computeChangeDeltaV(clipmapLevel, virtualClipRegion, virtualClipRegionBBoxes->at(clipmapLevel));
+    
+        virtualClipRegion.minPos += virtualDelta;
     }
 
     m_forceFullRevoxelization = true;
@@ -76,7 +101,8 @@ void VoxelizationPass::update()
             computeRevoxelizationRegionsClipmap(i, clipRegionBBoxes->at(i));
         }
 
-        computeRevoxelizationRegionsDynamicEntities();
+        // Dynamic entities are not covered here
+        // computeRevoxelizationRegionsDynamicEntities();
     }
 
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Clear Voxel Opacity Regions");
@@ -94,6 +120,13 @@ void VoxelizationPass::update()
 
     VoxelizationDesc desc;
     desc.mode = VoxelizationMode::CONSERVATIVE;
+    // Voxelization using point cloud is not implemented
+    // desc.target = VoxelizationTarget::POINTCLOUD; 
+    desc.target = VoxelizationTarget::ENTITIES;
+
+    Entity ent = ECS::getEntityByName("dasan613.obj");
+    desc.entities.push_back(ent);
+
     desc.clipRegions = m_clipRegions;
     desc.voxelizationShader = m_voxelizeShader.get();
     desc.downsampleTransitionRegionSize = GI_SETTINGS.downsampleTransitionRegionSize;
@@ -127,6 +160,53 @@ void VoxelizationPass::update()
     recordDebugInfo();
 
     m_renderPipeline->putPtr("ClipRegions", &m_clipRegions);
+
+
+    // Voxelization and Downsample of virtual object
+    if (!m_isVirtualVoxelized) {
+        m_virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+        // auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
+        for (uint32_t i = 0; i < CLIP_REGION_COUNT; ++i)
+        {
+            for (auto& region : m_virtualClipRegions)
+            {
+                ImageCleaner::clear6FacesImage3D(*m_virtualVoxelOpacity, GL_RGBA8, region.getMinPosImage(m_virtualClipRegions[i].extent), region.extent, VOXEL_RESOLUTION, GLuint(i), 1);
+            }
+        }
+        auto virtualObject = ECS::getEntityByName("buddha");
+        desc.entities.clear();
+        desc.entities.push_back(virtualObject);
+        desc.clipRegions = m_virtualClipRegions;
+        voxelizer->beginVoxelization(desc);
+        m_voxelizeShader->bindImage3D(*m_virtualVoxelOpacity, "u_virtualVoxelOpacity", GL_WRITE_ONLY, GL_RGBA8, 0); // GL_WRITE_ONLY, GL_RGBA8
+        for (int i = 0; i < CLIP_REGION_COUNT; ++i)
+        {
+            for (auto& region : m_revoxelizationRegions[i])
+            {
+                voxelizer->voxelize(region, i);
+            }
+        }
+        voxelizer->endVoxelization(m_renderPipeline->getCamera()->getViewport());
+        for (int i = 1; i < CLIP_REGION_COUNT; ++i)
+        {
+            Downsampler::downsampleOpacity(m_virtualVoxelOpacity, &m_virtualClipRegions, i);
+        }
+
+        m_renderPipeline->putPtr("VirtualClipRegions", &m_virtualClipRegions);
+
+        m_isVirtualVoxelized = true;
+    }
+    else {
+        auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
+        for (uint32_t clipmapLevel = 0; clipmapLevel < CLIP_REGION_COUNT; ++clipmapLevel)
+        {
+            auto& virtualClipRegion = m_virtualClipRegions[clipmapLevel];
+        
+            glm::ivec3 virtualDelta = computeChangeDeltaV(clipmapLevel, virtualClipRegion, virtualClipRegionBBoxes->at(clipmapLevel));
+        
+            virtualClipRegion.minPos += virtualDelta;
+        }
+    }
 }
 
 void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel, const BBox& curBBox)
@@ -136,7 +216,7 @@ void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel
     glm::ivec3 extent = clipRegion.extent;
 
     // Compute the closest delta in voxel coordinates
-    glm::ivec3 delta = computeChangeDeltaV(clipmapLevel, curBBox);
+    glm::ivec3 delta = computeChangeDeltaV(clipmapLevel, clipRegion, curBBox);
     glm::ivec3 absDelta = glm::abs(delta);
 
     clipRegion.minPos += delta;
@@ -183,9 +263,8 @@ void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel
     }
 }
 
-glm::ivec3 VoxelizationPass::computeChangeDeltaV(uint32_t clipmapLevel, const BBox& cameraRegionBBox)
+glm::ivec3 VoxelizationPass::computeChangeDeltaV(uint32_t clipmapLevel, const VoxelRegion& clipRegion, const BBox& cameraRegionBBox)
 {
-    const auto& clipRegion = m_clipRegions[clipmapLevel];
     float voxelSize = clipRegion.voxelSize;
 
     glm::vec3 deltaW = cameraRegionBBox.min() - clipRegion.getMinPosWorld();

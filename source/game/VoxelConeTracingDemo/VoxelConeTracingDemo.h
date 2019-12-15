@@ -25,19 +25,21 @@ protected:
 private:
     void init3DVoxelTextures();
 
-    BBox getBBox(size_t clipmapLevel) const;
+    BBox getBBox(size_t clipmapLevel, glm::vec3 center) const;
 
     void createDemoScene();
     void animateDirLight();
     void animateSphereRoughness();
 
     void updateCameraClipRegions();
+    void updateVirtualClipRegions();
 
     ClipmapUpdatePolicy::Type getSelectedClipmapUpdatePolicyType() const;
 
 private:
     std::unique_ptr<RenderPipeline> m_renderPipeline;
     std::vector<BBox> m_clipRegionBBoxes;
+    std::vector<BBox> m_virtualClipRegionBBoxes;
     std::unique_ptr<ClipmapUpdatePolicy> m_clipmapUpdatePolicy;
 
     // ClipRegion extent at level 0 - next level covers twice as much space as the previous level
@@ -46,6 +48,9 @@ private:
     Texture3D m_voxelOpacity;
     Texture3D m_voxelRadiance;
 
+    Texture3D m_virtualVoxelOpacity;
+    Texture3D m_virtualVoxelRadiance;
+
     std::unique_ptr<VoxelConeTracingGUI> m_gui;
     bool m_guiEnabled{true};
 
@@ -53,4 +58,5 @@ private:
     glm::vec3 m_scenePosition;
     Entity m_directionalLight;
     Entity m_sphere;
+    ComponentPtr<Transform> buddhaTransform;
 };

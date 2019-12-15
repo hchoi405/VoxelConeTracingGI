@@ -18,6 +18,8 @@ public:
     static void renderEntities(const std::vector<Entity>& entities, Shader* shader);
 
     static void renderEntity(Entity entity, Shader* shader);
+    
+    static void renderEntityRecursive(Entity entity, Shader* shader);
 
     static void renderEntitiesInAABB(const BBox& bbox, Shader* shader);
 

@@ -52,7 +52,8 @@ void RadianceInjectionPass::update()
         }
     }
 
-    injectByVoxelization(getSelectedShader(), voxelRadiance, m_voxelizationMode);
+    auto shader = getSelectedShader();
+    injectByVoxelization(shader, voxelRadiance, m_voxelizationMode);
     copyAlpha(voxelRadiance, voxelOpacity);
     downsample(voxelRadiance);
 
@@ -89,6 +90,7 @@ void RadianceInjectionPass::injectByVoxelization(Shader* shader, Texture3D* voxe
     desc.mode = voxelizationMode;
     desc.clipRegions = m_cachedClipRegions;
     desc.voxelizationShader = shader;
+    desc.target = VoxelizationTarget::POINTCLOUD;
     desc.downsampleTransitionRegionSize = GI_SETTINGS.downsampleTransitionRegionSize;
     Voxelizer* voxelizer = VoxelConeTracing::voxelizer();
     voxelizer->beginVoxelization(desc);
@@ -135,7 +137,9 @@ Shader* RadianceInjectionPass::getSelectedShader()
         m_voxelizationMode = VoxelizationMode::MSAA;
         return m_msaaVoxelizationShader.get();
     case 2:
-        m_voxelizationMode = VoxelizationMode::POINTCLOUD;
+        // Use conservative voxelization to iterate all voxels
+        // but inject radiance using point cloud
+        m_voxelizationMode = VoxelizationMode::CONSERVATIVE;
         return m_pointCloudVoxelizationShader.get();
     default:
         assert(false);

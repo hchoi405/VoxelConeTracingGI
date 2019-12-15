@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include "engine/rendering/Framebuffer.h"
+#include "engine/ecs/EntityManager.h"
 
 class Rect;
 class Shader;
@@ -9,16 +10,24 @@ struct VoxelRegion;
 enum class VoxelizationMode
 {
     CONSERVATIVE,
-    MSAA,
-    POINTCLOUD
+    MSAA
+};
+
+enum class VoxelizationTarget
+{
+    POINTCLOUD,
+    ENTITIES,
+    AABB
 };
 
 struct VoxelizationDesc
 {
     Shader* voxelizationShader{nullptr};
     VoxelizationMode mode{VoxelizationMode::CONSERVATIVE};
+    VoxelizationTarget target{VoxelizationTarget::AABB};
     std::vector<VoxelRegion> clipRegions;
     int downsampleTransitionRegionSize{0};
+    std::vector<Entity> entities;
 };
 
 class Voxelizer

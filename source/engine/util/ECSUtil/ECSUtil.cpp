@@ -137,6 +137,18 @@ void ECSUtil::renderEntity(Entity entity, Shader* shader)
     renderer->render(shader);
 }
 
+void ECSUtil::renderEntityRecursive(Entity entity, Shader* shader) 
+{
+    if (entity.hasComponent<MeshRenderer>()) {
+        renderEntity(entity, shader);
+    }
+    else {
+        auto &children = entity.getComponent<Transform>()->getChildren();
+        for (auto &child : children)
+            renderEntityRecursive(child.getOwner(), shader);
+    }
+}
+
 void ECSUtil::renderEntitiesInAABB(const BBox& bbox, Shader* shader)
 {
     for (Entity e : ECS::getEntitiesWithComponents<Transform, MeshRenderer>())

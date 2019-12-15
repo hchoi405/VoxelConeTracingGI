@@ -182,7 +182,7 @@ void VoxelConeTracingGUI::onVoxelVisualization()
     bool hasMultipleFaces = true;
     int numColorComponents = 4;
 
-    auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
+    auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
 
     VoxelRegion prevRegion;
     bool hasPrevLevel = false;
@@ -193,8 +193,14 @@ void VoxelConeTracingGUI::onVoxelVisualization()
         {
             if (m_visualizeTexture)
                 m_visualizer->visualize3DTexture(*m_visualizedVoxelTex, glm::vec3(0.0f), uint32_t(i), m_padding, m_voxelSize);
-            else
-                m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTex, clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
+            else {
+                if (m_visualizedVoxelTex != nullptr)
+                    m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTex, clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
+                else {
+                    m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTextures[0], clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
+                    m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTextures[1], clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
+                }
+            }
             hasPrevLevel = true;
             prevRegion = clipRegions->at(size_t(i));
         }
@@ -399,11 +405,15 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     static int curSelection = 1;
     static const char* voxelTextures[]
     {
-        "Voxel Opacity",
-        "Voxel Radiance"
+        "Environment Voxel Opacity",
+        "Environment Voxel Radiance",
+        "Virtual Voxel Opacity",
+        "Virtual Voxel Radiance",
+        "Both Voxel Opacity",
+        "Both Voxel Radiance"
     };
 
-    ImGui::Combo("3D Texture", &curSelection, voxelTextures, 2);
+    ImGui::Combo("3D Texture", &curSelection, voxelTextures, 6);
 
     switch (curSelection)
     {
@@ -412,6 +422,22 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         break;
     case 1:
         m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+        break;
+    case 2:
+        m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+        break;
+    case 3:
+        m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
+        break;
+    case 4:
+        m_visualizedVoxelTex = nullptr;
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
+        m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+        break;
+    case 5:
+        m_visualizedVoxelTex = nullptr;
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+        m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
         break;
     default:
         assert(false);

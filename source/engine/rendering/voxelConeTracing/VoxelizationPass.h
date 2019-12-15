@@ -33,7 +33,7 @@ private:
      * Compute the camera movement change delta (camera last pos and given clipmap region pos)
      * in voxel coordinates.
      */
-    glm::ivec3 computeChangeDeltaV(uint32_t clipmapLevel, const BBox& cameraRegionBBox);
+    glm::ivec3 computeChangeDeltaV(uint32_t clipmapLevel, const VoxelRegion& clipRegions, const BBox& cameraRegionBBox);
 
     void computeRevoxelizationRegionsDynamicEntities();
 
@@ -58,4 +58,9 @@ private:
     int m_overestimationWidth{ 0 };
 
     bool m_forceFullRevoxelization{ false };
+
+    // Virtual object related variables
+    Texture3D* m_virtualVoxelOpacity{nullptr};
+    std::vector<VoxelRegion> m_virtualClipRegions;
+    bool m_isVirtualVoxelized{ false };
 };

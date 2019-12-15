@@ -19,7 +19,10 @@ uniform sampler2D u_opacityMap0;
 uniform float u_hasOpacityMap;
 uniform vec4 u_color;
 
+uniform int u_isVirutal;
+
 uniform layout(rgba8) writeonly image3D u_voxelOpacity;
+uniform layout(rgba8) writeonly image3D u_virtualVoxelOpacity;
 //uniform layout(r32ui) uimage3D u_voxelOpacity;
 
 void main() 
@@ -61,7 +64,10 @@ void main()
     for (int i = 0; i < 6; ++i)
     {
         // Currently not supporting alpha blending so just make it fully opaque
-        imageStore(u_voxelOpacity, imageCoords, vec4(1.0));
+        if (u_isVirutal == 0)
+            imageStore(u_voxelOpacity, imageCoords, vec4(1.0));
+        else if (u_isVirutal == 1)
+            imageStore(u_virtualVoxelOpacity, imageCoords, vec4(1.0));
         imageCoords.x += u_clipmapResolutionWithBorder;
     }
 }
