@@ -27,8 +27,10 @@ uniform sampler2D u_normalMap;
 uniform sampler2D u_specularMap;
 uniform sampler2D u_emissionMap;
 uniform sampler2D u_depthTexture;
+uniform sampler2D u_virtualMap;
 
 uniform sampler3D u_voxelRadiance;
+uniform sampler3D u_virtualVoxelRadiance;
 
 uniform DirectionalLight u_directionalLights[MAX_DIR_LIGHT_COUNT];
 uniform DirectionalLightShadowDesc u_directionalLightShadowDescs[MAX_DIR_LIGHT_COUNT];
@@ -227,7 +229,15 @@ vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, 
         curLevel = min(max(max(startLevel, curLevel), minLevel), CLIP_LEVEL_COUNT - 1);
         
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
-        vec4 radiance = sampleClipmapLinearly(u_voxelRadiance, position, curLevel, faceIndices, weight);
+        vec4 radiance;
+        // hit virtual (so use both map)
+        if (uint(texture(u_virtualMap, In.texCoords).r) == 1) {
+            radiance = sampleClipmapLinearly(u_voxelRadiance, position, curLevel, faceIndices, weight);
+        }
+        // hit real (so use virtual map only)
+        else {
+            radiance = sampleClipmapLinearly(u_virtualVoxelRadiance, position, curLevel, faceIndices, weight);
+        }
 		float opacity = radiance.a;
 
         voxelSize = u_voxelSizeL0 * exp2(curLevel);
@@ -298,6 +308,7 @@ void main()
     vec3 posW = worldPosFromDepth(depth);
     vec3 view = normalize(u_eyePos - posW);
     vec4 specColor = texture(u_specularMap, In.texCoords);
+    uint isVirtual = uint(texture(u_virtualMap, In.texCoords).r);
     
     float minLevel = getMinLevel(posW);
     

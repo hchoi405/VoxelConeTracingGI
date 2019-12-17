@@ -61,8 +61,8 @@ void RadianceInjectionPass::update()
     auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
     // auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
 
-    injectByVoxelization(m_conservativeVoxelizationShader.get(), virtualVoxelRadiance, m_voxelizationMode,
-                         *m_clipmapUpdatePolicy);
+    // injectByVoxelization(m_conservativeVoxelizationShader.get(), virtualVoxelRadiance, m_voxelizationMode,
+    //                      *m_clipmapUpdatePolicy);
     copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity);
     downsample(virtualVoxelRadiance);
 

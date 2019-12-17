@@ -29,6 +29,7 @@ void GIPass::update()
 {
     // Fetch the data
     Texture3D* voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+    Texture3D* virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
     auto camera = m_renderPipeline->getCamera();
 
@@ -53,6 +54,7 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture2D(emissionMap, "u_emissionMap", textureUnit++);
     m_finalLightPassShader->bindTexture2D(virtualMap, "u_virtualMap", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", textureUnit++);
+    m_finalLightPassShader->bindTexture3D(*virtualVoxelRadiance, "u_virtualVoxelRadiance", textureUnit++);
 
     m_finalLightPassShader->setInt("u_BRDFMode", RENDERING_SETTINGS.brdfMode);
     m_finalLightPassShader->setMatrix("u_viewProjInv", camera->viewProjInv());
