@@ -133,6 +133,7 @@ void ECSUtil::renderEntity(Entity entity, Shader* shader)
 
     shader->setUnsignedInt("u_entityID", entity.getID());
     shader->setUnsignedInt("u_entityVersion", entity.getVersion());
+    shader->setUnsignedInt("u_isVirtual", entity.isVirtual()? 1 : 0);
 
     renderer->render(shader);
 }

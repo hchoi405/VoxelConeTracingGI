@@ -365,6 +365,7 @@ void VoxelConeTracingDemo::createDemoScene()
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
     buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
+    buddhaTransform->getOwner().setVirtual(true);
 
 #ifdef CGLAB
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));

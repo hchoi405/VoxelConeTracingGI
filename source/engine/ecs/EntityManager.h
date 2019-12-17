@@ -108,6 +108,9 @@ public:
 
     EntityVersion getVersion() const { return m_version; }
 
+    void setVirtual(bool _virtual);
+    bool isVirtual() const;
+
 private:
     template <class C>
     C* getComponentPtr();
@@ -354,6 +357,9 @@ public:
     void setActive(const Entity& entity, bool active);
     bool isActive(const Entity& entity);
 
+    void setVirtual(const Entity& entity, bool _virtual);
+    bool isVirtual(const Entity& entity);
+
     template <class... Components>
     EntityIterator getEntitiesWithComponents();
 
@@ -400,6 +406,7 @@ private:
     static ComponentTypeID s_componentTypeIDCounter;
     std::vector<bool> m_alive;
     std::vector<bool> m_active;
+    std::vector<bool> m_virtuals;
     ComponentPools m_componentPools;
     ComponentMasks m_componentMasks;
     std::vector<std::string> m_names;

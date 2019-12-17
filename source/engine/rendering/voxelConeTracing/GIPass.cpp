@@ -37,6 +37,7 @@ void GIPass::update()
     GLuint specularMap = m_renderPipeline->fetch<GLuint>("SpecularMap");
     GLuint emissionMap = m_renderPipeline->fetch<GLuint>("EmissionMap");
     GLuint depthTexture = m_renderPipeline->fetch<GLuint>("DepthTexture");
+    GLuint virtualMap = m_renderPipeline->fetch<GLuint>("VirtualMap");
 
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -50,6 +51,7 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture2D(specularMap, "u_specularMap", textureUnit++);
     m_finalLightPassShader->bindTexture2D(depthTexture, "u_depthTexture", textureUnit++);
     m_finalLightPassShader->bindTexture2D(emissionMap, "u_emissionMap", textureUnit++);
+    m_finalLightPassShader->bindTexture2D(virtualMap, "u_virtualMap", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", textureUnit++);
 
     m_finalLightPassShader->setInt("u_BRDFMode", RENDERING_SETTINGS.brdfMode);

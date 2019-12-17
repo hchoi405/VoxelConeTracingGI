@@ -72,6 +72,18 @@ bool EntityManager::isActive(const Entity& entity)
     return m_active[entity.m_id];
 }
 
+void EntityManager::setVirtual(const Entity& entity, bool _virtual)
+{
+    assert(entity);
+    m_virtuals[entity.m_id] = _virtual;
+}
+
+bool EntityManager::isVirtual(const Entity& entity)
+{
+    assert(entity);
+    return m_virtuals[entity.m_id];
+}
+
 bool EntityManager::hasComponent(const Entity& entity, size_t componentTypeID) const
 {
     assert(valid(entity));
@@ -172,6 +184,7 @@ Entity EntityManager::create(const std::string& name)
         m_versions[id] = 1;
         m_alive.resize(id + 1);
         m_active.resize(id + 1);
+        m_virtuals.resize(id + 1);
         m_componentMasks.resize(id + 1);
 
         // Reserve space for each component type
@@ -183,6 +196,7 @@ Entity EntityManager::create(const std::string& name)
     m_alive[id] = true;
     m_active[id] = true;
     m_names[id] = name;
+    m_virtuals[id] = false;
 
     return Entity(id, m_versions[id], this);
 }
@@ -236,6 +250,10 @@ const std::string& Entity::getName() const { return m_manager->getName(*this); }
 void Entity::setActive(bool active) const { m_manager->setActive(*this, active); }
 
 bool Entity::isActive() const { return m_manager->isActive(*this); }
+
+void Entity::setVirtual(bool _virtual) { m_manager->setVirtual(*this, _virtual); }
+
+bool Entity::isVirtual() const { return m_manager->isVirtual(*this); }
 
 ComponentPtr<Component>::ComponentPtr(const Entity& owner, size_t typeID)
     : m_owner(owner), m_typeID(typeID)

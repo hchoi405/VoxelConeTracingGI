@@ -27,6 +27,7 @@ uniform float u_hasEmissionMap;
 uniform float u_shininess;
 uniform vec3 u_emissionColor;
 uniform vec3 u_specularColor;
+uniform uint u_isVirtual;
 
 uniform vec4 u_color;
 
@@ -34,11 +35,14 @@ layout (location = 0) out vec3 out_diffuse;
 layout (location = 1) out vec3 out_normal;
 layout (location = 2) out vec4 out_specular;
 layout (location = 3) out vec3 out_emission;
+layout (location = 4) out vec3 out_virtual;
 
 void main() 
 {
     if (u_hasOpacityMap > 0.0 && texture(u_opacityMap0, In.uv).r < OPACITY_THRESHOLD)
         discard;
+
+    out_virtual = vec3(u_isVirtual);
         
     out_emission = u_emissionColor;
     
