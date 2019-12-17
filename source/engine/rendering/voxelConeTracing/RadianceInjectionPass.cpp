@@ -18,13 +18,13 @@ RadianceInjectionPass::RadianceInjectionPass()
     : RenderPass("RadianceInjectionPass")
 {
     m_conservativeVoxelizationShader = ResourceManager::getShader("shaders/voxelConeTracing/injectLightByConservativeVoxelization.vert",
-        "shaders/voxelConeTracing/injectLightByConservativeVoxelization.frag", "shaders/voxelConeTracing/injectLightByConservativeVoxelization.geom");
+                                                                  "shaders/voxelConeTracing/injectLightByConservativeVoxelization.frag", "shaders/voxelConeTracing/injectLightByConservativeVoxelization.geom");
 
     m_msaaVoxelizationShader = ResourceManager::getShader("shaders/voxelConeTracing/injectLightByMSAAVoxelization.vert",
-        "shaders/voxelConeTracing/injectLightByMSAAVoxelization.frag", "shaders/voxelConeTracing/injectLightByMSAAVoxelization.geom");
+                                                          "shaders/voxelConeTracing/injectLightByMSAAVoxelization.frag", "shaders/voxelConeTracing/injectLightByMSAAVoxelization.geom");
 
     m_pointCloudVoxelizationShader = ResourceManager::getShader("shaders/voxelConeTracing/injectLightByPointCloud.vert",
-        "shaders/voxelConeTracing/injectLightByPointCloud.frag", "shaders/voxelConeTracing/injectLightByPointCloud.geom");
+                                                                "shaders/voxelConeTracing/injectLightByPointCloud.frag", "shaders/voxelConeTracing/injectLightByPointCloud.geom");
 
     m_copyAlphaShader = ResourceManager::getComputeShader("shaders/voxelConeTracing/copyAlpha6Faces.comp");
 
@@ -45,7 +45,7 @@ void RadianceInjectionPass::update()
     }
     else
     {
-        auto& levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
+        auto &levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
         for (auto level : levelsToUpdate)
         {
             m_cachedClipRegions[level] = clipRegions->at(level);
@@ -53,22 +53,32 @@ void RadianceInjectionPass::update()
     }
 
     auto shader = getSelectedShader();
-    injectByVoxelization(shader, voxelRadiance, m_voxelizationMode);
+    injectByVoxelization(shader, voxelRadiance, m_voxelizationMode, *m_clipmapUpdatePolicy);
     copyAlpha(voxelRadiance, voxelOpacity);
     downsample(voxelRadiance);
+
+    auto virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
+    auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+    // auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
+
+    injectByVoxelization(m_conservativeVoxelizationShader.get(), virtualVoxelRadiance, m_voxelizationMode,
+                         *m_clipmapUpdatePolicy);
+    copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity);
+    downsample(virtualVoxelRadiance);
 
     m_initializing = false;
 }
 
-void RadianceInjectionPass::injectByVoxelization(Shader* shader, Texture3D* voxelRadiance, VoxelizationMode voxelizationMode)
+void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxelRadiance,
+                                                 VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy)
 {
-    static unsigned char zero[]{ 0, 0, 0, 0 };
+    static unsigned char zero[]{0, 0, 0, 0};
 
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Clear Radiance Voxels");
 
-    auto& levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
+    auto &levelsToUpdate = clipmapUpdatePolicy.getLevelsScheduledForUpdate();
 
-    if (m_clipmapUpdatePolicy->getType() == ClipmapUpdatePolicy::Type::ALL_PER_FRAME)
+    if (clipmapUpdatePolicy.getType() == ClipmapUpdatePolicy::Type::ALL_PER_FRAME)
     {
         glClearTexImage(*voxelRadiance, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
     }
@@ -92,7 +102,7 @@ void RadianceInjectionPass::injectByVoxelization(Shader* shader, Texture3D* voxe
     desc.voxelizationShader = shader;
     desc.target = VoxelizationTarget::POINTCLOUD;
     desc.downsampleTransitionRegionSize = GI_SETTINGS.downsampleTransitionRegionSize;
-    Voxelizer* voxelizer = VoxelConeTracing::voxelizer();
+    Voxelizer *voxelizer = VoxelConeTracing::voxelizer();
     voxelizer->beginVoxelization(desc);
     shader->bindImage3D(*voxelRadiance, "u_voxelRadiance", GL_READ_WRITE, GL_R32UI, 0);
 
@@ -112,7 +122,7 @@ void RadianceInjectionPass::injectByVoxelization(Shader* shader, Texture3D* voxe
     QueryManager::endElapsedTime(QueryTarget::GPU, "Radiance Voxelization");
 }
 
-void RadianceInjectionPass::copyAlpha(Texture3D* voxelRadiance, Texture3D* voxelOpacity, int clipLevel) const
+void RadianceInjectionPass::copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int clipLevel) const
 {
     m_copyAlphaShader->bind();
     m_copyAlphaShader->bindTexture3D(*voxelOpacity, "u_srcTexture", 0);
@@ -126,7 +136,7 @@ void RadianceInjectionPass::copyAlpha(Texture3D* voxelRadiance, Texture3D* voxel
     m_copyAlphaShader->dispatchCompute(groupCount, groupCount, groupCount);
 }
 
-Shader* RadianceInjectionPass::getSelectedShader()
+Shader *RadianceInjectionPass::getSelectedShader()
 {
     switch (GI_SETTINGS.radianceInjectionMode)
     {
@@ -147,10 +157,10 @@ Shader* RadianceInjectionPass::getSelectedShader()
     }
 }
 
-void RadianceInjectionPass::downsample(Texture3D* voxelRadiance) const
+void RadianceInjectionPass::downsample(Texture3D *voxelRadiance) const
 {
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Radiance Downsampling");
-    auto& levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
+    auto &levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
 
     if (m_clipmapUpdatePolicy->getType() == ClipmapUpdatePolicy::Type::ALL_PER_FRAME)
     {
@@ -168,10 +178,10 @@ void RadianceInjectionPass::downsample(Texture3D* voxelRadiance) const
     QueryManager::endElapsedTime(QueryTarget::GPU, "Radiance Downsampling");
 }
 
-void RadianceInjectionPass::copyAlpha(Texture3D* voxelRadiance, Texture3D* voxelOpacity) const
+void RadianceInjectionPass::copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity) const
 {
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Copy Alpha");
-    auto& levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
+    auto &levelsToUpdate = m_clipmapUpdatePolicy->getLevelsScheduledForUpdate();
 
     // Copy alpha from opacity texture (this allows us to access just one texture during GI pass)
     for (auto level : levelsToUpdate)

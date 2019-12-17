@@ -15,7 +15,7 @@ struct DirLight
     glm::vec3 position;
     glm::vec3 direction;
 
-    DirLight(const glm::vec3& pos, const glm::vec3& dir)
+    DirLight(const glm::vec3 &pos, const glm::vec3 &dir)
         : position(pos), direction(dir) {}
 
     DirLight() {}
@@ -27,13 +27,16 @@ public:
     explicit RadianceInjectionPass();
 
     void update() override;
-    Shader* getSelectedShader();
-private:
-    void injectByVoxelization(Shader* shader, Texture3D* voxelRadiance, VoxelizationMode voxelizationMode);
+    Shader *getSelectedShader();
 
-    void downsample(Texture3D* voxelRadiance) const;
-    void copyAlpha(Texture3D* voxelRadiance, Texture3D* voxelOpacity) const;
-    void copyAlpha(Texture3D* voxelRadiance, Texture3D* voxelOpacity, int clipLevel) const;
+private:
+    void injectByVoxelization(Shader *shader, Texture3D *voxelRadiance,
+                              VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy);
+
+    void downsample(Texture3D *voxelRadiance) const;
+    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity) const;
+    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int clipLevel) const;
+
 private:
     std::shared_ptr<Shader> m_conservativeVoxelizationShader;
     std::shared_ptr<Shader> m_msaaVoxelizationShader;
@@ -41,7 +44,7 @@ private:
     std::shared_ptr<Shader> m_copyAlphaShader;
     VoxelizationMode m_voxelizationMode{VoxelizationMode::CONSERVATIVE};
 
-    ClipmapUpdatePolicy* m_clipmapUpdatePolicy{ nullptr };
+    ClipmapUpdatePolicy *m_clipmapUpdatePolicy{nullptr};
     std::vector<VoxelRegion> m_cachedClipRegions;
-    bool m_initializing{ true };
+    bool m_initializing{true};
 };
