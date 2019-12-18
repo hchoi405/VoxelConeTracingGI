@@ -68,7 +68,7 @@ struct GISettings : VCTSettings
 #endif
     CheckBox visualizeMinLevelSelection{"Visualize Min Level Selection", false};
     SliderInt downsampleTransitionRegionSize{ "Downsample Transition Region Size", 10, 1, VOXEL_RESOLUTION / 4 };
-    CheckBox updateOneClipLevelPerFrame{ "Update One Clip Level Per Frame", true };
+    CheckBox updateOneClipLevelPerFrame{ "Update One Clip Level Per Frame", false };
 };
 
 struct DebugSettings : VCTSettings

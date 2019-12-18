@@ -66,7 +66,6 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<VoxelizationPass>(),
         // std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution), // Don't use the shadow map
         std::make_shared<RadianceInjectionPass>(),
-        // std::make_shared<SolidVoxelizationPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
         std::make_shared<ForwardScenePass>());
@@ -80,8 +79,7 @@ void VoxelConeTracingDemo::initUpdate()
 void VoxelConeTracingDemo::update()
 {
 #ifdef CGLAB
-    static bool once = true, twice = true;
-    static int counter = 0;
+    static bool once = true;
 #endif
 
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
@@ -105,14 +103,10 @@ void VoxelConeTracingDemo::update()
     {
         m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
+        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);  
 #ifdef CGLAB
         // Disable theses passes because several initial updates are enough for point cloud
-        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);       
-        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(twice);
-        if (twice && ++counter > 10)
-        {
-            twice = false;
-        }
+        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
         once = false;
 #else
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
@@ -296,9 +290,11 @@ void VoxelConeTracingDemo::createDemoScene()
     camComponent->setPerspective(45.0f, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
 #ifdef CGLAB
-    glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
+    // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
+    glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-    camTransform->setEulerAngles(glm::vec3(math::toRadians(50.f), math::toRadians(150.f), math::toRadians(0.f)));
+    // camTransform->setEulerAngles(glm::vec3(math::toRadians(50.f), math::toRadians(150.f), math::toRadians(0.f)));
+    camTransform->setEulerAngles(glm::vec3(math::toRadians(32.5), math::toRadians(150.f), math::toRadians(0.f)));
 #else
     // For sponza
     // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
@@ -361,7 +357,7 @@ void VoxelConeTracingDemo::createDemoScene()
     buddhaTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 255.0f);
-    buddhaMaterial->setColor("u_color", glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
+    buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
     buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
