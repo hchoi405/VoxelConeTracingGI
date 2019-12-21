@@ -65,5 +65,6 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "codecvt": "cpp"
-    }
+    },
+    "python.pythonPath": "/home/hchoi/anaconda3/bin/python"
 }

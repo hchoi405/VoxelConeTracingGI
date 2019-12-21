@@ -62,7 +62,7 @@ struct GISettings : VCTSettings
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
     CheckBox ambientOcclusion{ "Ambient Occlusion", true };
 #ifdef CGLAB
-    ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 2);
+    ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 1);
 #else
     ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 1);
 #endif
@@ -83,10 +83,11 @@ struct DemoSettings : VCTSettings
 {
     DemoSettings()
     {
-        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &cameraSpeed });
+        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &animateCamera, &cameraSpeed });
     }
 
     CheckBox animateLight{ "Animate Light", false };
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
+    CheckBox animateCamera{ "Animate Camera Transform", false };
     SliderFloat cameraSpeed{ "Camera Speed", 5.0f, 1.0f, 15.0f };
 };
