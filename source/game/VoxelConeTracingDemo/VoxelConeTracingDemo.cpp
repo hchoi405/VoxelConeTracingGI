@@ -58,7 +58,9 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline->putPtr("VirtualClipRegionBBoxes", &m_virtualClipRegionBBoxes);
     m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
     updateCameraClipRegions();
+#ifdef VIRTUAL
     updateVirtualClipRegions();
+#endif
 
     // Add render passes to the pipeline
     m_renderPipeline->addRenderPasses(
@@ -274,6 +276,11 @@ BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel, glm::vec3 center) const
     return BBox(center - halfSize, center + halfSize);
 }
 
+glm::quat toGlmQuat(float x, float y, float z, float w)
+{
+    return glm::quat(w, x, y, z);
+}
+
 void VoxelConeTracingDemo::createDemoScene()
 {
     m_scenePosition = glm::vec3(0.0f);
@@ -287,14 +294,13 @@ void VoxelConeTracingDemo::createDemoScene()
 
     MainCamera = camComponent;
 
-    camComponent->setPerspective(45.0f, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
+    camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
 #ifdef CGLAB
-    // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
-    glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
+    glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(50.f), math::toRadians(150.f), math::toRadians(0.f)));
-    camTransform->setEulerAngles(glm::vec3(math::toRadians(32.5), math::toRadians(150.f), math::toRadians(0.f)));
+    camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
+
 #else
     // For sponza
     // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
@@ -320,7 +326,7 @@ void VoxelConeTracingDemo::createDemoScene()
 #ifdef CGLAB
     ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
     auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
-    sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
@@ -333,7 +339,7 @@ void VoxelConeTracingDemo::createDemoScene()
     auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
-    pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);
@@ -352,6 +358,7 @@ void VoxelConeTracingDemo::createDemoScene()
     // sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
     // m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
 
+#ifdef VIRTUAL
     // Virtual Buddha
     ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "buddha"; 
     buddhaTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
@@ -362,12 +369,15 @@ void VoxelConeTracingDemo::createDemoScene()
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
     buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
     buddhaTransform->getOwner().setVirtual(true);
+#endif
 
 #ifdef CGLAB
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
     // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
+#ifdef VIRTUAL
     buddhaTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
     buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+#endif
 #else
     // Original
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));

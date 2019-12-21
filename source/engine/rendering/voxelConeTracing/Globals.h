@@ -33,3 +33,4 @@ extern DebugSettings DEBUG_SETTINGS;
 extern DemoSettings DEMO_SETTINGS;
 
 #define CGLAB
+// #define VIRTUAL

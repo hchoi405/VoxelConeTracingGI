@@ -57,6 +57,7 @@ void RadianceInjectionPass::update()
     copyAlpha(voxelRadiance, voxelOpacity);
     downsample(voxelRadiance);
 
+#ifdef VIRTUAL
     auto virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
     auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
     // auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
@@ -65,6 +66,7 @@ void RadianceInjectionPass::update()
     //                      *m_clipmapUpdatePolicy);
     copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity);
     downsample(virtualVoxelRadiance);
+#endif
 
     m_initializing = false;
 }

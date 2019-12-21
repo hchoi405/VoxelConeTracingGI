@@ -185,7 +185,7 @@ void VoxelConeTracingGUI::onVoxelVisualization()
     bool hasMultipleFaces = true;
     int numColorComponents = 4;
 
-    auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
+    auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
 
     VoxelRegion prevRegion;
     bool hasPrevLevel = false;
@@ -410,13 +410,19 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     {
         "Environment Voxel Opacity",
         "Environment Voxel Radiance",
+#ifdef VIRTUAL
         "Virtual Voxel Opacity",
         "Virtual Voxel Radiance",
         "Both Voxel Opacity",
         "Both Voxel Radiance"
+#endif
     };
 
+#ifdef VIRTUAL
     ImGui::Combo("3D Texture", &curSelection, voxelTextures, 6);
+#else
+    ImGui::Combo("3D Texture", &curSelection, voxelTextures, 2);
+#endif
 
     switch (curSelection)
     {
@@ -427,7 +433,9 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
         break;
     case 2:
+#ifdef VIRTUAL
         m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+#endif
         break;
     case 3:
         m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
@@ -435,12 +443,16 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     case 4:
         m_visualizedVoxelTex = nullptr;
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
+#ifdef VIRTUAL
         m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+#endif
         break;
     case 5:
         m_visualizedVoxelTex = nullptr;
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+#ifdef VIRTUAL
         m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
+#endif
         break;
     default:
         assert(false);
