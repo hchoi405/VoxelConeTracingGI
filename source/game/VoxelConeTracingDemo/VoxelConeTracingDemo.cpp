@@ -47,10 +47,10 @@ VoxelConeTracingDemo::VoxelConeTracingDemo()
         in >> pos[0];
         in >> pos[1];
         in >> pos[2];
-        in >> rot[0];
-        in >> rot[1];
-        in >> rot[2];
-        in >> rot[3];
+        in >> rot.w;
+        in >> rot.x;
+        in >> rot.y;
+        in >> rot.z;
         translations.push_back(pos);
         rotations.push_back(rot);
     }
