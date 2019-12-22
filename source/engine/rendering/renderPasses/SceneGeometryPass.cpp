@@ -37,10 +37,15 @@ SceneGeometryPass::SceneGeometryPass()
     emission->create(Screen::getWidth(), Screen::getHeight(), GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
     m_framebuffer->attachRenderTexture2D(emission, GL_COLOR_ATTACHMENT3);
 
-    // isVirtual
+    // Virtual (for virtualMap)
     std::shared_ptr<Texture2D> isVirtual = std::make_shared<Texture2D>();
-    isVirtual->create(Screen::getWidth(), Screen::getHeight(), GL_RGB8, GL_RGB, GL_FLOAT);
+    isVirtual->create(Screen::getWidth(), Screen::getHeight(), GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
     m_framebuffer->attachRenderTexture2D(isVirtual, GL_COLOR_ATTACHMENT4);
+
+    // 3D Position (for positionMap)
+    std::shared_ptr<Texture2D> position = std::make_shared<Texture2D>();
+    position->create(Screen::getWidth(), Screen::getHeight(), GL_RGB32F, GL_RGB, GL_FLOAT);
+    m_framebuffer->attachRenderTexture2D(position, GL_COLOR_ATTACHMENT5);
 
 
     // Depth
@@ -102,5 +107,6 @@ void SceneGeometryPass::update()
     m_renderPipeline->put<GLuint>("SpecularMap", getRenderTexture(GL_COLOR_ATTACHMENT2));
     m_renderPipeline->put<GLuint>("EmissionMap", getRenderTexture(GL_COLOR_ATTACHMENT3));
     m_renderPipeline->put<GLuint>("VirtualMap", getRenderTexture(GL_COLOR_ATTACHMENT4));
+    m_renderPipeline->put<GLuint>("PositionMap", getRenderTexture(GL_COLOR_ATTACHMENT5));
     m_renderPipeline->put<GLuint>("DepthTexture", getDepthTexture());
 }

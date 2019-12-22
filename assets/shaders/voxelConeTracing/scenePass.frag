@@ -9,6 +9,7 @@ in Vertex
     vec3 tangentW;
     vec3 bitangentW;
     vec2 uv;
+    vec3 posW;
 } In;
 
 #define OPACITY_THRESHOLD 0.1
@@ -36,6 +37,7 @@ layout (location = 1) out vec3 out_normal;
 layout (location = 2) out vec4 out_specular;
 layout (location = 3) out vec3 out_emission;
 layout (location = 4) out vec3 out_virtual;
+layout (location = 5) out vec3 out_position;
 
 void main() 
 {
@@ -79,4 +81,5 @@ void main()
     }
 	
     out_normal = packNormal(out_normal);
+    out_position = In.posW;
 }

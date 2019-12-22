@@ -202,6 +202,14 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
     case SDLK_g:
         RENDERING_SETTINGS.pipeline.curItem = 0;
         break;
+    case SDLK_c: {
+        // TODO: check where this error comes from
+        GL_ERROR_CHECK();
+        auto sgPass = m_renderPipeline->getRenderPass<SceneGeometryPass>();
+        auto texture = sgPass->getRenderTexturePtr(GL_COLOR_ATTACHMENT5);
+        texture->save("test", true, sgPass->getFBO());
+        break;
+    }
     case SDLK_F5:
         m_engine->requestScreenshot();
         break;
@@ -332,6 +340,8 @@ void VoxelConeTracingDemo::createDemoScene()
     ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
     auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
     // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
+    std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";

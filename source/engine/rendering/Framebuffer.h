@@ -35,11 +35,15 @@ public:
 
     GLuint getRenderTexture(GLenum colorAttachment = GL_COLOR_ATTACHMENT0) noexcept { return *m_renderTextures[colorAttachment]; }
 
+    std::shared_ptr<Texture2D> getRenderTexturePtr(GLenum colorAttachment = GL_COLOR_ATTACHMENT0) noexcept { return m_renderTextures[colorAttachment]; }
+
     GLuint getDepthTexture(uint32_t idx = 0) const noexcept { return *m_depthTextures[idx]; }
 
     size_t getRenderTextureCount() const noexcept { return m_renderTextures.size(); }
 
     size_t getDepthBufferCount() const { return m_depthTextures.size(); }
+
+    GLuint getId() const noexcept { return m_fbo; }
 
     void resize(GLsizei width, GLsizei height);
 
@@ -47,12 +51,12 @@ public:
     * Saves the render texture of this buffer to the given file in binary format.
     * If the filename does not exist then a new file will be created.
     */
-    void saveRenderTexture(const std::string& filename);
+    void saveRenderTexture(const std::string& filename, GLenum colorAttachment);
 
     /**
     * Loads the render texture from the specified filename in binary format.
     */
-    void loadRenderTexture(const std::string& filename);
+    void loadRenderTexture(const std::string& filename, GLenum colorAttachment);
 
     void bindDepthBuffer(uint32_t idx = 0);
 

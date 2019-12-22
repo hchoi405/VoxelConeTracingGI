@@ -32,6 +32,8 @@ public:
 
     void createMultisampled(uint8_t numSamples, GLsizei width, GLsizei height, GLint internalFormat);
 
+    void save(const std::string& path, bool isFBO, GLuint fboId, Texture2DSettings settings = Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR);
+    
     void load(const std::string& path, Texture2DSettings settings = Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR);
 
     GLsizei getWidth() const noexcept { return m_width; }

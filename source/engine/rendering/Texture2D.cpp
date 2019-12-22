@@ -4,6 +4,8 @@
 #include <engine/util/Timer.h>
 #include "util/GLUtil.h"
 #include "engine/util/convert.h"
+#include <memory>
+#include <fstream>
 
 Texture2D::Texture2D(const std::string& path, Texture2DSettings settings) { load(path, settings); }
 
@@ -78,6 +80,93 @@ void Texture2D::createMultisampled(uint8_t numSamples, GLsizei width, GLsizei he
 
     glBindTexture(m_target, m_glId);
     glTexImage2DMultisample(m_target, GLsizei(numSamples), m_internalFormat, m_width, m_height, false);
+}
+
+void Texture2D::save(const std::string& path, bool isFBO, GLuint fboId, Texture2DSettings settings)
+{
+    if (!isValid()) {
+        LOG("Texture is not valid. Failed to save: " + path);
+        return;
+    }
+
+    unsigned int pixelTypeBytes = 0;
+    switch(m_pixelType) {
+    case GL_UNSIGNED_BYTE:
+        pixelTypeBytes = 1;
+        break;
+    case GL_FLOAT:
+        pixelTypeBytes = 4;
+        break;
+    default:
+        LOG("Unknown pixelType for saving texture");
+        return;
+    }
+
+    unsigned int bufSize = m_width * m_height * m_channels;
+    // std::cout << "bufSize: " << bufSize << std::endl;
+    void *data = new GLubyte[bufSize * pixelTypeBytes];
+
+    if (isFBO)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+        glReadBuffer(GL_COLOR_ATTACHMENT5);
+        glReadPixels(0, 0, m_width, m_height, m_format, m_pixelType, data);
+    }
+    else
+    {
+        // requires OpenGL 4.5
+        glGetTextureImage(m_glId, 0, m_format, m_pixelType, bufSize, data);
+    }
+    GL_ERROR_CHECK();
+
+    // invert y
+    switch(m_pixelType) {
+    case GL_UNSIGNED_BYTE:{
+        auto dataPtr = (GLubyte*) data;
+        for (int i = 0; i * 2 < m_height; ++i)
+        {
+            int idx0 = i * m_width * m_channels;
+            int idx1 = (m_height - 1 - i) * m_width * m_channels;
+            for (int j = m_width * m_channels; j > 0; --j)
+                std::swap(dataPtr[idx0++], dataPtr[idx1++]);
+        }
+        if (!SOIL_save_image((path + ".bmp").c_str(), SOIL_SAVE_TYPE_BMP, m_width, m_height, m_channels, (GLubyte*)data))
+        {
+            LOG("Failed to save: " + path);
+        }
+        break;
+    }
+    case GL_FLOAT: {
+        auto dataPtr = (GLfloat*) data;
+        for (int i = 0; i * 2 < m_height; ++i)
+        {
+            int idx0 = i * m_width * m_channels;
+            int idx1 = (m_height - 1 - i) * m_width * m_channels;
+            for (int j = m_width * m_channels; j > 0; --j)
+                std::swap(dataPtr[idx0++], dataPtr[idx1++]);
+        }
+
+        std::ofstream out("position.xyz");
+        GLsizei rowSize = m_width * m_channels;
+        out << m_width * m_height << std::endl;
+        for (GLsizei y = 0; y < m_height; ++y) 
+        {
+            for (GLsizei x = 0; x < rowSize; x += m_channels)
+            {
+                for (GLsizei c = 0; c < m_channels; ++c)
+                {
+                    out << dataPtr[y * rowSize + x + c] << " ";
+                }
+                out << "\n";
+            }
+        }
+        out.close();
+        break;
+    }
+    default:
+        LOG("Unknown pixelType for saving texture");
+    }
+    delete (GLubyte*)data;
 }
 
 void Texture2D::load(const std::string& path, Texture2DSettings settings)

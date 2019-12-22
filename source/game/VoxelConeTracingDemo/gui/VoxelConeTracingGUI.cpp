@@ -116,10 +116,12 @@ void VoxelConeTracingGUI::update()
         GLuint emissionMap = m_renderPipeline->fetch<GLuint>("EmissionMap");
         GLuint depthTexture = m_renderPipeline->fetch<GLuint>("DepthTexture");
         GLuint virtualMap = m_renderPipeline->fetch<GLuint>("VirtualMap");
+        GLuint positionMap = m_renderPipeline->fetch<GLuint>("PositionMap");
         
         GUI::textures[specularMap] = GUITexture("Specular Map", specularMap, GL_RED, GL_GREEN, GL_BLUE, GL_ONE);
         GUI::textures[depthTexture] = GUITexture("Depth Texture", depthTexture, GL_RED, GL_RED, GL_RED, GL_ONE);
-        GUI::textures[virtualMap] = GUITexture("Depth Texture", virtualMap, GL_RED, GL_RED, GL_RED, GL_ONE);
+        GUI::textures[virtualMap] = GUITexture("Virtual Map", virtualMap, GL_RED, GL_RED, GL_RED, GL_ONE);
+        GUI::textures[positionMap] = GUITexture("Position Map", positionMap, GL_RED, GL_GREEN, GL_BLUE, GL_ONE);
 
         showTextures(m_gBuffersWindow.size, {
                          GUITexture("Diffuse Texture", diffuseTexture),
@@ -127,7 +129,8 @@ void VoxelConeTracingGUI::update()
                          GUITexture("Specular Map", specularMap),
                          GUITexture("Emission Map", emissionMap),
                          GUITexture("Depth Texture", depthTexture),
-                         GUITexture("Virtual Texture", virtualMap)});
+                         GUITexture("Virtual Texture", virtualMap),
+                         GUITexture("Position Map", positionMap)});
 
         m_gBuffersWindow.end();
     }

@@ -93,12 +93,12 @@ void Framebuffer::resize(GLsizei width, GLsizei height)
     m_height = height;
 }
 
-void Framebuffer::saveRenderTexture(const std::string& filename) 
+void Framebuffer::saveRenderTexture(const std::string& filename, GLenum colorAttachment) 
 { 
-    // TODO: Implement
+    m_renderTextures[colorAttachment]->save(filename.c_str(), true, m_fbo);
 }
 
-void Framebuffer::loadRenderTexture(const std::string& filename) 
+void Framebuffer::loadRenderTexture(const std::string& filename, GLenum colorAttachment) 
 { 
     // TODO: Implement
 }

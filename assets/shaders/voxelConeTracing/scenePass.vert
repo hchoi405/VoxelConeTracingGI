@@ -17,6 +17,7 @@ out Vertex
     vec3 tangentW;
     vec3 bitangentW;
     vec2 uv;
+    vec3 posW;
 };
 
 void main()
@@ -27,4 +28,5 @@ void main()
     tangentW = (u_modelIT * vec4(in_tangent, 0.0)).xyz;
     bitangentW = (u_modelIT * vec4(in_bitangent, 0.0)).xyz;
     uv = in_uv;
+    posW = (u_model * vec4(in_pos, 1.0)).xyz;
 }

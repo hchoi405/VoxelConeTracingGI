@@ -16,8 +16,10 @@ public:
     void render() const;
 
     GLuint getRenderTexture(GLenum colorAttachment = GL_COLOR_ATTACHMENT0) const noexcept { return m_framebuffer->getRenderTexture(colorAttachment); }
+    std::shared_ptr<Texture2D> getRenderTexturePtr(GLenum colorAttachment = GL_COLOR_ATTACHMENT0) const noexcept { return m_framebuffer->getRenderTexturePtr(colorAttachment); }
     GLuint getDepthTexture() const noexcept { return m_framebuffer->getDepthTexture(); }
     size_t getRenderTextureCount() const noexcept { return m_framebuffer->getRenderTextureCount(); }
+    GLuint getFBO() const noexcept { return m_framebuffer->getId(); }
 
     void update() override;
 
