@@ -19,6 +19,7 @@
 #include "engine/rendering/voxelConeTracing/RadianceInjectionPass.h"
 #include "engine/rendering/voxelConeTracing/WrapBorderPass.h"
 #include "engine/rendering/voxelConeTracing/GIPass.h"
+#include "engine/rendering/voxelConeTracing/SphericalImagePass.h"
 #include "engine/rendering/renderPasses/ForwardScenePass.h"
 #include "engine/rendering/voxelConeTracing/settings/VoxelConeTracingSettings.h"
 #include "engine/util/commands/RotationCommand.h"
@@ -35,27 +36,27 @@ VoxelConeTracingDemo::VoxelConeTracingDemo()
 
     Random::randomize();
 
-    std::ifstream in("../output.txt");
-    if (!in.is_open()) {
-        std::cout << "Failed to open output.txt" << std::endl;
-        exit(-1);
-    }
-    std::cout << "reading started... ";
-    while(!in.eof()) {
-        glm::vec3 pos;
-        glm::quat rot;
-        in >> pos[0];
-        in >> pos[1];
-        in >> pos[2];
-        in >> rot.w;
-        in >> rot.x;
-        in >> rot.y;
-        in >> rot.z;
-        translations.push_back(pos);
-        rotations.push_back(rot);
-    }
-    in.close();
-    std::cout << "finished!" << std::endl;
+    // std::ifstream in("../output.txt");
+    // if (!in.is_open()) {
+    //     std::cout << "Failed to open output.txt" << std::endl;
+    //     exit(-1);
+    // }
+    // std::cout << "reading started... ";
+    // while(!in.eof()) {
+    //     glm::vec3 pos;
+    //     glm::quat rot;
+    //     in >> pos[0];
+    //     in >> pos[1];
+    //     in >> pos[2];
+    //     in >> rot.w;
+    //     in >> rot.x;
+    //     in >> rot.y;
+    //     in >> rot.z;
+    //     translations.push_back(pos);
+    //     rotations.push_back(rot);
+    // }
+    // in.close();
+    // std::cout << "finished!" << std::endl;
 }
 
 void VoxelConeTracingDemo::initUpdate()
@@ -90,9 +91,10 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<SceneGeometryPass>(),
         std::make_shared<VoxelizationPass>(),
         // std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution), // Don't use the shadow map
-        // std::make_shared<RadianceInjectionPass>(),
+        std::make_shared<RadianceInjectionPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
+        std::make_shared<SphericalImagePass>(),
         std::make_shared<ForwardScenePass>());
 
     // RenderPass initializations
@@ -130,8 +132,9 @@ void VoxelConeTracingDemo::update()
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
 #ifdef CGLAB
-        // Disable theses passes because several initial updates are enough for point cloud
-        // m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
+        // Use injection pass only once because one update is enough for point cloud
+        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
+        m_renderPipeline->getRenderPass<SphericalImagePass>()->setEnabled(once);
         once = false;
 #else
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
@@ -334,47 +337,27 @@ constexpr float cx = 252.764;
 constexpr float cy = 208.321;
 */
 
-    /*
-Transformation matrix of 740 (a)
-  0.493464,   0.860172,   -0.12883,    2.16473,
- -0.869765,   0.488211, -0.0718182,  -0.257292,
-0.00112004,   0.147491,   0.989063,   0.263581,
-         0,          0,          0,          1
-*/
-
-    // Global transformation matrix (b)
-    /*
-0.402660,-0.912283,0.074861,-0.763035,
-0.896355,0.409558,0.169736,-2.470673,
--0.185507,-0.001244,0.982642,1.245954,
-0.000000,0.000000,0.000000,1.000000
-
-
-// b * a
-0.99225389, -0.08798841,  0.08768608,  0.36307024,
-0.08628982, 0.99600473,  0.02298846, -0.59094325,
--0.08935844, -0.01524441, 0.99588305,  1.10370726,
-0.        ,  0.        ,  0.        ,1.
-*/
-
-    glm::mat4 t(
-        0.99225389, -0.08798841, 0.08768608, 0.36307024,
-        0.08628982, 0.99600473, 0.02298846, -0.59094325,
-        -0.08935844, -0.01524441, 0.99588305, 1.10370726,
-        0., 0., 0., 1.);
     // camTransform->setTransform(t);
 
     // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
     // glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
 
+    
+
+    // // Matterport
+    // Answer: (0.545, 1.376, -1.016)
+    glm::vec3 cameraPositionOffset(1.2987847328186035, 1.3614389896392822, -1.2158539295196533);
+    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    camTransform->setRotation(toGlmQuat(-0.03345993996323607, 0.7011487530548013,  0.03297473547621579 , 0.7114657583662249));
+
+    // // Kinect
     // answer: for 0 frame   [-0.763035, -2.470673,  -1.245954]
     // answer: for 740 frame [0.36307024, -0.59094325, -1.10370726]
-    glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
 
     // answer: for 740 frame [angles (0, 90, -90) deg]
     // camTransform->setRotation(glm::quat(-0.5, 0.5, -0.5, 0.5));
-    camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
+    // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
 
     // camTransform->setEulerAngles(math::toRadians(glm::vec3(0, 90, -90)));
     // camTransform->setEulerAngles(glm::vec3(0.05093079, 0.05818686, 0.09805109) + math::toRadians(glm::vec3(0, 90, -90)));
@@ -406,7 +389,7 @@ Transformation matrix of 740 (a)
 #ifdef CGLAB
     ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
     auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
-    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
@@ -419,7 +402,7 @@ Transformation matrix of 740 (a)
     auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
-    // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);

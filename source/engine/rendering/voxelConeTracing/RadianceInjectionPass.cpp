@@ -102,7 +102,7 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     desc.mode = voxelizationMode;
     desc.clipRegions = m_cachedClipRegions;
     desc.voxelizationShader = shader;
-    desc.target = VoxelizationTarget::AABB;
+    desc.target = VoxelizationTarget::POINTCLOUD;
     desc.downsampleTransitionRegionSize = GI_SETTINGS.downsampleTransitionRegionSize;
     Voxelizer *voxelizer = VoxelConeTracing::voxelizer();
     voxelizer->beginVoxelization(desc);
