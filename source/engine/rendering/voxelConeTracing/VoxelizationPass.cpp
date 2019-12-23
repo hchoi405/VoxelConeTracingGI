@@ -176,7 +176,7 @@ void VoxelizationPass::update()
                 ImageCleaner::clear6FacesImage3D(*m_virtualVoxelOpacity, GL_RGBA8, region.getMinPosImage(m_virtualClipRegions[i].extent), region.extent, VOXEL_RESOLUTION, GLuint(i), 1);
             }
         }
-        auto virtualObject = ECS::getEntityByName("buddha");
+        auto virtualObject = ECS::getEntityByName("virtualObject");
         desc.entities.clear();
         desc.entities.push_back(virtualObject);
         desc.clipRegions = m_virtualClipRegions;

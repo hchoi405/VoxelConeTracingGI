@@ -80,6 +80,7 @@ void GIPass::update()
 
     m_finalLightPassShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
     m_finalLightPassShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
+    m_finalLightPassShader->setFloat("u_viewAperture", GI_SETTINGS.viewAperture);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

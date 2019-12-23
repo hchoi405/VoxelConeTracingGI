@@ -46,6 +46,7 @@ uniform vec3 u_eyePos;
 uniform float u_voxelSizeL0;
 uniform vec3 u_volumeCenterL0;
 uniform float u_stepFactor;
+uniform float u_viewAperture;
 uniform int u_lightingMask;
 uniform float u_indirectDiffuseIntensity;
 uniform float u_indirectSpecularIntensity;
@@ -231,7 +232,8 @@ vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
         vec4 radiance;
         // hit virtual (so use both map)
-        if (uint(texture(u_virtualMap, In.texCoords).r) == 1) {
+        // if (uint(texture(u_virtualMap, In.texCoords).r) == 1) {
+        if (true) {
             radiance = sampleClipmapLinearly(u_voxelRadiance, position, curLevel, faceIndices, weight);
         }
         // hit real (so use virtual map only)
@@ -319,7 +321,6 @@ void main()
     float voxelSize = u_voxelSizeL0 * exp2(minLevel);
     vec3 startPos = posW + normal * voxelSize * u_traceStartOffset;
     
-    float coneTraceCount = 0.0;
     float cosSum = 0.0;
 	for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i)
     {
@@ -328,8 +329,7 @@ void main()
         if (cosTheta < 0.0)
             continue;
         
-        coneTraceCount += 1.0;
-		indirectContribution += castCone(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE ,MAX_TRACE_DISTANCE, minLevel) * cosTheta;
+        indirectContribution += castCone(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE ,MAX_TRACE_DISTANCE, minLevel) * cosTheta;
     }
 
     // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
@@ -402,9 +402,23 @@ void main()
     // If only ambient occlusion is selected show ambient occlusion
     if (u_lightingMask == AMBIENT_OCCLUSION_BIT)
         out_color.rgb = vec3(indirectContribution.a);
-		
-	if (u_visualizeMinLevelSelection > 0)
-		out_color *= minLevelToColor(minLevel);
-	
-	out_color = clamp(out_color, 0.0, 1.0);
+        
+    if (u_visualizeMinLevelSelection > 0)
+        out_color *= minLevelToColor(minLevel);
+
+    if (isVirtual == 1) {
+        out_color = clamp(out_color, 0.0, 1.0);
+    }
+    else {
+        // max aperture
+        // out_color = vec4(castCone(u_eyePos, -view, sqrt(2/3), MAX_TRACE_DISTANCE, getMinLevel(u_eyePos)).rgb, 1.0) * u_indirectSpecularIntensity;
+
+        // control aperture
+        out_color = vec4(castCone(u_eyePos, -view, u_viewAperture, MAX_TRACE_DISTANCE, 0).rgb, 1.0) * u_indirectSpecularIntensity;
+
+        // ivec3 faceIndices = computeVoxelFaceIndices(-view);
+        // vec3 w = view * view;
+        // vec3 w = vec3(1.0);
+        // out_color = sampleClipmapLinearly(u_voxelRadiance, posW, minLevel, faceIndices, w);
+    }
 }

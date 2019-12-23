@@ -58,5 +58,5 @@ private:
     glm::vec3 m_scenePosition;
     Entity m_directionalLight;
     Entity m_sphere;
-    ComponentPtr<Transform> buddhaTransform;
+    ComponentPtr<Transform> virtualTransform;
 };

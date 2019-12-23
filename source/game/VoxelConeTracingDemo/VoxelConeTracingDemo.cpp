@@ -364,45 +364,30 @@ void VoxelConeTracingDemo::createDemoScene()
     auto sceneRootEntity = ECSUtil::loadMeshEntities("meshes/sponza_obj/sponza.obj", shader, "textures/sponza_textures/", glm::vec3(0.01f), true);
 #endif
 
+#ifdef VIRTUAL
     // // Virtual sphere
-    // m_sphere = EntityCreator::createSphere("sphere", glm::vec3(0), glm::vec3(1.f));
+    // m_sphere = EntityCreator::createSphere("virtualObject", glm::vec3(0), glm::vec3(1.f));
+    // virtualTransform = m_sphere.getComponent<Transform>();
     // auto sphereMaterial = EntityCreator::createMaterial();
     // sphereMaterial->setFloat("u_shininess", 255.0f);
     // sphereMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     // sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     // sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
     // m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+    // virtualTransform->setPosition(glm::vec3(1.800, -1.150, -1.050));
 
-#ifdef VIRTUAL
     // Virtual Buddha
-    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "buddha"; 
-    buddhaTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
+    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "virtualObject"; 
+    virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 255.0f);
     buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
-    buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
-    buddhaTransform->getOwner().setVirtual(true);
-#endif
-
-#ifdef CGLAB
-    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
-    // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
-#ifdef VIRTUAL
-    buddhaTransform->setPosition(glm::vec3(1.800, -1.150, -1.050));
-    buddhaTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, -90.f)));
-#endif
-#else
-    // Original
-    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
-
-    // Ringing artifacts
-    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
-
-    // Buddha
-    buddhaTransform->setPosition(glm::vec3(7.035, 5.092, 0.396));
-    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
+    virtualTransform->getOwner().setVirtual(true);
+    virtualTransform->setPosition(glm::vec3(1.800, -1.150, -1.050));
+    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, -90.f)));
 #endif
 
     if (sceneRootEntity)
@@ -465,8 +450,7 @@ void VoxelConeTracingDemo::updateVirtualClipRegions()
     // add bbox for each clip level i around the virtual object
     m_virtualClipRegionBBoxes.clear();
     for (size_t i = 0; i < CLIP_REGION_COUNT; ++i) {
-        // m_virtualClipRegionBBoxes.push_back(buddhaTransform->getBBox());
-        m_virtualClipRegionBBoxes.push_back(getBBox(i, buddhaTransform->getPosition()));
+        m_virtualClipRegionBBoxes.push_back(getBBox(i, virtualTransform->getPosition()));
     }
 }
 
