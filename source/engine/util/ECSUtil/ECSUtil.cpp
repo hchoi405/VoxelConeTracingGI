@@ -37,6 +37,7 @@ ComponentPtr<Transform> ECSUtil::loadMeshEntities(Model* model, std::shared_ptr<
     if (parent)
         transform->setParent(parent);
 
+    BBox bbox;
     if (model->subMeshes.size() > 0)
     {
         entity.addComponent<MeshRenderer>();
@@ -64,7 +65,7 @@ ComponentPtr<Transform> ECSUtil::loadMeshEntities(Model* model, std::shared_ptr<
 
         mesh->finalize();
 
-        transform->setBBox(util::computeBBox(*mesh.get()));
+        bbox = util::computeBBox(*mesh.get());
 
         auto meshRenderer = entity.getComponent<MeshRenderer>();
         meshRenderer->setMesh(mesh);
@@ -94,8 +95,11 @@ ComponentPtr<Transform> ECSUtil::loadMeshEntities(Model* model, std::shared_ptr<
 
     for (auto& child : model->children)
     {
-        loadMeshEntities(child.get(), shader, baseTexturePath, scale, useDerivedPos, transform);
+        auto childTransform = loadMeshEntities(child.get(), shader, baseTexturePath, scale, useDerivedPos, transform);
+        bbox.unite(childTransform->getBBox());
     }
+
+    transform->setBBox(bbox);
 
     return transform;
 }
