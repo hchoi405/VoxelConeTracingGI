@@ -30,6 +30,7 @@ private:
     void createDemoScene();
     void animateDirLight();
     void animateSphereRoughness();
+    void animateCameraTransform();
 
     void updateCameraClipRegions();
     void updateVirtualClipRegions();
@@ -54,7 +55,6 @@ private:
     std::unique_ptr<VoxelConeTracingGUI> m_gui;
     bool m_guiEnabled{true};
 
-    Entity m_camera;
     glm::vec3 m_scenePosition;
     Entity m_directionalLight;
     Entity m_sphere;

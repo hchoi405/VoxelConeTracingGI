@@ -19,10 +19,12 @@
 #include "engine/rendering/voxelConeTracing/RadianceInjectionPass.h"
 #include "engine/rendering/voxelConeTracing/WrapBorderPass.h"
 #include "engine/rendering/voxelConeTracing/GIPass.h"
+#include "engine/rendering/voxelConeTracing/SphericalImagePass.h"
 #include "engine/rendering/renderPasses/ForwardScenePass.h"
 #include "engine/rendering/voxelConeTracing/settings/VoxelConeTracingSettings.h"
 #include "engine/util/commands/RotationCommand.h"
 #include "engine/util/commands/MaterialCommand.h"
+#include "engine/util/commands/TransformCommand.h"
 #include "engine/util/commands/CommandChain.h"
 #include "engine/util/QueryManager.h"
 #include "engine/rendering/renderer/MeshRenderers.h"
@@ -33,11 +35,33 @@ VoxelConeTracingDemo::VoxelConeTracingDemo()
     Input::subscribe(this);
 
     Random::randomize();
+
+    // std::ifstream in("../output.txt");
+    // if (!in.is_open()) {
+    //     std::cout << "Failed to open output.txt" << std::endl;
+    //     exit(-1);
+    // }
+    // std::cout << "reading started... ";
+    // while(!in.eof()) {
+    //     glm::vec3 pos;
+    //     glm::quat rot;
+    //     in >> pos[0];
+    //     in >> pos[1];
+    //     in >> pos[2];
+    //     in >> rot.w;
+    //     in >> rot.x;
+    //     in >> rot.y;
+    //     in >> rot.z;
+    //     translations.push_back(pos);
+    //     rotations.push_back(rot);
+    // }
+    // in.close();
+    // std::cout << "finished!" << std::endl;
 }
 
 void VoxelConeTracingDemo::initUpdate()
 {
-    ResourceManager::setShaderIncludePath("shaders");        
+    ResourceManager::setShaderIncludePath("shaders");
 
     createDemoScene();
 
@@ -70,6 +94,7 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<RadianceInjectionPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
+        std::make_shared<SphericalImagePass>(),
         std::make_shared<ForwardScenePass>());
 
     // RenderPass initializations
@@ -105,10 +130,11 @@ void VoxelConeTracingDemo::update()
     {
         m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
-        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);  
+        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
 #ifdef CGLAB
-        // Disable theses passes because several initial updates are enough for point cloud
+        // Use injection pass only once because one update is enough for point cloud
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
+        m_renderPipeline->getRenderPass<SphericalImagePass>()->setEnabled(once);
         once = false;
 #else
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
@@ -128,6 +154,7 @@ void VoxelConeTracingDemo::update()
 
     animateDirLight();
     animateSphereRoughness();
+    animateCameraTransform();
 
     GL::setViewport(MainCamera->getViewport());
 
@@ -284,6 +311,11 @@ BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel, glm::vec3 center) const
     return BBox(center - halfSize, center + halfSize);
 }
 
+glm::quat toGlmQuat(glm::vec4 in)
+{
+    return glm::quat(in.w, in.x, in.y, in.z);
+}
+
 glm::quat toGlmQuat(float x, float y, float z, float w)
 {
     return glm::quat(w, x, y, z);
@@ -313,8 +345,45 @@ void VoxelConeTracingDemo::createDemoScene()
     camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
 #endif
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    // Kinect parameters
+    /*
+        constexpr float fx = 364.539;
+        constexpr float fy = 364.539;
+        constexpr float cx = 252.764;
+        constexpr float cy = 208.321;
+    */
+
+    // camTransform->setTransform(t);
+
+    // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
+    // glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
+
+    
+
+    // // Matterport
+    // // Answer: (0.545, 1.376, -1.016)
+    // glm::vec3 cameraPositionOffset(1.2987847328186035, 1.3614389896392822, -1.2158539295196533);
+    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    // camTransform->setRotation(toGlmQuat(-0.03345993996323607, 0.7011487530548013,  0.03297473547621579 , 0.7114657583662249));
+
+    // // Kinect
+    // answer: for 0 frame   [-0.763035, -2.470673,  -1.245954]
+    // answer: for 740 frame [0.36307024, -0.59094325, -1.10370726]
+    // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
+
+    // answer: for 740 frame [angles (0, 90, -90) deg]
+    // camTransform->setRotation(glm::quat(-0.5, 0.5, -0.5, 0.5));
+    // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
+
+    // camTransform->setEulerAngles(math::toRadians(glm::vec3(0, 90, -90)));
+    // camTransform->setEulerAngles(glm::vec3(0.05093079, 0.05818686, 0.09805109) + math::toRadians(glm::vec3(0, 90, -90)));
+
+    // camTransform->setEulerAngles(glm::vec3(math::toRadians(50.f), math::toRadians(150.f), math::toRadians(0.f)));
+    // camTransform->setEulerAngles(glm::vec3(math::toRadians(32.5), math::toRadians(150.f), math::toRadians(0.f)));
+    // camTransform->setEulerAngles(glm::vec3(math::toRadians(-1.322364), math::toRadians(5.0674741), math::toRadians(0.f)));
 
 #else
+
     // For sponza
     // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
     // camTransform->setEulerAngles(glm::vec3(math::toRadians(10.236f), math::toRadians(-66.0f), 0.0f));
@@ -322,10 +391,9 @@ void VoxelConeTracingDemo::createDemoScene()
     // glm::vec3 cameraPositionOffset(6.155, 5.614, 0.322);
     // camTransform->setEulerAngles(glm::vec3(math::toRadians(29.937), math::toRadians(86.204), 0.0f));
 
-    // Ringing artifacts 
+    // Ringing artifacts
     glm::vec3 cameraPositionOffset(5.807, 4.491, -1.488);
     camTransform->setEulerAngles(glm::vec3(math::toRadians(24.738), math::toRadians(44.305), 0.0f));
-    
 
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 
@@ -335,11 +403,10 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    // CGLAB
 #ifdef CGLAB
     ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
     auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
-    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
@@ -348,13 +415,13 @@ void VoxelConeTracingDemo::createDemoScene()
     std::string cloudFilename = "cglab/cloud_binary.ply";
 
     // Load point cloud before loadMeshEntities to give a name
-    // This is ok because loadMeshEntities() first tries to find 
+    // This is ok because loadMeshEntities() first tries to find
     // whether the model given with the filename is already loaded
     ResourceManager::getModel(cloudFilename)->name = pcEntityName; 
     auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
-    // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);
@@ -377,17 +444,35 @@ void VoxelConeTracingDemo::createDemoScene()
     // virtualTransform->setPosition(glm::vec3(1.800, -1.150, -1.050));
 
     // Virtual Buddha
-    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "virtualObject"; 
-    virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
+    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "buddha";
+    buddhaTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 255.0f);
     buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
-    virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
-    virtualTransform->getOwner().setVirtual(true);
-    virtualTransform->setPosition(glm::vec3(1.800, -1.150, -1.050));
-    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, -90.f)));
+    buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
+    buddhaTransform->getOwner().setVirtual(true);
+    buddhaTransform->getOwner().setActive(false);
+#endif
+
+#ifdef CGLAB
+#ifdef VIRTUAL
+    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
+    // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
+    buddhaTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
+    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+#endif
+#else
+    // Original
+    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
+
+    // Ringing artifacts
+    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
+
+    // Buddha
+    buddhaTransform->setPosition(glm::vec3(7.035, 5.092, 0.396));
+    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
 #endif
 
     if (sceneRootEntity)
@@ -434,6 +519,39 @@ void VoxelConeTracingDemo::animateSphereRoughness()
         static CommandChain commandChain({materialCommand, materialCommand2}, true);
 
         commandChain(Time::deltaTime());
+    }
+}
+
+void VoxelConeTracingDemo::animateCameraTransform()
+{
+    static size_t frame = 0;
+    if (DEMO_SETTINGS.animateCamera)
+    {
+        auto cameraTransform = MainCamera.getOwner().getComponent<Transform>();
+        static glm::vec3 initialPos = cameraTransform->getPosition();
+        static glm::quat initialRot = cameraTransform->getRotation();
+
+        static std::shared_ptr<TransformCommand> tCommand = std::make_shared<TransformCommand>(cameraTransform, translations[frame], translations[frame+1], rotations[frame], rotations[frame+1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
+        static CommandChain commandChain({tCommand}, false);
+        if (commandChain.done()) {
+            if (frame < rotations.size()-1) {
+                frame++;
+                tCommand = std::make_shared<TransformCommand>(cameraTransform, translations[frame], translations[frame+1], rotations[frame], rotations[frame+1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
+                commandChain = CommandChain({tCommand}, false);    
+            }
+            else {
+                std::cout << "Go to initial" << std::endl;
+                // Set to start position and location
+                cameraTransform->setPosition(initialPos);
+                cameraTransform->setRotation(initialRot);
+                DEMO_SETTINGS.animateCamera.value=  false;
+            }
+        }
+
+        commandChain(Time::deltaTime());
+    }
+    else {
+        frame = 0;
     }
 }
 

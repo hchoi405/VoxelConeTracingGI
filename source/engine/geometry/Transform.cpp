@@ -1,6 +1,7 @@
 #include "Transform.h"
 #include <engine/util/math.h>
 #include <imgui/imgui.h>
+#include <iostream>
 
 Transform::Transform(const BBox& bbox)
 {
@@ -153,6 +154,7 @@ void Transform::setBBox(const BBox& bbox) noexcept
 
 void Transform::updateCache()
 {
+    // printf("(%f %f %f %f)\n", m_rotation.x, m_rotation.y, m_rotation.z, m_rotation.w);
     m_localMatrix = glm::translate(m_position) * glm::toMat4(m_rotation) * glm::scale(m_scale);
     m_localMatrixInv = glm::inverse(m_localMatrix);
 
