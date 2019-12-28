@@ -59,4 +59,7 @@ private:
     Entity m_directionalLight;
     Entity m_sphere;
     ComponentPtr<Transform> virtualTransform;
+
+    std::vector<glm::vec3> translations;
+    std::vector<glm::quat> rotations;
 };

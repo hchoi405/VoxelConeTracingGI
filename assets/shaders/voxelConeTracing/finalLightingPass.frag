@@ -162,7 +162,6 @@ vec4 sampleClipmapTexture(sampler3D clipmapTexture, vec3 posW, int clipmapLevel,
     samplePos.y += clipmapLevel;
     samplePos.y *= CLIP_LEVEL_COUNT_INV;
     samplePos.x *= FACE_COUNT_INV;
-
     return clamp(texture(clipmapTexture, samplePos + vec3(faceOffsets.x, 0.0, 0.0)) * weight.x +
                  texture(clipmapTexture, samplePos + vec3(faceOffsets.y, 0.0, 0.0)) * weight.y +
                  texture(clipmapTexture, samplePos + vec3(faceOffsets.z, 0.0, 0.0)) * weight.z, 0.0, 1.0);
@@ -232,8 +231,8 @@ vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
         vec4 radiance;
         // hit virtual (so use both map)
-        // if (uint(texture(u_virtualMap, In.texCoords).r) == 1) {
-        if (true) {
+        if (uint(texture(u_virtualMap, In.texCoords).r) == 1) {
+        // if (true) {
             radiance = sampleClipmapLinearly(u_voxelRadiance, position, curLevel, faceIndices, weight);
         }
         // hit real (so use virtual map only)
@@ -410,12 +409,16 @@ void main()
         out_color = clamp(out_color, 0.0, 1.0);
     }
     else {
+        // original shading (VCT)
+        out_color = clamp(out_color, 0.0, 1.0);
+
         // max aperture
         // out_color = vec4(castCone(u_eyePos, -view, sqrt(2/3), MAX_TRACE_DISTANCE, getMinLevel(u_eyePos)).rgb, 1.0) * u_indirectSpecularIntensity;
 
         // control aperture
-        out_color = vec4(castCone(u_eyePos, -view, u_viewAperture, MAX_TRACE_DISTANCE, 0).rgb, 1.0) * u_indirectSpecularIntensity;
+        // out_color = vec4(castCone(u_eyePos, -view, u_viewAperture, MAX_TRACE_DISTANCE, 0).rgb, 1.0) * u_indirectSpecularIntensity;
 
+        // direct evaluation
         // ivec3 faceIndices = computeVoxelFaceIndices(-view);
         // vec3 w = view * view;
         // vec3 w = vec3(1.0);

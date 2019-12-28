@@ -134,7 +134,8 @@ void VoxelConeTracingDemo::update()
 #ifdef CGLAB
         // Use injection pass only once because one update is enough for point cloud
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
-        m_renderPipeline->getRenderPass<SphericalImagePass>()->setEnabled(once);
+        if (m_renderPipeline->getRenderPass<SphericalImagePass>())
+            m_renderPipeline->getRenderPass<SphericalImagePass>()->setEnabled(once);
         once = false;
 #else
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
@@ -246,7 +247,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
 
 void VoxelConeTracingDemo::init3DVoxelTextures()
 {
-    GLint filter = GL_LINEAR;
+    GLint filter = GL_NEAREST;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
@@ -341,10 +342,11 @@ void VoxelConeTracingDemo::createDemoScene()
     glm::vec3 cameraPositionOffset(-0.022, 0.163, -2.044);
     camTransform->setEulerAngles(glm::radians(glm::vec3(34.779, 64.374, -105.500)));
 #else
-    glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
-    camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
+    // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
+    // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
+    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #endif
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+
     // Kinect parameters
     /*
         constexpr float fx = 364.539;
@@ -358,13 +360,10 @@ void VoxelConeTracingDemo::createDemoScene()
     // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
     // glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
 
-    
-
-    // // Matterport
-    // // Answer: (0.545, 1.376, -1.016)
-    // glm::vec3 cameraPositionOffset(1.2987847328186035, 1.3614389896392822, -1.2158539295196533);
-    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-    // camTransform->setRotation(toGlmQuat(-0.03345993996323607, 0.7011487530548013,  0.03297473547621579 , 0.7114657583662249));
+    // Matterport
+    glm::vec3 cameraPositionOffset(1.2987847328186035, 1.3614389896392822, -1.2158539295196533);
+    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    camTransform->setRotation(toGlmQuat(-0.03345993996323607, 0.7011487530548013,  0.03297473547621579 , 0.7114657583662249));
 
     // // Kinect
     // answer: for 0 frame   [-0.763035, -2.470673,  -1.245954]
@@ -445,23 +444,23 @@ void VoxelConeTracingDemo::createDemoScene()
 
     // Virtual Buddha
     ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "buddha";
-    buddhaTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
+    virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 255.0f);
     buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
-    buddhaTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
-    buddhaTransform->getOwner().setVirtual(true);
-    buddhaTransform->getOwner().setActive(false);
+    virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
+    virtualTransform->getOwner().setVirtual(true);
+    virtualTransform->getOwner().setActive(false);
 #endif
 
 #ifdef CGLAB
 #ifdef VIRTUAL
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
     // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
-    buddhaTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
-    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    virtualTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
+    virtualTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
 #endif
 #else
     // Original
@@ -471,8 +470,12 @@ void VoxelConeTracingDemo::createDemoScene()
     // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
 
     // Buddha
-    buddhaTransform->setPosition(glm::vec3(7.035, 5.092, 0.396));
-    buddhaTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    virtualTransform->setPosition(glm::vec3(7.035, 5.092, 0.396));
+    virtualTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
+    virtualTransform->getOwner().setVirtual(true);
+    virtualTransform->setPosition(glm::vec3(1.800, -1.150, -0.95));
+    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, -90.f)));
 #endif
 
     if (sceneRootEntity)

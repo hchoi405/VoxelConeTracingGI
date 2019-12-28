@@ -12,6 +12,8 @@ public:
 
     void update() override;
 
+    void readData(std::string filename, GLfloat* data);
+
 private:
     GLsizei m_width = 4096;
     GLsizei m_height = 2048;
@@ -20,5 +22,6 @@ private:
 
     std::shared_ptr<Texture2D> m_sphericalTexture;
     std::shared_ptr<Texture2D> m_positionMap;
+    std::shared_ptr<Texture2D> m_normalMap;
     
 };

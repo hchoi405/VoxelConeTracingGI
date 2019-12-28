@@ -17,9 +17,35 @@ SphericalImagePass::SphericalImagePass()
     : RenderPass("SphericalImagePass")
 {
     // Input position map
-    GLfloat *data = nullptr; // TODO: read texture from file
-    data = new GLfloat[m_height * m_width * 3];
-    std::ifstream in("../assets/cglab/pos_dasan613.txt");
+    GLfloat *posData = nullptr, *normalData = nullptr;
+    posData = new GLfloat[m_height * m_width * 3];
+    normalData = new GLfloat[m_height * m_width * 3];
+    readData("../assets/cglab/matterport_pos_dasan613.txt", posData);
+    readData("../assets/cglab/matterport_normal_dasan613.txt", normalData);
+
+    m_positionMap = std::make_shared<Texture2D>();
+    m_positionMap->create(m_width, m_height, GL_RGB32F, GL_RGB, GL_FLOAT, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR, posData);
+
+    m_normalMap = std::make_shared<Texture2D>();
+    m_normalMap->create(m_width, m_height, GL_RGB32F, GL_RGB, GL_FLOAT, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR, normalData);
+
+    // Set up framebuffer
+    m_framebuffer = std::make_unique<Framebuffer>(m_width, m_height, false);
+    m_framebuffer->begin();
+
+    // Output Spherical Map
+    m_sphericalTexture = std::make_shared<Texture2D>();
+    m_sphericalTexture->create(m_width, m_height, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR);
+    m_framebuffer->attachRenderTexture2D(m_sphericalTexture, GL_COLOR_ATTACHMENT0);
+
+    m_framebuffer->end();
+
+    m_shader = ResourceManager::getShader("shaders/voxelConeTracing/sphericalImagePass.vert", "shaders/voxelConeTracing/sphericalImagePass.frag");
+}
+
+void SphericalImagePass::readData(std::string filename, GLfloat *data)
+{
+    std::ifstream in(filename);
     if (!in.is_open())
     {
         std::cout << "Failed to open: " << std::endl;
@@ -33,33 +59,10 @@ SphericalImagePass::SphericalImagePass()
             data[idx + 0] >>
             data[idx + 1] >>
             data[idx + 2];
-        data[idx+2] = -data[idx+2];
+        data[idx + 2] = -data[idx + 2];
 
         idx += 3;
     }
-    // for (int i = 0; i < m_width * m_height * 3; ++i)
-    // {
-    //     data[i] = 0.f;
-    // }
-    m_positionMap = std::make_shared<Texture2D>();
-    m_positionMap->create(m_width, m_height, GL_RGB32F, GL_RGB, GL_FLOAT, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR, data);
-
-    // Set up framebuffer
-    m_framebuffer = std::make_unique<Framebuffer>(m_width, m_height, false);
-    m_framebuffer->begin();
-
-    // Output Spherical Map
-    m_sphericalTexture = std::make_shared<Texture2D>();
-    m_sphericalTexture->create(m_width, m_height, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR);
-    m_framebuffer->attachRenderTexture2D(m_sphericalTexture, GL_COLOR_ATTACHMENT0);
-
-    // Depth
-    m_framebuffer->attachDepthBuffer(m_width, m_height);
-    m_framebuffer->setDrawBuffers();
-
-    m_framebuffer->end();
-
-    m_shader = ResourceManager::getShader("shaders/voxelConeTracing/sphericalImagePass.vert", "shaders/voxelConeTracing/sphericalImagePass.frag");
 }
 
 void SphericalImagePass::render() const
@@ -81,15 +84,27 @@ void SphericalImagePass::render() const
     m_shader->bind();
 
     Texture3D *voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+    Texture3D *voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
 
     GLint textureUnit = 100;
     m_shader->bindTexture2D(*m_positionMap, "u_positionMap", textureUnit++);
+    m_shader->bindTexture2D(*m_normalMap, "u_normalMap", textureUnit++);
     m_shader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", textureUnit++);
+    m_shader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", textureUnit++);
 
+    // VCT
     m_shader->setFloat("u_voxelSizeL0", clipRegions->at(0).voxelSize);
     m_shader->setUnsignedInt("u_volumeDimension", VOXEL_RESOLUTION);
+    m_shader->setVector("u_volumeCenterL0", clipRegions->at(0).getCenterPosWorld());
+    m_shader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
+    m_shader->setFloat("u_occlusionDecay", GI_SETTINGS.occlusionDecay);
+    m_shader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
+
+    // Spherical image
     m_shader->setVector("u_sphericalCenter", glm::vec3(1.2987847328186035, 1.3614389896392822, -1.2158539295196533));
+    m_shader->setFloat("u_viewAperture", GI_SETTINGS.viewAperture);
+    m_shader->setFloat("u_hitpointOffset", GI_SETTINGS.hitpointOffset);
 
     ECSUtil::renderEntities(m_shader.get());
 

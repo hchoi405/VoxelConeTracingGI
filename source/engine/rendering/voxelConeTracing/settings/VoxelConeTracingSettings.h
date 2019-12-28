@@ -44,7 +44,7 @@ struct GISettings : VCTSettings
 {
     GISettings()
     {
-        guiElements.insert(guiElements.end(), {&occlusionDecay, &ambientOcclusionFactor, &stepFactor, &viewAperture,
+        guiElements.insert(guiElements.end(), {&occlusionDecay, &ambientOcclusionFactor, &stepFactor, &viewAperture, &hitpointOffset,
                           &indirectDiffuseIntensity, &indirectSpecularIntensity, &traceStartOffset,
                           &directLighting, &indirectDiffuseLighting, &indirectSpecularLighting, &ambientOcclusion,
                           &radianceInjectionMode, &visualizeMinLevelSelection, &downsampleTransitionRegionSize,
@@ -57,7 +57,9 @@ struct GISettings : VCTSettings
     SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 15.0f, 1.0f, 30.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 1.0f, 16.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.0f, 0.0f, 8.0f};
-    SliderFloat viewAperture{"Apertuer of View Cone", 0.0f, 0.0f, 1.0f};
+    SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
+    SliderFloat hitpointOffset{"Offset of hitpoint to normal direction", 0.f, -1.0f, 1.0f};
+    
     CheckBox directLighting{ "Direct Lighting", true };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
