@@ -4,14 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
-        {
-            "name": "Python launch",
-            "type": "python",
-            "request": "launch",
-            "pythonPath": "/home/hchoi/anaconda3/bin/python",
-            "program": "${file}",
-        },
+        // {
+        //     "name": "Python launch",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "pythonPath": "/home/hchoi/anaconda3/bin/python",
+        //     "program": "${file}",
+        // },
         {
             "name": "run",
             "type": "cppdbg",

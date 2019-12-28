@@ -21,13 +21,14 @@ class VoxelizationPass : public RenderPass, public Receiver<EntityDeactivatedEve
 public:
     explicit VoxelizationPass();
 
-    void init(float extentWorldLevel0);
+    void init(float extentWorldLevel0, float virtualExtentWorldLevel0);
 
     void update() override;
 
     const DebugInfo& getDebugInfo() const { return m_debugInfo; }
 private:
-    void computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel, const BBox& curBBox);
+    void computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel, std::vector<VoxelRegion> &clipRegions,
+                                             std::vector<VoxelRegion> *revoxelizationRegions, const BBox &curBBox);
 
     /**
      * Compute the camera movement change delta (camera last pos and given clipmap region pos)
@@ -35,7 +36,7 @@ private:
      */
     glm::ivec3 computeChangeDeltaV(uint32_t clipmapLevel, const VoxelRegion& clipRegions, const BBox& cameraRegionBBox);
 
-    void computeRevoxelizationRegionsDynamicEntities();
+    void computeRevoxelizationRegionsDynamicEntities(bool isVirtual, std::vector<VoxelRegion> &clipRegions, std::vector<VoxelRegion> *revoxelizationRegions);
 
     void receive(const EntityDeactivatedEvent& e) override;
     void receive(const EntityActivatedEvent& e) override;
@@ -50,7 +51,7 @@ private:
     std::vector<VoxelRegion> m_clipRegions;
 
     // A portion consisting of a multiple of voxel size is revoxelized
-    int m_minChange[CLIP_REGION_COUNT] = {2, 2, 2, 2, 2, 1};
+    int m_minChange[CLIP_REGION_COUNT] = {1, 1, 1, 1, 1, 1};
 
     Texture3D* m_voxelOpacity{nullptr};
 
@@ -61,6 +62,7 @@ private:
 
     // Virtual object related variables
     Texture3D* m_virtualVoxelOpacity{nullptr};
+    std::vector<VoxelRegion> m_virtualRevoxelizationRegions[VIRTUAL_CLIP_REGION_COUNT];
     std::vector<VoxelRegion> m_virtualClipRegions;
     bool m_isVirtualVoxelized{ false };
 };

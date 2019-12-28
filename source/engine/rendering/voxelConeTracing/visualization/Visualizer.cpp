@@ -21,11 +21,12 @@ Visualizer::Visualizer()
     //                                                            "shaders/voxelConeTracing/visualization/voxelFaceVisualization.geom");
 
     m_voxelRenderer = initTexture3DRenderer(VOXEL_RESOLUTION);
+    m_virtualVoxelRenderer = initTexture3DRenderer(VIRTUAL_VOXEL_RESOLUTION);
     //m_voxelFaceRenderer = initTexture3DFaceRenderer(VOXEL_RESOLUTION);
     m_textureRenderer = initTexture3DRenderer(VOXEL_RESOLUTION + 2);
 }
 
-void Visualizer::visualize3DClipmapGS(GLuint texture, VoxelRegion region, uint32_t clipmapLevel, VoxelRegion prevRegion, 
+void Visualizer::visualize3DClipmapGS(bool isVirtual, GLuint texture, VoxelRegion region, uint32_t clipmapLevel, VoxelRegion prevRegion, 
     bool hasPrevLevel, bool hasMultipleFaces, int numColorComponents)
 {
     glDisable(GL_CULL_FACE);
@@ -36,7 +37,7 @@ void Visualizer::visualize3DClipmapGS(GLuint texture, VoxelRegion region, uint32
     m_voxelVisualizationShader->bind();
     m_voxelVisualizationShader->bindTexture3D(texture, "u_3dTexture");
     m_voxelVisualizationShader->setVector("u_volumeMin", region.getMinPosWorld());
-    m_voxelVisualizationShader->setInt("u_clipmapResolution", int(VOXEL_RESOLUTION));
+    m_voxelVisualizationShader->setInt("u_clipmapResolution", int((isVirtual)? VIRTUAL_VOXEL_RESOLUTION : VOXEL_RESOLUTION));
     m_voxelVisualizationShader->setInt("u_clipmapLevel", int(clipmapLevel));
     m_voxelVisualizationShader->setFloat("u_voxelSize", region.voxelSize);
     m_voxelVisualizationShader->setMatrix("u_viewProj", MainCamera->viewProj());
@@ -56,7 +57,10 @@ void Visualizer::visualize3DClipmapGS(GLuint texture, VoxelRegion region, uint32
     m_voxelVisualizationShader->setInt("u_numColorComponents", numColorComponents);
     m_voxelVisualizationShader->setVector("u_eyePosW", MainCamera->getPosition());
 
-    m_voxelRenderer->bindAndRender();
+    if (isVirtual)
+        m_virtualVoxelRenderer->bindAndRender();
+    else
+        m_voxelRenderer->bindAndRender();
 
     glDisable(GL_BLEND);
 }

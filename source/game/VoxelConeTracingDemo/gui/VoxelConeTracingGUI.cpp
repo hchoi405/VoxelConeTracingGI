@@ -189,27 +189,39 @@ void VoxelConeTracingGUI::onVoxelVisualization()
     int numColorComponents = 4;
 
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
+    auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
 
-    VoxelRegion prevRegion;
+    std::vector<VoxelRegion> *regions[2] = {
+        (m_isVirtual[0])? virtualClipRegions : clipRegions,
+        (m_isVirtual[1])? virtualClipRegions : clipRegions
+    };
+
+    VoxelRegion prevRegion[2];
     bool hasPrevLevel = false;
 
     for (int i = 0; i < 6; ++i)
     {
         if (m_visualizeClipRegion[i])
         {
-            if (m_visualizeTexture)
-                m_visualizer->visualize3DTexture(*m_visualizedVoxelTex, glm::vec3(0.0f), uint32_t(i), m_padding, m_voxelSize);
-            else {
-                if (m_visualizedVoxelTex != nullptr)
-                    m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTex, clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
-                else {
-                    m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTextures[0], clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
-                    m_visualizer->visualize3DClipmapGS(*m_visualizedVoxelTextures[1], clipRegions->at(size_t(i)), uint32_t(i), prevRegion, hasPrevLevel, hasMultipleFaces, numColorComponents);
+            for (int j = 0; j < 2; ++j)
+            {
+                if (m_visualizedVoxelTextures[j]) {
+                    m_visualizer->visualize3DClipmapGS(m_isVirtual[j], *m_visualizedVoxelTextures[j], regions[j]->at(size_t(i)), uint32_t(i), prevRegion[j], hasPrevLevel, hasMultipleFaces, numColorComponents);
+                    prevRegion[j] = regions[j]->at(size_t(i));
                 }
             }
-            hasPrevLevel = true;
-            prevRegion = clipRegions->at(size_t(i));
+            // Always redraw
+            // hasPrevLevel = true;
         }
+    }
+}
+
+void VoxelConeTracingGUI::selectEntity(Entity entity, bool focus)
+{
+    m_selectedEntity = entity;
+    if (focus) {
+        if (MainCamera)
+        moveCameraToEntity(MainCamera, m_selectedEntity);
     }
 }
 
@@ -408,7 +420,7 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     ImGui::SameLine();
     ImGui::Checkbox("C6", &m_visualizeClipRegion[5]);
 
-    static int curSelection = 1;
+    static int curSelection = 2;
     static const char* voxelTextures[]
     {
         "Environment Voxel Opacity",
@@ -430,31 +442,37 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     switch (curSelection)
     {
     case 0:
-        m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
+        m_visualizedVoxelTextures[1] = nullptr;
+        m_isVirtual[0] = false;
         break;
     case 1:
-        m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+        m_visualizedVoxelTextures[1] = nullptr;
+        m_isVirtual[0] = false;
         break;
-    case 2:
 #ifdef VIRTUAL
-        m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
-#endif
+    case 2:
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+        m_visualizedVoxelTextures[1] = nullptr;
+        m_isVirtual[0] = true;
         break;
     case 3:
-        m_visualizedVoxelTex = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
+        m_visualizedVoxelTextures[1] = nullptr;
+        m_isVirtual[0] = true;
         break;
     case 4:
-        m_visualizedVoxelTex = nullptr;
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
-#ifdef VIRTUAL
         m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
-#endif
+        m_isVirtual[0] = false;
+        m_isVirtual[1] = true;
         break;
     case 5:
-        m_visualizedVoxelTex = nullptr;
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
-#ifdef VIRTUAL
         m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
+        m_isVirtual[0] = false;
+        m_isVirtual[1] = true;
 #endif
         break;
     default:

@@ -82,6 +82,8 @@ public:
     void setVector(const UniformName& uniformName, const glm::vec2& v) const noexcept;
     void setVector(const UniformName& uniformName, const glm::vec3& v) const noexcept;
     void setVector(const UniformName& uniformName, const glm::vec4& v) const noexcept;
+    void setVectorArray(const UniformName& uniformName, const glm::vec3* v, size_t size) const noexcept;
+    void setVectorArray(const UniformName& uniformName, const glm::vec4* v, size_t size) const noexcept;
     void setMatrix(const UniformName& uniformName, const glm::mat4& m) const noexcept;
     void setMatrix(const UniformName& uniformName, const glm::mat3& m) const noexcept;
     void setMatrix(const UniformName& uniformName, const glm::mat2& m) const noexcept;

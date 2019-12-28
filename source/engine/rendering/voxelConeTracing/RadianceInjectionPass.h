@@ -31,11 +31,13 @@ public:
 
 private:
     void injectByVoxelization(Shader *shader, Texture3D *voxelRadiance,
-                              VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy);
+                              VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy, int voxelResolution, 
+                              std::vector<VoxelRegion> &cachedClipRegions);
 
-    void downsample(Texture3D *voxelRadiance) const;
-    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity) const;
-    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int clipLevel) const;
+    void downsample(Texture3D *voxelRadiance, std::vector<VoxelRegion> &cachedClipRegions, int clipRegionCount, int voxelResolution,
+                    ClipmapUpdatePolicy *clipmapUpdatePolicy) const;
+    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int clipLevel, int voxelResolution) const;
+    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int voxelResolution, ClipmapUpdatePolicy *clipmapUpdatePolicy) const;
 
 private:
     std::shared_ptr<Shader> m_conservativeVoxelizationShader;
@@ -45,6 +47,8 @@ private:
     VoxelizationMode m_voxelizationMode{VoxelizationMode::CONSERVATIVE};
 
     ClipmapUpdatePolicy *m_clipmapUpdatePolicy{nullptr};
+    ClipmapUpdatePolicy *m_virtualClipmapUpdatePolicy{nullptr};
     std::vector<VoxelRegion> m_cachedClipRegions;
+    std::vector<VoxelRegion> m_virtualCachedClipRegions;
     bool m_initializing{true};
 };

@@ -101,14 +101,14 @@ namespace voxelization
     }
 }
 
-Voxelizer::Voxelizer()
+Voxelizer::Voxelizer(int voxelResolution)
 {
     m_framebuffer = std::make_unique<Framebuffer>();
     m_framebuffer->bind();
     // Using ARB_framebuffer_no_attachments
     // Increased by 2 because revoxelization regions need to be extended by 1 in each direction to ensure that no fragments are missed
-    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, static_cast<GLint>(VOXEL_RESOLUTION + 2));
-    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, static_cast<GLint>(VOXEL_RESOLUTION + 2));
+    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, static_cast<GLint>(voxelResolution + 2));
+    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, static_cast<GLint>(voxelResolution + 2));
     //glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_SAMPLES, 8);
     //glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS, GL_TRUE);
     m_framebuffer->checkFramebufferStatus();
@@ -118,8 +118,8 @@ Voxelizer::Voxelizer()
     m_msaaFramebuffer->bind();
     // Using ARB_framebuffer_no_attachments
     // Increased by 2 because revoxelization regions need to be extended by 1 in each direction to ensure that no fragments are missed
-    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, static_cast<GLint>(VOXEL_RESOLUTION + 2));
-    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, static_cast<GLint>(VOXEL_RESOLUTION + 2));
+    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, static_cast<GLint>(voxelResolution + 2));
+    glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, static_cast<GLint>(voxelResolution + 2));
     glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_SAMPLES, 8);
     glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS, GL_TRUE);
     m_msaaFramebuffer->checkFramebufferStatus();
@@ -154,8 +154,8 @@ void Voxelizer::beginVoxelization(const VoxelizationDesc& desc)
     getFramebuffer(desc.mode)->begin();
     shader->bind();
 
-    shader->setInt("u_clipmapResolution", int(VOXEL_RESOLUTION));
-    shader->setInt("u_clipmapResolutionWithBorder", int(VOXEL_RESOLUTION + 2));
+    shader->setInt("u_clipmapResolution", int(desc.voxelResolution));
+    shader->setInt("u_clipmapResolutionWithBorder", int(desc.voxelResolution + 2));
 }
 
 void Voxelizer::voxelize(const VoxelRegion& voxelRegion, int clipmapLevel)

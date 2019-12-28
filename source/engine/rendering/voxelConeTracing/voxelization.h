@@ -28,12 +28,13 @@ struct VoxelizationDesc
     std::vector<VoxelRegion> clipRegions;
     int downsampleTransitionRegionSize{0};
     std::vector<Entity> entities;
+    size_t voxelResolution;
 };
 
 class Voxelizer
 {
 public:
-    Voxelizer();
+    Voxelizer(int voxelResolution);
 
     void beginVoxelization(const VoxelizationDesc& desc);
 

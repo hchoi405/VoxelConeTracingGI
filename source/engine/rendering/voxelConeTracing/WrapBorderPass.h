@@ -15,7 +15,7 @@ public:
     void update() override;
 
 private:
-    void copyBorder(Texture3D* texture) const;
+    void copyBorder(Texture3D* texture, bool isVirtual) const;
 
 private:
     std::shared_ptr<Shader> m_shader;

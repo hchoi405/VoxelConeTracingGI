@@ -21,7 +21,7 @@ VoxelizationPass::VoxelizationPass()
     	"shaders/voxelConeTracing/conservative6SeparatingOpacityVoxelization.frag", "shaders/voxelConeTracing/conservative6SeparatingOpacityVoxelization.geom");
 
     m_clipRegions.resize(CLIP_REGION_COUNT);
-    m_virtualClipRegions.resize(CLIP_REGION_COUNT);
+    m_virtualClipRegions.resize(VIRTUAL_CLIP_REGION_COUNT);
 }
 
 /**
@@ -31,7 +31,7 @@ VoxelizationPass::VoxelizationPass()
  *    CLIP_REGION_COUNT: 6
  *    voxel sizes: [0.0625, 0.125, 0.25, 0.5, 1, 2] 
  */
-void VoxelizationPass::init(float extentWorldLevel0)
+void VoxelizationPass::init(float extentWorldLevel0, float virtualExtentWorldLevel0)
 {
     int extent = VOXEL_RESOLUTION;
     int halfExtent = extent / 2;
@@ -58,15 +58,17 @@ void VoxelizationPass::init(float extentWorldLevel0)
     }
 
 #ifdef VIRTUAL
+    extent = VIRTUAL_VOXEL_RESOLUTION;
+    halfExtent = extent / 2;
     // Init for virtual object
-    for (size_t i = 0; i < m_clipRegions.size(); ++i)
+    for (size_t i = 0; i < m_virtualClipRegions.size(); ++i)
     {
         m_virtualClipRegions[i].minPos = glm::ivec3(-halfExtent);
         m_virtualClipRegions[i].extent = glm::ivec3(extent);
-        m_virtualClipRegions[i].voxelSize = (extentWorldLevel0 * std::exp2f(static_cast<float>(i))) / extent;
+        m_virtualClipRegions[i].voxelSize = (virtualExtentWorldLevel0 * std::exp2f(static_cast<float>(i))) / extent;
     }
     auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
-    for (uint32_t clipmapLevel = 0; clipmapLevel < CLIP_REGION_COUNT; ++clipmapLevel)
+    for (uint32_t clipmapLevel = 0; clipmapLevel < VIRTUAL_CLIP_REGION_COUNT; ++clipmapLevel)
     {
         auto& virtualClipRegion = m_virtualClipRegions[clipmapLevel];
     
@@ -100,11 +102,10 @@ void VoxelizationPass::update()
         for (uint32_t i = 0; i < CLIP_REGION_COUNT; ++i)
         {
             m_revoxelizationRegions[i].clear();
-            computeRevoxelizationRegionsClipmap(i, clipRegionBBoxes->at(i));
+            computeRevoxelizationRegionsClipmap(i, m_clipRegions, m_revoxelizationRegions, clipRegionBBoxes->at(i));
         }
 
-        // Dynamic entities are not covered here
-        // computeRevoxelizationRegionsDynamicEntities();
+        // computeRevoxelizationRegionsDynamicEntities(false, m_clipRegions, m_revoxelizationRegions);
     }
 
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Clear Voxel Opacity Regions");
@@ -125,6 +126,7 @@ void VoxelizationPass::update()
     // Voxelization using point cloud is not implemented
     // desc.target = VoxelizationTarget::POINTCLOUD; 
     desc.target = VoxelizationTarget::ENTITIES;
+    desc.voxelResolution = VOXEL_RESOLUTION;
 
     Entity ent = ECS::getEntityByName("dasan613.obj");
     desc.entities.push_back(ent);
@@ -155,7 +157,7 @@ void VoxelizationPass::update()
         if (m_downsampleUpdateNecessary || m_revoxelizationRegions[i].size() > 0)
         {
             m_downsampleUpdateNecessary = true;
-            Downsampler::downsampleOpacity(m_voxelOpacity, &m_clipRegions, i);
+            Downsampler::downsampleOpacity(m_voxelOpacity, &m_clipRegions, i, CLIP_REGION_COUNT, VOXEL_RESOLUTION);
         }
     }
 
@@ -166,56 +168,64 @@ void VoxelizationPass::update()
 
 #ifdef VIRTUAL
     // Voxelization and Downsample of virtual object
-    if (!m_isVirtualVoxelized) {
-        m_virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
-        // auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
-        for (uint32_t i = 0; i < CLIP_REGION_COUNT; ++i)
-        {
-            for (auto& region : m_virtualClipRegions)
-            {
-                ImageCleaner::clear6FacesImage3D(*m_virtualVoxelOpacity, GL_RGBA8, region.getMinPosImage(m_virtualClipRegions[i].extent), region.extent, VOXEL_RESOLUTION, GLuint(i), 1);
-            }
-        }
-        auto virtualObject = ECS::getEntityByName("virtualObject");
-        desc.entities.clear();
-        desc.entities.push_back(virtualObject);
-        desc.clipRegions = m_virtualClipRegions;
-        voxelizer->beginVoxelization(desc);
-        m_voxelizeShader->bindImage3D(*m_virtualVoxelOpacity, "u_virtualVoxelOpacity", GL_WRITE_ONLY, GL_RGBA8, 0); // GL_WRITE_ONLY, GL_RGBA8
-        for (int i = 0; i < CLIP_REGION_COUNT; ++i)
-        {
-            for (auto& region : m_revoxelizationRegions[i])
-            {
-                voxelizer->voxelize(region, i);
-            }
-        }
-        voxelizer->endVoxelization(m_renderPipeline->getCamera()->getViewport());
-        for (int i = 1; i < CLIP_REGION_COUNT; ++i)
-        {
-            Downsampler::downsampleOpacity(m_virtualVoxelOpacity, &m_virtualClipRegions, i);
-        }
+    m_virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+    auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
 
-        m_renderPipeline->putPtr("VirtualClipRegions", &m_virtualClipRegions);
-
-        m_isVirtualVoxelized = true;
+    for (uint32_t clipmapLevel = 0; clipmapLevel < VIRTUAL_CLIP_REGION_COUNT; ++clipmapLevel)
+    {
+        auto& virtualClipRegion = m_virtualClipRegions[clipmapLevel];
+    
+        glm::ivec3 virtualDelta = computeChangeDeltaV(clipmapLevel, virtualClipRegion, virtualClipRegionBBoxes->at(clipmapLevel));
+    
+        virtualClipRegion.minPos += virtualDelta;
     }
-    else {
-        auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
-        for (uint32_t clipmapLevel = 0; clipmapLevel < CLIP_REGION_COUNT; ++clipmapLevel)
+    for (uint32_t i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
+    {
+        m_virtualRevoxelizationRegions[i].clear();
+        m_virtualRevoxelizationRegions[i].push_back(m_virtualClipRegions[i]);
+    }
+
+    for (uint32_t i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
+    {
+        for (auto& region : m_virtualRevoxelizationRegions[i])
         {
-            auto& virtualClipRegion = m_virtualClipRegions[clipmapLevel];
-        
-            glm::ivec3 virtualDelta = computeChangeDeltaV(clipmapLevel, virtualClipRegion, virtualClipRegionBBoxes->at(clipmapLevel));
-        
-            virtualClipRegion.minPos += virtualDelta;
+            ImageCleaner::clear6FacesImage3D(*m_virtualVoxelOpacity, GL_RGBA8, region.getMinPosImage(m_virtualClipRegions[i].extent), region.extent, VIRTUAL_VOXEL_RESOLUTION, GLuint(i), 1);
         }
     }
+
+    auto virtualObject = ECS::getEntityByName("virtualObject");
+    desc.mode = VoxelizationMode::CONSERVATIVE;
+    desc.target = VoxelizationTarget::ENTITIES;
+    desc.entities.clear();
+    desc.entities.push_back(virtualObject);
+    desc.clipRegions = m_virtualClipRegions;
+    desc.voxelResolution = VIRTUAL_VOXEL_RESOLUTION;
+    voxelizer = VoxelConeTracing::virtualVoxelizer();
+    voxelizer->beginVoxelization(desc);
+    m_voxelizeShader->bindImage3D(*m_virtualVoxelOpacity, "u_virtualVoxelOpacity", GL_WRITE_ONLY, GL_RGBA8, 0); // GL_WRITE_ONLY, GL_RGBA8
+
+    for (int i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
+    {
+        for (auto& region : m_virtualRevoxelizationRegions[i])
+        {
+            voxelizer->voxelize(region, i);
+        }
+    }
+
+    voxelizer->endVoxelization(m_renderPipeline->getCamera()->getViewport());
+    for (int i = 1; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
+    {
+        Downsampler::downsampleOpacity(m_virtualVoxelOpacity, &m_virtualClipRegions, i, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
+    }
+
+    m_renderPipeline->putPtr("VirtualClipRegions", &m_virtualClipRegions);
 #endif
 }
 
-void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel, const BBox& curBBox)
+void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel, std::vector<VoxelRegion> &clipRegions,
+                                                           std::vector<VoxelRegion> *revoxelizationRegions, const BBox &curBBox)
 {
-    auto& clipRegion = m_clipRegions[clipmapLevel];
+    auto& clipRegion = clipRegions[clipmapLevel];
     float voxelSize = clipRegion.voxelSize;
     glm::ivec3 extent = clipRegion.extent;
 
@@ -228,7 +238,7 @@ void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel
     // If the new region is outside of the previous region then a full revoxelization of the new region is required.
     if (absDelta.x >= extent.x || absDelta.y >= extent.y || absDelta.z >= extent.z)
     {
-        m_revoxelizationRegions[clipmapLevel].push_back(clipRegion);
+        revoxelizationRegions[clipmapLevel].push_back(clipRegion);
         return;
     }
 
@@ -241,9 +251,9 @@ void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel
         auto regionExtent = glm::ivec3(absDelta.x, extent.y, extent.z);
 
         if (delta.x < 0)
-            m_revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMin, regionExtent, voxelSize));
+            revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMin, regionExtent, voxelSize));
         else
-            m_revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMax - regionExtent, regionExtent, voxelSize));
+            revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMax - regionExtent, regionExtent, voxelSize));
     }
 
     if (absDelta.y >= m_minChange[clipmapLevel])
@@ -251,9 +261,9 @@ void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel
         auto regionExtent = glm::ivec3(extent.x, absDelta.y, extent.z);
 
         if (delta.y < 0)
-            m_revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMin, regionExtent, voxelSize));
+            revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMin, regionExtent, voxelSize));
         else
-            m_revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMax - regionExtent, regionExtent, voxelSize));
+            revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMax - regionExtent, regionExtent, voxelSize));
     }
 
     if (absDelta.z >= m_minChange[clipmapLevel])
@@ -261,17 +271,17 @@ void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel
         auto regionExtent = glm::ivec3(extent.x, extent.y, absDelta.z);
 
         if (delta.z < 0)
-            m_revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMin, regionExtent, voxelSize));
+            revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMin, regionExtent, voxelSize));
         else
-            m_revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMax - regionExtent, regionExtent, voxelSize));
+            revoxelizationRegions[clipmapLevel].push_back(VoxelRegion(newMax - regionExtent, regionExtent, voxelSize));
     }
 }
 
-glm::ivec3 VoxelizationPass::computeChangeDeltaV(uint32_t clipmapLevel, const VoxelRegion& clipRegion, const BBox& cameraRegionBBox)
+glm::ivec3 VoxelizationPass::computeChangeDeltaV(uint32_t clipmapLevel, const VoxelRegion& clipRegion, const BBox& clipRegionBBox)
 {
     float voxelSize = clipRegion.voxelSize;
 
-    glm::vec3 deltaW = cameraRegionBBox.min() - clipRegion.getMinPosWorld();
+    glm::vec3 deltaW = clipRegionBBox.min() - clipRegion.getMinPosWorld();
 
     // The camera needs to move at least the specified minChange amount for the portion to be revoxelized
     float minChange = voxelSize * m_minChange[clipmapLevel];
@@ -282,7 +292,9 @@ glm::ivec3 VoxelizationPass::computeChangeDeltaV(uint32_t clipmapLevel, const Vo
     return delta;
 }
 
-void VoxelizationPass::computeRevoxelizationRegionsDynamicEntities()
+// TODO: generalize for virtual voxels
+void VoxelizationPass::computeRevoxelizationRegionsDynamicEntities(bool isVirtual, std::vector<VoxelRegion> &clipRegions,
+                                                                   std::vector<VoxelRegion> *revoxelizationRegions)
 {
     // Revoxelize portions of entities that moved
     m_portionsOfDynamicEntities.clear();
@@ -290,6 +302,7 @@ void VoxelizationPass::computeRevoxelizationRegionsDynamicEntities()
 
     for (auto e : ECS::getEntitiesWithComponents<Transform, MeshRenderer>())
     {
+        if (e.isVirtual() != isVirtual) continue;
         auto transform = e.getComponent<Transform>();
         if (transform->hasChangedSinceLastFrame())
         {
@@ -306,6 +319,7 @@ void VoxelizationPass::computeRevoxelizationRegionsDynamicEntities()
 
     for (auto& e : m_activatedDeactivatedEntities)
     {
+        if (e.isVirtual() != isVirtual) continue;
         auto transform = e.getComponent<Transform>();
         BBox bbox = transform->getBBox();
         auto& lastFrameBBox = transform->getLastFrameBBox();
@@ -362,7 +376,7 @@ void VoxelizationPass::computeRevoxelizationRegionsDynamicEntities()
 
         for (uint32_t i = 0; i < CLIP_REGION_COUNT; ++i)
         {
-            auto& clipRegion = m_clipRegions[i];
+            auto& clipRegion = clipRegions[i];
 
             VoxelRegion region;
             region.voxelSize = clipRegion.voxelSize;
@@ -389,7 +403,7 @@ void VoxelizationPass::computeRevoxelizationRegionsDynamicEntities()
             region.minPos = glm::max(region.minPos, clipRegion.minPos);
             region.extent = maxPos - region.minPos;
 
-            m_revoxelizationRegions[i].push_back(region);
+            revoxelizationRegions[i].push_back(region);
         }
     }
 }

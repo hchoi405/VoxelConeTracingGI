@@ -32,7 +32,7 @@ class Visualizer
 public:
     Visualizer();
 
-    void visualize3DClipmapGS(GLuint texture, VoxelRegion region, uint32_t clipmapLevel, VoxelRegion prevRegion, bool hasPrevLevel, bool hasMultipleFaces, int numColorComponents);
+    void visualize3DClipmapGS(bool isVirtual, GLuint texture, VoxelRegion region, uint32_t clipmapLevel, VoxelRegion prevRegion, bool hasPrevLevel, bool hasMultipleFaces, int numColorComponents);
     void visualize3DClipmapSortedFacesGS(GLuint texture, VoxelRegion region, uint32_t clipmapLevel, VoxelRegion prevRegion, bool hasPrevLevel, bool hasMultipleFaces, int numColorComponents);
 
     void visualize3DTexture(GLuint texture, const glm::vec3& position, uint32_t clipmapLevel, float padding, float texelSize) const;
@@ -48,6 +48,7 @@ private:
     std::shared_ptr<Shader> m_voxelFaceVisualizationShader;
     std::shared_ptr<Shader> m_textureVisualizationShader;
     std::unique_ptr<SimpleMeshRenderer> m_voxelRenderer;
+    std::unique_ptr<SimpleMeshRenderer> m_virtualVoxelRenderer;
     std::unique_ptr<SimpleMeshRenderer> m_textureRenderer;
 
     std::vector<VertexUint16Face> m_faceVertices;

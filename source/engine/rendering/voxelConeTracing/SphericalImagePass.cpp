@@ -103,8 +103,8 @@ void SphericalImagePass::render() const
 
     // Spherical image
     m_shader->setVector("u_sphericalCenter", glm::vec3(1.2987847328186035, 1.3614389896392822, -1.2158539295196533));
-    m_shader->setFloat("u_viewAperture", GI_SETTINGS.viewAperture);
-    m_shader->setFloat("u_hitpointOffset", GI_SETTINGS.hitpointOffset);
+    m_shader->setFloat("u_viewAperture", DEBUG_SETTINGS.viewAperture);
+    m_shader->setFloat("u_hitpointOffset", DEBUG_SETTINGS.hitpointOffset);
 
     ECSUtil::renderEntities(m_shader.get());
 

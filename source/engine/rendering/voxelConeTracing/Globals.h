@@ -11,7 +11,9 @@ class CameraComponent;
 template<class T>
 class ComponentPtr;
 
+#define VIRTUAL_VOXEL_RESOLUTION 64
 #define VOXEL_RESOLUTION 256
+#define VIRTUAL_CLIP_REGION_COUNT 6
 #define CLIP_REGION_COUNT 6
 #define FACE_COUNT 6
 #define MAX_DIR_LIGHT_COUNT 3
@@ -32,5 +34,4 @@ extern RenderingSettings RENDERING_SETTINGS;
 extern DebugSettings DEBUG_SETTINGS;
 extern DemoSettings DEMO_SETTINGS;
 
-#define CGLAB
-// #define VIRTUAL
+#define VIRTUAL

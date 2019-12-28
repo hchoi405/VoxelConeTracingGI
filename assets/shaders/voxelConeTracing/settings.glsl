@@ -5,10 +5,12 @@
 
 const int BORDER_WIDTH = 1;
 
+const uint VIRTUAL_CLIP_LEVEL_COUNT = 6;
 const uint CLIP_LEVEL_COUNT = 6;
 const uint FACE_COUNT = 6;
 
 const float FACE_COUNT_INV = 1.0 / float(FACE_COUNT);
+const float VIRTUAL_CLIP_LEVEL_COUNT_INV = 1.0 / float(VIRTUAL_CLIP_LEVEL_COUNT);
 const float CLIP_LEVEL_COUNT_INV = 1.0 / float(CLIP_LEVEL_COUNT);
 
 const int MAX_DIR_LIGHT_COUNT = 3;

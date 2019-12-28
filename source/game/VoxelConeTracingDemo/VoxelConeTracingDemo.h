@@ -25,7 +25,7 @@ protected:
 private:
     void init3DVoxelTextures();
 
-    BBox getBBox(size_t clipmapLevel, glm::vec3 center) const;
+    BBox getBBox(size_t clipmapLevel, glm::vec3 center, float clipRegionBBoxExtentL0) const;
 
     void createDemoScene();
     void animateDirLight();
@@ -42,9 +42,11 @@ private:
     std::vector<BBox> m_clipRegionBBoxes;
     std::vector<BBox> m_virtualClipRegionBBoxes;
     std::unique_ptr<ClipmapUpdatePolicy> m_clipmapUpdatePolicy;
+    std::unique_ptr<ClipmapUpdatePolicy> m_virtualClipmapUpdatePolicy;
 
     // ClipRegion extent at level 0 - next level covers twice as much space as the previous level
     float m_clipRegionBBoxExtentL0{16.0f};
+    float m_virtualClipRegionBBoxExtentL0{16.0f};
 
     Texture3D m_voxelOpacity;
     Texture3D m_voxelRadiance;

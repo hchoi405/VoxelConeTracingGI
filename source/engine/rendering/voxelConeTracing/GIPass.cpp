@@ -29,6 +29,7 @@ void GIPass::update()
 {
     // Fetch the data
     Texture3D* voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+    Texture3D* voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
     auto camera = m_renderPipeline->getCamera();
 
@@ -51,11 +52,19 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture2D(depthTexture, "u_depthTexture", textureUnit++);
     m_finalLightPassShader->bindTexture2D(emissionMap, "u_emissionMap", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", textureUnit++);
+    m_finalLightPassShader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", textureUnit++);
 
     Texture3D* virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
-    GLuint virtualMap = m_renderPipeline->fetch<GLuint>("VirtualMap");
     m_finalLightPassShader->bindTexture3D(*virtualVoxelRadiance, "u_virtualVoxelRadiance", textureUnit++);
+    Texture3D* virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+    m_finalLightPassShader->bindTexture3D(*virtualVoxelOpacity, "u_virtualVoxelOpacity", textureUnit++);
+    GLuint virtualMap = m_renderPipeline->fetch<GLuint>("VirtualMap");
     m_finalLightPassShader->bindTexture2D(virtualMap, "u_virtualMap", textureUnit++);
+
+    auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
+    m_finalLightPassShader->setFloat("u_virtualVoxelSizeL0", virtualClipRegions->at(0).voxelSize);
+    m_finalLightPassShader->setVector("u_virtualVolumeCenterL0", virtualClipRegions->at(0).getCenterPosWorld());
+    m_finalLightPassShader->setUnsignedInt("u_virtualVolumeDimension", VIRTUAL_VOXEL_RESOLUTION);
 
     m_finalLightPassShader->setInt("u_BRDFMode", RENDERING_SETTINGS.brdfMode);
     m_finalLightPassShader->setMatrix("u_viewProjInv", camera->viewProjInv());
@@ -71,8 +80,6 @@ void GIPass::update()
     for (int i = 0; i < CLIP_REGION_COUNT; ++i)
         volumeCenters[i] = clipRegions->at(i).getCenterPosWorld();
 
-    glUniform3fv(m_finalLightPassShader->getLocation("u_volumeCenters"), CLIP_REGION_COUNT, &volumeCenters[0][0]);
-
     // Set ShadowMap/Light uniforms
     ECSUtil::setDirectionalLightUniforms(m_finalLightPassShader.get(), textureUnit++);
     m_finalLightPassShader->setFloat("u_depthBias", SHADOW_SETTINGS.depthBias);
@@ -80,7 +87,9 @@ void GIPass::update()
 
     m_finalLightPassShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
     m_finalLightPassShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
-    m_finalLightPassShader->setFloat("u_viewAperture", GI_SETTINGS.viewAperture);
+
+    m_finalLightPassShader->setFloat("u_viewAperture", DEBUG_SETTINGS.viewAperture);
+    m_finalLightPassShader->setInt("u_counterBreak", DEBUG_SETTINGS.counterBreak);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

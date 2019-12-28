@@ -72,15 +72,21 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline = std::make_unique<RenderPipeline>(MainCamera);
     m_gui = std::make_unique<VoxelConeTracingGUI>(m_renderPipeline.get());
     m_clipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, CLIP_REGION_COUNT);
+    m_virtualClipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, VIRTUAL_CLIP_REGION_COUNT);
+    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.1;
+    std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
 
     // Set render pipeline input
     m_renderPipeline->putPtr("VoxelOpacity", &m_voxelOpacity);
     m_renderPipeline->putPtr("VoxelRadiance", &m_voxelRadiance);
     m_renderPipeline->putPtr("ClipRegionBBoxes", &m_clipRegionBBoxes);
+    m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
+
     m_renderPipeline->putPtr("VirtualVoxelOpacity", &m_virtualVoxelOpacity);
     m_renderPipeline->putPtr("VirtualVoxelRadiance", &m_virtualVoxelRadiance);
     m_renderPipeline->putPtr("VirtualClipRegionBBoxes", &m_virtualClipRegionBBoxes);
-    m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
+    m_renderPipeline->putPtr("VirtualClipmapUpdatePolicy", m_virtualClipmapUpdatePolicy.get());
+
     updateCameraClipRegions();
 #ifdef VIRTUAL
     updateVirtualClipRegions();
@@ -94,29 +100,37 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<RadianceInjectionPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
-        std::make_shared<SphericalImagePass>(),
+        // std::make_shared<SphericalImagePass>(),
         std::make_shared<ForwardScenePass>());
 
     // RenderPass initializations
-    m_renderPipeline->getRenderPass<VoxelizationPass>()->init(m_clipRegionBBoxExtentL0);
+    m_renderPipeline->getRenderPass<VoxelizationPass>()->init(m_clipRegionBBoxExtentL0, m_virtualClipRegionBBoxExtentL0);
 
+    // Deactivate after construction of VoxelizationPass to receive deactivated event
+    // virtualTransform->getOwner().setActive(false);
+    
     m_initializing = false;
 }
 
 void VoxelConeTracingDemo::update()
 {
-#ifdef CGLAB
     static bool once = true;
-#endif
+
+    m_gui->selectEntity(virtualTransform->getOwner(), false);
 
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
     m_clipmapUpdatePolicy->update();
+    m_virtualClipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
+    m_virtualClipmapUpdatePolicy->update();
 
     moveCamera(Time::deltaTime());
 
     glFrontFace(GL_CW);
 
     updateCameraClipRegions();
+#ifdef VIRTUAL
+    updateVirtualClipRegions();
+#endif
 
     for (auto c : ECS::getEntitiesWithComponents<CameraComponent>())
     {
@@ -130,17 +144,10 @@ void VoxelConeTracingDemo::update()
     {
         m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
-        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
-#ifdef CGLAB
+        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);
         // Use injection pass only once because one update is enough for point cloud
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
-        if (m_renderPipeline->getRenderPass<SphericalImagePass>())
-            m_renderPipeline->getRenderPass<SphericalImagePass>()->setEnabled(once);
         once = false;
-#else
-        m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
-        m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(true);
-#endif
         m_renderPipeline->getRenderPass<SceneGeometryPass>()->setEnabled(true);
     }
 
@@ -224,12 +231,6 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
     case SDLK_F1:
         m_guiEnabled = !m_guiEnabled;
         break;
-    case SDLK_f:
-        RENDERING_SETTINGS.pipeline.curItem = 1;
-        break;
-    case SDLK_g:
-        RENDERING_SETTINGS.pipeline.curItem = 0;
-        break;
     case SDLK_c: {
         // TODO: check where this error comes from
         GL_ERROR_CHECK();
@@ -247,7 +248,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
 
 void VoxelConeTracingDemo::init3DVoxelTextures()
 {
-    GLint filter = GL_NEAREST;
+    GLint filter = GL_LINEAR;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
@@ -281,7 +282,9 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_voxelRadiance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_voxelRadiance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
-    m_virtualVoxelOpacity.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+    resolutionWithBorder = VIRTUAL_VOXEL_RESOLUTION + 2;
+
+    m_virtualVoxelOpacity.create(resolutionWithBorder * FACE_COUNT, VIRTUAL_CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
         GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
     m_virtualVoxelOpacity.bind();
     m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
@@ -290,7 +293,7 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_virtualVoxelOpacity.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
-    m_virtualVoxelRadiance.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+    m_virtualVoxelRadiance.create(resolutionWithBorder * FACE_COUNT, VIRTUAL_CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
         GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
     m_virtualVoxelRadiance.bind();
     m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
@@ -305,9 +308,9 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
 /**
  * return: bounding box of clipmapLevel in world coordinate around center
  */
-BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel, glm::vec3 center) const
+BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel, glm::vec3 center, float clipRegionBBoxExtentL0) const
 {
-    float halfSize = 0.5f * m_clipRegionBBoxExtentL0 * std::exp2f(float(clipmapLevel));
+    float halfSize = 0.5f * clipRegionBBoxExtentL0 * std::exp2f(float(clipmapLevel));
 
     return BBox(center - halfSize, center + halfSize);
 }
@@ -337,72 +340,22 @@ void VoxelConeTracingDemo::createDemoScene()
 
     camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
-#ifdef CGLAB
 #ifdef VIRTUAL
-    glm::vec3 cameraPositionOffset(-0.022, 0.163, -2.044);
-    camTransform->setEulerAngles(glm::radians(glm::vec3(34.779, 64.374, -105.500)));
+    glm::vec3 cameraPositionOffset(-0.572, 2.166, 0.318);
+    // glm::vec3 cameraPositionOffset(0.646, 0.925, -0.641);
+    camTransform->setEulerAngles(glm::radians(glm::vec3(23.900, 123.600, 0)));
+    // camTransform->setEulerAngles(glm::radians(glm::vec3(46.100, 131.600, 0)));
+    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #else
     // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
     // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
     // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #endif
 
-    // Kinect parameters
-    /*
-        constexpr float fx = 364.539;
-        constexpr float fy = 364.539;
-        constexpr float cx = 252.764;
-        constexpr float cy = 208.321;
-    */
-
-    // camTransform->setTransform(t);
-
-    // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
-    // glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
-
-    // Matterport
-    glm::vec3 cameraPositionOffset(1.2987847328186035, 1.3614389896392822, -1.2158539295196533);
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-    camTransform->setRotation(toGlmQuat(-0.03345993996323607, 0.7011487530548013,  0.03297473547621579 , 0.7114657583662249));
-
-    // // Kinect
-    // answer: for 0 frame   [-0.763035, -2.470673,  -1.245954]
-    // answer: for 740 frame [0.36307024, -0.59094325, -1.10370726]
-    // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
-
-    // answer: for 740 frame [angles (0, 90, -90) deg]
-    // camTransform->setRotation(glm::quat(-0.5, 0.5, -0.5, 0.5));
-    // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
-
-    // camTransform->setEulerAngles(math::toRadians(glm::vec3(0, 90, -90)));
-    // camTransform->setEulerAngles(glm::vec3(0.05093079, 0.05818686, 0.09805109) + math::toRadians(glm::vec3(0, 90, -90)));
-
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(50.f), math::toRadians(150.f), math::toRadians(0.f)));
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(32.5), math::toRadians(150.f), math::toRadians(0.f)));
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(-1.322364), math::toRadians(5.0674741), math::toRadians(0.f)));
-
-#else
-
-    // For sponza
-    // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(10.236f), math::toRadians(-66.0f), 0.0f));
-
-    // glm::vec3 cameraPositionOffset(6.155, 5.614, 0.322);
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(29.937), math::toRadians(86.204), 0.0f));
-
-    // Ringing artifacts
-    glm::vec3 cameraPositionOffset(5.807, 4.491, -1.488);
-    camTransform->setEulerAngles(glm::vec3(math::toRadians(24.738), math::toRadians(44.305), 0.0f));
-
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-
-#endif
-
     m_engine->registerCamera(camComponent);
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-#ifdef CGLAB
     ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
     auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
     sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
@@ -425,13 +378,9 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);
     pcEntity.setActive(false);
-#else
-    // For sponza
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("meshes/sponza_obj/sponza.obj", shader, "textures/sponza_textures/", glm::vec3(0.01f), true);
-#endif
 
 #ifdef VIRTUAL
-    // // Virtual sphere
+    // Virtual sphere
     // m_sphere = EntityCreator::createSphere("virtualObject", glm::vec3(0), glm::vec3(1.f));
     // virtualTransform = m_sphere.getComponent<Transform>();
     // auto sphereMaterial = EntityCreator::createMaterial();
@@ -440,10 +389,11 @@ void VoxelConeTracingDemo::createDemoScene()
     // sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     // sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
     // m_sphere.getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
-    // virtualTransform->setPosition(glm::vec3(1.800, -1.150, -1.050));
+    // virtualTransform->setPosition(glm::vec3(1.35, 0.55, -1.3));
+    // virtualTransform->getOwner().setVirtual(true);
 
-    // Virtual Buddha
-    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "buddha";
+    // // Virtual Buddha
+    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "virtualObject";
     virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 255.0f);
@@ -452,43 +402,13 @@ void VoxelConeTracingDemo::createDemoScene()
     buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
     virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
     virtualTransform->getOwner().setVirtual(true);
-    virtualTransform->getOwner().setActive(false);
-#endif
-
-#ifdef CGLAB
-#ifdef VIRTUAL
-    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(1.35, 0.45, -1.3));
-    // m_sphere.getComponent<Transform>()->setLocalScale(glm::vec3(0.7f));
+    virtualTransform->getOwner().setActive(true);
     virtualTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
     virtualTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
-#endif
-#else
-    // Original
-    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(7.035, 5.092, 0.396));
-
-    // Ringing artifacts
-    // m_sphere.getComponent<Transform>()->setPosition(glm::vec3(6.485, 3.942, -0.554));
-
-    // Buddha
-    virtualTransform->setPosition(glm::vec3(7.035, 5.092, 0.396));
-    virtualTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
-    virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
-    virtualTransform->getOwner().setVirtual(true);
-    virtualTransform->setPosition(glm::vec3(1.800, -1.150, -0.95));
-    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, -90.f)));
 #endif
 
     if (sceneRootEntity)
         sceneRootEntity->setPosition(glm::vec3(m_scenePosition));
-
-#ifndef CGLAB
-    m_directionalLight = ECS::createEntity("Directional Light");
-    m_directionalLight.addComponent<DirectionalLight>();
-    m_directionalLight.addComponent<Transform>();
-    m_directionalLight.getComponent<Transform>()->setPosition(glm::vec3(0.0f, 20.0f, 0.f) + m_scenePosition);
-    m_directionalLight.getComponent<Transform>()->setEulerAngles(glm::vec3(math::toRadians(111.5f), math::toRadians(3.5f), 0.f));
-    m_directionalLight.getComponent<DirectionalLight>()->intensity = 1.5f;
-#endif
 }
 
 void VoxelConeTracingDemo::animateDirLight()
@@ -512,14 +432,21 @@ void VoxelConeTracingDemo::animateSphereRoughness()
 {
     if (m_sphere && DEMO_SETTINGS.animateSphere)
     {
-        auto sphereRenderer = m_sphere.getComponent<MeshRenderer>();
-        auto material = sphereRenderer->getMaterial(0);
-        auto startRoughness = glm::vec4(255.f);
-        auto dstRoughness = glm::vec4(0);
+        auto sphereTransform = m_sphere.getComponent<Transform>();
+        static glm::quat initialRot = sphereTransform->getRotation();
 
-        static std::shared_ptr<MaterialCommand> materialCommand = std::make_shared<MaterialCommand>(sphereRenderer, "u_shininess", startRoughness, dstRoughness, 5.0f);
-        static std::shared_ptr<MaterialCommand> materialCommand2 = std::make_shared<MaterialCommand>(sphereRenderer, "u_shininess", dstRoughness, startRoughness, 5.0f);
-        static CommandChain commandChain({materialCommand, materialCommand2}, true);
+        static float startY = 0.506;
+        static float endY = 0.8;
+
+        std::shared_ptr<TransformCommand> tCommand =
+            std::make_shared<TransformCommand>(sphereTransform,
+                                               glm::vec3(1.35, startY, -1.3), glm::vec3(1.35, endY, -1.3), 
+                                               initialRot, initialRot, DEMO_SETTINGS.cameraSpeed);
+        std::shared_ptr<TransformCommand> tCommand2 =
+            std::make_shared<TransformCommand>(sphereTransform,
+                                               glm::vec3(1.35, endY, -1.3), glm::vec3(1.35, startY, -1.3), 
+                                               initialRot, initialRot, DEMO_SETTINGS.cameraSpeed);
+        static CommandChain commandChain({tCommand, tCommand2}, true);
 
         commandChain(Time::deltaTime());
     }
@@ -547,7 +474,7 @@ void VoxelConeTracingDemo::animateCameraTransform()
                 // Set to start position and location
                 cameraTransform->setPosition(initialPos);
                 cameraTransform->setRotation(initialRot);
-                DEMO_SETTINGS.animateCamera.value=  false;
+                DEMO_SETTINGS.animateCamera.value = false;
             }
         }
 
@@ -563,15 +490,15 @@ void VoxelConeTracingDemo::updateCameraClipRegions()
     m_clipRegionBBoxes.clear();
     glm::vec3 center = MainCamera->getPosition();
     for (size_t i = 0; i < CLIP_REGION_COUNT; ++i)
-        m_clipRegionBBoxes.push_back(getBBox(i, center));
+        m_clipRegionBBoxes.push_back(getBBox(i, center, m_clipRegionBBoxExtentL0));
 }
 
 void VoxelConeTracingDemo::updateVirtualClipRegions()
 {
     // add bbox for each clip level i around the virtual object
     m_virtualClipRegionBBoxes.clear();
-    for (size_t i = 0; i < CLIP_REGION_COUNT; ++i) {
-        m_virtualClipRegionBBoxes.push_back(getBBox(i, virtualTransform->getPosition()));
+    for (size_t i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i) {
+        m_virtualClipRegionBBoxes.push_back(getBBox(i, virtualTransform->getPosition(), m_virtualClipRegionBBoxExtentL0));
     }
 }
 

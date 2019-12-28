@@ -43,6 +43,8 @@ public:
 
     void onVoxelVisualization();
 
+    void selectEntity(Entity entity, bool focus = false);
+
     const std::vector<glm::vec3>& getConeDirections() const { return m_coneTool->getConeDirections(); }
 
 private:
@@ -86,8 +88,8 @@ private:
     bool m_visualizeTexture{ false };
     float m_padding{ 0.125f };
     float m_voxelSize{ 0.125f };
-    Texture3D* m_visualizedVoxelTex{ nullptr };
     Texture3D* m_visualizedVoxelTextures[2] = { nullptr, nullptr };
+    bool m_isVirtual[2] = { false, false };
     bool m_visualizeClipRegion[6]{ false, false, false, false, false, false };
 
     bool m_showObjectCoordinateSystem{ true };

@@ -44,7 +44,7 @@ struct GISettings : VCTSettings
 {
     GISettings()
     {
-        guiElements.insert(guiElements.end(), {&occlusionDecay, &ambientOcclusionFactor, &stepFactor, &viewAperture, &hitpointOffset,
+        guiElements.insert(guiElements.end(), {&occlusionDecay, &ambientOcclusionFactor, &stepFactor,
                           &indirectDiffuseIntensity, &indirectSpecularIntensity, &traceStartOffset,
                           &directLighting, &indirectDiffuseLighting, &indirectSpecularLighting, &ambientOcclusion,
                           &radianceInjectionMode, &visualizeMinLevelSelection, &downsampleTransitionRegionSize,
@@ -54,21 +54,15 @@ struct GISettings : VCTSettings
     SliderFloat occlusionDecay{"Occlusion Decay", 5.0f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
-    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 15.0f, 1.0f, 30.0f};
+    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 1.0f, 1.0f, 30.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 1.0f, 16.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.0f, 0.0f, 8.0f};
-    SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
-    SliderFloat hitpointOffset{"Offset of hitpoint to normal direction", 0.f, -1.0f, 1.0f};
     
     CheckBox directLighting{ "Direct Lighting", true };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
     CheckBox ambientOcclusion{ "Ambient Occlusion", true };
-#ifdef CGLAB
     ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 2);
-#else
-    ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 1);
-#endif
     CheckBox visualizeMinLevelSelection{"Visualize Min Level Selection", false};
     SliderInt downsampleTransitionRegionSize{ "Downsample Transition Region Size", 10, 1, VOXEL_RESOLUTION / 4 };
     CheckBox updateOneClipLevelPerFrame{ "Update One Clip Level Per Frame", false };
@@ -78,19 +72,28 @@ struct DebugSettings : VCTSettings
 {
     DebugSettings()
     {
-        //guiElements.insert(guiElements.end(), {});
+        guiElements.insert(guiElements.end(), {&viewAperture, &hitpointOffset, &raymarchingCounter, &virtualStepFactor,
+        &indirectVirtualRadius, &opacityCorrection, &counterBreak});
     }
+
+    SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
+    SliderFloat hitpointOffset{"Offset of hitpoint to normal direction", 0.f, -1.0f, 1.0f};
+    SliderFloat raymarchingCounter{"Ray Marching Counter (darker part = small)", 1, 0, 10};
+    SliderFloat virtualStepFactor{"virtualStepFactor", 0.2, 0.01, 10};
+    SliderFloat indirectVirtualRadius{"indirectVirtualRadius", 1, 1, 256};
+    CheckBox opacityCorrection{"Opacity Correction", true};
+    SliderInt counterBreak{"Counter Break", 1000, 0, 1000};
 };
 
 struct DemoSettings : VCTSettings
 {
     DemoSettings()
     {
-        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &animateCamera, &cameraSpeed });
+        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, /*animateCamera,*/ &cameraSpeed });
     }
 
     CheckBox animateLight{ "Animate Light", false };
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
     CheckBox animateCamera{ "Animate Camera Transform", false };
-    SliderFloat cameraSpeed{ "Camera Speed", 5.0f, 1.0f, 15.0f };
+    SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
 };

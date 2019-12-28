@@ -399,6 +399,16 @@ void Shader::setVector(const UniformName& uniformName, const glm::vec4& v) const
     glUniform4f(getLocation(uniformName.c_str()), v.x, v.y, v.z, v.w);
 }
 
+void Shader::setVectorArray(const UniformName& uniformName, const glm::vec3* v, size_t size) const noexcept
+{
+    glUniform3fv(getLocation(uniformName.c_str()), size, glm::value_ptr(v[0]));
+}
+
+void Shader::setVectorArray(const UniformName& uniformName, const glm::vec4* v, size_t size) const noexcept
+{
+    glUniform4fv(getLocation(uniformName.c_str()), size, glm::value_ptr(v[0]));
+}
+
 void Shader::setMatrix(const UniformName& uniformName, const glm::mat4& m) const noexcept
 {
     glUniformMatrix4fv(getLocation(uniformName.c_str()), 1, GL_FALSE, &m[0][0]);
