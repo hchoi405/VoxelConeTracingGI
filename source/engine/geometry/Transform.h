@@ -54,6 +54,10 @@ public:
     */
     const glm::quat& getRotation() const { return m_localToWorldRotation; }
 
+    void setMatrix(glm::mat4 &matrix);
+
+    glm::mat4 getMatrix() const { return m_localMatrix; };
+
     /**
     * Returns the scale in world space. Due to skewing the 3 component scale
     * is only an approximation. An accurate scale is returned if no skew is applied.

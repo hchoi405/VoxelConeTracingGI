@@ -1,5 +1,6 @@
 #include "CameraComponent.h"
 #include <glm/ext.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <engine/geometry/Transform.h>
 #include <engine/geometry/BBox.h>
 #include <engine/util/Logger.h>
@@ -99,7 +100,9 @@ void CameraComponent::updateViewMatrix() noexcept
     auto transform = getComponent<Transform>();
 
     glm::mat3 rotation = glm::toMat3(transform->getRotation());
+    std::cout << rotation << std::endl << std::endl;
     glm::vec3 pos = transform->getPosition();
+    pos.z = -pos.z;
 
     glm::vec3& right = rotation[0];
     glm::vec3& up = rotation[1];

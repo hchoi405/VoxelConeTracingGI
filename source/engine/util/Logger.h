@@ -2,6 +2,9 @@
 
 #include <sstream>
 #include <iostream>
+#include <type_traits>
+#include <utility>
+#include <iomanip>
 #include <SDL.h>
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
@@ -20,6 +23,20 @@ public:
 
     static std::ostream& errorStream() noexcept { return std::cerr; }
 };
+
+// To string for other glm types than specified here
+template <typename GLMType, typename = decltype(glm::to_string(std::declval<GLMType>()))>
+std::ostream& operator<<(std::ostream& out, const GLMType& g)
+{
+    return out << glm::to_string(g);
+}
+
+inline std::ostream& operator <<(std::ostream& os, const glm::mat3& m)
+{
+    return os << std::fixed << std::setprecision(3) << m[0][0] << ",\t" << m[1][0] << ",\t" << m[2][0] << std::endl
+        << m[0][1] << ",\t" << m[1][1] << ",\t" << m[2][1] << std::endl
+        << m[0][2] << ",\t" << m[1][2] << ",\t" << m[2][2];
+}
 
 inline std::ostream& operator <<(std::ostream& os, const glm::mat4& m)
 {

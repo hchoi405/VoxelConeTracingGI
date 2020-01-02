@@ -12,6 +12,7 @@
 class VoxelConeTracingDemo : public Game, InputHandler
 {
 public:
+    void readOdometry(bool init);
     VoxelConeTracingDemo();
 
     void update() override;
@@ -63,4 +64,5 @@ private:
     // Debug data
     std::vector<glm::vec3> translations;
     std::vector<glm::quat> rotations;
+    std::vector<glm::mat4> transformations;
 };

@@ -16,6 +16,11 @@ void Transform::onShowInEditor()
     bool positionChanged = ImGui::DragFloat3("Position", &m_position[0], 0.05f);
     bool scaleChanged = ImGui::DragFloat3("Scale", &m_scale[0], 0.05f);
     bool rotationChanged = ImGui::DragFloat3("Rotation", &m_eulerAnglesWorld[0], 0.5f, -360.0f, 360.0f);
+    bool quaternionChanged = ImGui::DragFloat4("Quat", &m_rotation[0], 0.005f, -1.0, 1.0);
+
+    if (quaternionChanged) {
+        setRotation(m_rotation);
+    }
 
     m_eulerAnglesWorld = math::toRadians(m_eulerAnglesWorld);
 
@@ -150,6 +155,27 @@ void Transform::setBBox(const BBox& bbox) noexcept
     m_worldBBox = bbox.toWorld(m_localToWorldMatrix);
     m_changedSinceLastFrame = true;
     m_lastFrameWorldBBox = m_worldBBox;
+}
+
+void Transform::setMatrix(glm::mat4 &matrix)
+{
+    m_localMatrix = matrix;
+    m_localMatrixInv = glm::inverse(m_localMatrix);
+
+    const auto matrix3 = glm::mat3(matrix);
+    m_rotation = glm::toQuat(matrix3);
+    auto tmp = glm::toMat3(m_rotation);
+    if (tmp != matrix3) {
+        std::cout << "wrong quat conversion\n";
+    }
+    
+    // auto tmp = glm::eulerAngles(m_rotation);
+    // tmp.y = -tmp.y;
+    // m_rotation = glm::toQuat(glm::orientate3(tmp));
+
+    m_position = glm::vec3(matrix[3][0], matrix[3][1], matrix[3][2]);
+    updateCacheHierarchy();
+    m_eulerAnglesWorld = getEulerAngles();
 }
 
 void Transform::updateCache()

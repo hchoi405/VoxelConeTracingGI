@@ -309,6 +309,9 @@ void main()
     vec3 view = normalize(u_eyePos - posW);
     vec4 specColor = texture(u_specularMap, In.texCoords);
     uint isVirtual = uint(texture(u_virtualMap, In.texCoords).r);
+
+    out_color = vec4(packNormal(normal), 1);
+    return;
     
     float minLevel = getMinLevel(posW);
     

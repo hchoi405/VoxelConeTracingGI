@@ -28,6 +28,29 @@
 #include "engine/util/QueryManager.h"
 #include "engine/rendering/renderer/MeshRenderers.h"
 #include "engine/util/ECSUtil/EntityCreator.h"
+#include <chrono>
+#include <thread>
+
+void VoxelConeTracingDemo::readOdometry(bool init)
+{
+    translations.clear();
+    rotations.clear();
+    std::ifstream in("../output.txt");
+    if (!in.is_open()) {
+        std::cout << "Failed to open output.txt" << std::endl;
+        exit(-1);
+    }
+    std::cout << "reading started... ";
+    glm::mat4 transform;
+    while (!in.eof()) {
+        for (int i=0; i<4; ++i)
+        for (int j=0; j<4; ++j)
+            in >> transform[i][j];
+        transformations.push_back(transform);
+    }
+    in.close();
+    std::cout << "finished! " << transformations.size() << std::endl;
+}
 
 VoxelConeTracingDemo::VoxelConeTracingDemo()
 {
@@ -35,27 +58,7 @@ VoxelConeTracingDemo::VoxelConeTracingDemo()
 
     Random::randomize();
 
-    std::ifstream in("../output.txt");
-    if (!in.is_open()) {
-        std::cout << "Failed to open output.txt" << std::endl;
-        exit(-1);
-    }
-    std::cout << "reading started... ";
-    while(!in.eof()) {
-        glm::vec3 pos;
-        glm::quat rot;
-        in >> pos[0];
-        in >> pos[1];
-        in >> pos[2];
-        in >> rot.w;
-        in >> rot.x;
-        in >> rot.y;
-        in >> rot.z;
-        translations.push_back(pos);
-        rotations.push_back(rot);
-    }
-    in.close();
-    std::cout << "finished!" << std::endl;
+    readOdometry(false);
 }
 
 void VoxelConeTracingDemo::initUpdate()
@@ -205,7 +208,7 @@ void VoxelConeTracingDemo::moveCamera(Seconds deltaTime) const
 
         MainCamera->pitch(math::toRadians(dy * 0.1f));
         MainCamera->rotateY(math::toRadians(dx * 0.1f));
-        SDL_SetRelativeMouseMode(SDL_TRUE);
+        // SDL_SetRelativeMouseMode(SDL_TRUE);
     }
     else
     {
@@ -225,6 +228,9 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
         break;
     case SDLK_g:
         RENDERING_SETTINGS.pipeline.curItem = 0;
+        break;
+    case SDLK_r:
+
         break;
     case SDLK_F5:
         m_engine->requestScreenshot();
@@ -325,7 +331,6 @@ void VoxelConeTracingDemo::createDemoScene()
 
     camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
-#ifdef CGLAB
     // Kinect parameters
     /*
 constexpr float fx = 364.539;
@@ -333,80 +338,16 @@ constexpr float fy = 364.539;
 constexpr float cx = 252.764;
 constexpr float cy = 208.321;
 */
-
-    /*
-Transformation matrix of 740 (a)
-  0.493464,   0.860172,   -0.12883,    2.16473,
- -0.869765,   0.488211, -0.0718182,  -0.257292,
-0.00112004,   0.147491,   0.989063,   0.263581,
-         0,          0,          0,          1
-*/
-
-    // Global transformation matrix (b)
-    /*
-0.402660,-0.912283,0.074861,-0.763035,
-0.896355,0.409558,0.169736,-2.470673,
--0.185507,-0.001244,0.982642,1.245954,
-0.000000,0.000000,0.000000,1.000000
-
-
-// b * a
-0.99225389, -0.08798841,  0.08768608,  0.36307024,
-0.08628982, 0.99600473,  0.02298846, -0.59094325,
--0.08935844, -0.01524441, 0.99588305,  1.10370726,
-0.        ,  0.        ,  0.        ,1.
-*/
-
-    glm::mat4 t(
-        0.99225389, -0.08798841, 0.08768608, 0.36307024,
-        0.08628982, 0.99600473, 0.02298846, -0.59094325,
-        -0.08935844, -0.01524441, 0.99588305, 1.10370726,
-        0., 0., 0., 1.);
-    // camTransform->setTransform(t);
-
-    // glm::vec3 cameraPositionOffset(1.f, 1.406f, -0.639f);
-    // glm::vec3 cameraPositionOffset(0.428, 2.249, 0.381);
-
-    // answer: for 0 frame   [-0.763035, -2.470673,  -1.245954]
-    // answer: for 740 frame [0.36307024, -0.59094325, -1.10370726]
-    glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-
-    // answer: for 740 frame [angles (0, 90, -90) deg]
-    // camTransform->setRotation(glm::quat(-0.5, 0.5, -0.5, 0.5));
-    camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
-
-    // camTransform->setEulerAngles(math::toRadians(glm::vec3(0, 90, -90)));
-    // camTransform->setEulerAngles(glm::vec3(0.05093079, 0.05818686, 0.09805109) + math::toRadians(glm::vec3(0, 90, -90)));
-
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(50.f), math::toRadians(150.f), math::toRadians(0.f)));
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(32.5), math::toRadians(150.f), math::toRadians(0.f)));
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(-1.322364), math::toRadians(5.0674741), math::toRadians(0.f)));
-#else
-    // For sponza
-    // glm::vec3 cameraPositionOffset(8.625f, 6.593f, -0.456f);
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(10.236f), math::toRadians(-66.0f), 0.0f));
-
-    // glm::vec3 cameraPositionOffset(6.155, 5.614, 0.322);
-    // camTransform->setEulerAngles(glm::vec3(math::toRadians(29.937), math::toRadians(86.204), 0.0f));
-
-    // Ringing artifacts
-    glm::vec3 cameraPositionOffset(5.807, 4.491, -1.488);
-    camTransform->setEulerAngles(glm::vec3(math::toRadians(24.738), math::toRadians(44.305), 0.0f));
-
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-
-#endif
-
+    auto eye = glm::mat4();
+    camTransform->setMatrix(transformations[0]);
+    
     m_engine->registerCamera(camComponent);
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    // CGLAB
-#ifdef CGLAB
-    ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
-    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    ResourceManager::getModel("cglab/mesh_kinect2.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/mesh_kinect2.obj", shader, "cglab/", glm::vec3(1.f), true);
+    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(180.f), math::toRadians(0.f), math::toRadians(0.f)));
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
@@ -420,14 +361,9 @@ Transformation matrix of 740 (a)
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
     // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
-    pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);
     pcEntity.setActive(false);
-#else
-    // For sponza
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("meshes/sponza_obj/sponza.obj", shader, "textures/sponza_textures/", glm::vec3(0.01f), true);
-#endif
 
     // // Virtual sphere
     // m_sphere = EntityCreator::createSphere("sphere", glm::vec3(0), glm::vec3(1.f));
@@ -524,27 +460,38 @@ void VoxelConeTracingDemo::animateCameraTransform()
     if (DEMO_SETTINGS.animateCamera)
     {
         auto cameraTransform = MainCamera.getOwner().getComponent<Transform>();
-        static glm::vec3 initialPos = cameraTransform->getPosition();
-        static glm::quat initialRot = cameraTransform->getRotation();
+        static glm::mat4 initialMatrix = cameraTransform->getMatrix();
+        if (frame == 0) initialMatrix = cameraTransform->getMatrix();
+        if (frame < transformations.size()) {
+            auto mat = transformations[frame++];
+            auto matInv = glm::inverse(mat);
+            // float x = mat[0][3];
+            // float y = mat[1][3];
+            // float z = mat[2][3];
+            // auto trans = glm::translate(glm::vec3(x,y,z));
+            // cameraTransform->setPosition(glm::vec3(x,y,z));
+            // for (int i=0; i<3; ++i) for (int j=0; j<3; ++j) mat[i][j] = 0;
+            // mat[0][0] = mat[1][1] = mat[2][2] = 1;
 
-        static std::shared_ptr<TransformCommand> tCommand = std::make_shared<TransformCommand>(cameraTransform, translations[frame], translations[frame+1], rotations[frame], rotations[frame+1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
-        static CommandChain commandChain({tCommand}, false);
-        if (commandChain.done()) {
-            if (frame < rotations.size()-1) {
-                frame++;
-                tCommand = std::make_shared<TransformCommand>(cameraTransform, translations[frame], translations[frame+1], rotations[frame], rotations[frame+1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
-                commandChain = CommandChain({tCommand}, false);    
-            }
-            else {
-                std::cout << "Go to initial" << std::endl;
-                // Set to start position and location
-                cameraTransform->setPosition(initialPos);
-                cameraTransform->setRotation(initialRot);
-                DEMO_SETTINGS.animateCamera.value=  false;
-            }
+            // auto rotation = glm::toQuat(mat);
+            // auto position = glm::vec3(mat[0][3], mat[1][3], mat[2][3]);
+            
+            // initialMatrix[3][0] = mat[3][0];
+            // initialMatrix[3][1] = mat[3][1];
+            // initialMatrix[3][2] = mat[3][2];
+
+            // mat[0][0] = -mat[0][0];
+            // mat[0][1] = -mat[0][1];
+            // mat[0][2] = -mat[0][2];
+
+            cameraTransform->setMatrix(mat);
+            std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
-
-        commandChain(Time::deltaTime());
+        else {
+            DEMO_SETTINGS.animateCamera.value = false;
+            frame = 0;
+            cameraTransform->setMatrix(initialMatrix);
+        }
     }
     else {
         frame = 0;
