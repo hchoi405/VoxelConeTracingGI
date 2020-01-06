@@ -88,8 +88,12 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
     m_finalLightPassShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
 
+    m_finalLightPassShader->setFloat("u_virtualStepFactor", DEBUG_SETTINGS.virtualStepFactor);
     m_finalLightPassShader->setFloat("u_viewAperture", DEBUG_SETTINGS.viewAperture);
     m_finalLightPassShader->setInt("u_counterBreak", DEBUG_SETTINGS.counterBreak);
+    m_finalLightPassShader->setInt("u_virtualSelfOcclusion", DEBUG_SETTINGS.virtualSelfOcclusion? 1 : 0);
+    m_finalLightPassShader->setFloat("u_indirectSpecularShadow", DEBUG_SETTINGS.indirectSpecularShadow);
+    m_finalLightPassShader->setFloat("u_indirectDiffuseShadow", DEBUG_SETTINGS.indirectDiffuseShadow);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

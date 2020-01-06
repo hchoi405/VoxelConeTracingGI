@@ -54,9 +54,9 @@ struct GISettings : VCTSettings
     SliderFloat occlusionDecay{"Occlusion Decay", 5.0f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
-    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 1.0f, 1.0f, 30.0f};
+    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 2.0f, 1.0f, 30.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 1.0f, 16.0f };
-    SliderFloat traceStartOffset{"Trace Start Offset", 1.0f, 0.0f, 8.0f};
+    SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     
     CheckBox directLighting{ "Direct Lighting", true };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
@@ -73,7 +73,8 @@ struct DebugSettings : VCTSettings
     DebugSettings()
     {
         guiElements.insert(guiElements.end(), {&viewAperture, &hitpointOffset, &raymarchingCounter, &virtualStepFactor,
-        &indirectVirtualRadius, &opacityCorrection, &counterBreak});
+        &indirectVirtualRadius, &opacityCorrection, &counterBreak, &virtualSelfOcclusion, &indirectSpecularShadow,
+        &indirectDiffuseShadow});
     }
 
     SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
@@ -83,6 +84,9 @@ struct DebugSettings : VCTSettings
     SliderFloat indirectVirtualRadius{"indirectVirtualRadius", 1, 1, 256};
     CheckBox opacityCorrection{"Opacity Correction", true};
     SliderInt counterBreak{"Counter Break", 1000, 0, 1000};
+    CheckBox virtualSelfOcclusion{"Self occlusion for virtual object", true};
+    SliderFloat indirectSpecularShadow{"indirectSpecularShadow", 0.45f, 0.01f, 10.f};
+    SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 0.25f, 0.01f, 10.f};
 };
 
 struct DemoSettings : VCTSettings

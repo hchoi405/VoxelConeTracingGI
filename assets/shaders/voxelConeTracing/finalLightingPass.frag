@@ -18,7 +18,7 @@ in Vertex
 #define INDIRECT_SPECULAR_LIGHTING_BIT 4
 #define AMBIENT_OCCLUSION_BIT 8
 
-// #define DEBUG_SHADOW
+// #define DEBUG
 
 const float MAX_TRACE_DISTANCE = 30.0;
 const float MIN_STEP_FACTOR = 0.2;
@@ -68,6 +68,9 @@ uniform bool u_useNormalMapping;
 // Debug
 uniform float u_virtualStepFactor;
 uniform int u_counterBreak;
+uniform int u_virtualSelfOcclusion;
+uniform float u_indirectSpecularShadow;
+uniform float u_indirectDiffuseShadow;
 
 layout(location = 0) out vec4 out_color;
 
@@ -285,17 +288,10 @@ vec4 castConeVirtual(vec3 startPos, vec3 direction, float aperture, float maxDis
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
         vec4 radiance;
         
-        // Fragment for virtual object
-        //  - Use virtual map for self-shadow
-        //  - Use real map for indirect lighting
-        if (isVirtualFrag) {
-        }
         // Fragment for real object
         //  - Use virtual map for shadow (differential)
-        else {
-            vec4 virtualOpacity = sampleVirtualClipmapLinearly(u_virtualVoxelOpacity, position, curLevel, faceOffsets, weight);
-            radiance = vec4(vec3(0), virtualOpacity.a); // virtualOpacity.rgb is for second bounce (material, normal, etc.)
-        }
+        vec4 virtualOpacity = sampleVirtualClipmapLinearly(u_virtualVoxelOpacity, position, curLevel, faceOffsets, weight);
+        radiance = vec4(vec3(0), virtualOpacity.a); // virtualOpacity.rgb is for second bounce (material, normal, etc.)
 		float opacity = radiance.a;
 
         voxelSize = u_virtualVoxelSizeL0 * exp2(curLevel);
@@ -321,7 +317,7 @@ vec4 castConeVirtual(vec3 startPos, vec3 direction, float aperture, float maxDis
         if (counter++ > u_counterBreak) break;
     }
 
-    return clamp(vec4(dst.rgb, 1.0 - occlusion), -1.0, 1.0);
+    return clamp(vec4(dst.rgb, 1.0 - occlusion), 0.0, 1.0);
 }
 
 vec4 sampleClipmapTexture(sampler3D clipmapTexture, vec3 posW, int clipmapLevel, vec3 faceOffsets, vec3 weight)
@@ -479,13 +475,14 @@ void main()
     vec4 specColor = texture(u_specularMap, In.texCoords);
     
     float minLevel = getMinLevel(posW, u_volumeCenterL0, u_voxelSizeL0, u_volumeDimension);
+    float virtualMinLevel = getMinLevel(posW, u_virtualVolumeCenterL0, u_virtualVoxelSizeL0, u_virtualVolumeDimension);
     
     // Compute indirect contribution
     vec4 indirectContribution = vec4(0.0);
     
     // TODO: Check if offset is needed
-    // float voxelSize = frag_voxelSizeL0 * exp2(minLevel);
-    // vec3 startPos = posW + normal * voxelSize * u_traceStartOffset;
+    float voxelSize = frag_voxelSizeL0 * exp2(isVirtualFrag? virtualMinLevel : minLevel);
+    vec3 startPosOffset = posW + normal * voxelSize * u_traceStartOffset;
     vec3 startPos = posW;
     
     float cosSum = 0.0;
@@ -496,25 +493,26 @@ void main()
         if (cosTheta < 0.0)
             continue;
         
-        if (isVirtualFrag)
+        if (isVirtualFrag){
+            float a = castConeVirtual(startPosOffset, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, virtualMinLevel).a;
             indirectContribution += castCone(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE ,MAX_TRACE_DISTANCE, minLevel) * cosTheta;
+            indirectContribution.rgb -= vec3(1-a) * u_indirectDiffuseShadow * cosTheta;
+        }
         else {
-            minLevel = getMinLevel(posW, u_virtualVolumeCenterL0, u_virtualVoxelSizeL0, u_virtualVolumeDimension);
-            indirectContribution += castConeVirtual(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, minLevel) * cosTheta;
+            indirectContribution += castConeVirtual(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, virtualMinLevel) * cosTheta;
         }
     }
 
     // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
 	indirectContribution /= DIFFUSE_CONE_COUNT * 0.5;
     indirectContribution.a *= u_ambientOcclusionFactor;
-#ifdef DEBUG_SHADOW
-    // out_color = vec4(indirectContribution.rgb, indirectContribution.a);
-    out_color = vec4(vec3(1 - indirectContribution.a), 1);
+#ifdef DEBUG
+    out_color = vec4(vec3(indirectContribution.a), 1);
     return;
 #endif
     
 	indirectContribution.rgb *= diffuse * u_indirectDiffuseIntensity;
-    indirectContribution = clamp(indirectContribution, -1.0, 1.0);
+    indirectContribution = clamp(indirectContribution, 0.0, 1.0);
     
 	// Specular cone
     vec3 specularConeDirection = reflect(-view, normal);
@@ -523,8 +521,12 @@ void main()
     float shininess = unpackShininess(specColor.a);
     float roughness = shininessToRoughness(shininess);
     
-    if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON)
+    if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON) {
         specularContribution = castCone(startPos, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, minLevel).rgb * specColor.rgb * u_indirectSpecularIntensity;
+        float a = castConeVirtual(startPosOffset, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, virtualMinLevel).a;
+        if (u_virtualSelfOcclusion == 1)
+            specularContribution -= vec3(1-a) * specColor.rgb * u_indirectSpecularShadow;
+    }
     
     vec3 directContribution = vec3(0.0);
     

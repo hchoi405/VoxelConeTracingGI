@@ -396,10 +396,10 @@ void VoxelConeTracingDemo::createDemoScene()
     ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "virtualObject";
     virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
-    buddhaMaterial->setFloat("u_shininess", 255.0f);
-    buddhaMaterial->setColor("u_color", glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    buddhaMaterial->setFloat("u_shininess", 128.0f);
+    buddhaMaterial->setColor("u_color", glm::vec4(1.f, 1.f, 1.f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-    buddhaMaterial->setColor("u_specularColor", glm::vec3(1.0f));
+    buddhaMaterial->setColor("u_specularColor", glm::vec3(1.f));
     virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
     virtualTransform->getOwner().setVirtual(true);
     virtualTransform->getOwner().setActive(true);
