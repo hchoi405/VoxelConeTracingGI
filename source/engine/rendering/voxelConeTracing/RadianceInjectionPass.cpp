@@ -36,6 +36,7 @@ void RadianceInjectionPass::update()
 {
     auto voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
     auto voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
+    auto voxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VoxelNormal");
     m_clipmapUpdatePolicy = m_renderPipeline->fetchPtr<ClipmapUpdatePolicy>("ClipmapUpdatePolicy");
 
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
@@ -54,9 +55,10 @@ void RadianceInjectionPass::update()
     }
 
     auto shader = getSelectedShader();
-    injectByVoxelization(shader, voxelRadiance, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
+    injectByVoxelization(shader, voxelRadiance, voxelNormal, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
     copyAlpha(voxelRadiance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelRadiance, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
+    downsample(voxelNormal, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
 
 #ifdef VIRTUAL
     auto virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
@@ -88,7 +90,7 @@ void RadianceInjectionPass::update()
     m_initializing = false;
 }
 
-void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxelRadiance,
+void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxelRadiance, Texture3D *voxelNormal,
                                                  VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy, int voxelResolution,
                                                  std::vector<VoxelRegion> &cachedClipRegions)
 {
@@ -130,6 +132,7 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
         voxelizer = VoxelConeTracing::voxelizer();
     voxelizer->beginVoxelization(desc);
     shader->bindImage3D(*voxelRadiance, "u_voxelRadiance", GL_READ_WRITE, GL_R32UI, 0);
+    shader->bindImage3D(*voxelNormal, "u_voxelNormal", GL_READ_WRITE, GL_R32UI, 1);
 
     // Set ShadowMap/Light uniforms
     GLint shadowMapStartTextureUnit = 5;

@@ -425,11 +425,12 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
     {
         "Environment Voxel Opacity",
         "Environment Voxel Radiance",
+        "Environment Voxel Normal",
 #ifdef VIRTUAL
         "Virtual Voxel Opacity",
         "Virtual Voxel Radiance",
         "Both Voxel Opacity",
-        "Both Voxel Radiance"
+        "Both Voxel Radiance",
 #endif
     };
 
@@ -451,30 +452,35 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         m_visualizedVoxelTextures[1] = nullptr;
         m_isVirtual[0] = false;
         break;
-#ifdef VIRTUAL
     case 2:
+        m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelNormal");
+        m_visualizedVoxelTextures[1] = nullptr;
+        m_isVirtual[0] = false;
+        break;
+#ifdef VIRTUAL
+    case 3:
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
         m_visualizedVoxelTextures[1] = nullptr;
         m_isVirtual[0] = true;
         break;
-    case 3:
+    case 4:
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
         m_visualizedVoxelTextures[1] = nullptr;
         m_isVirtual[0] = true;
         break;
-    case 4:
+    case 5:
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
         m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
         m_isVirtual[0] = false;
         m_isVirtual[1] = true;
         break;
-    case 5:
+    case 6:
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
         m_visualizedVoxelTextures[1] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
         m_isVirtual[0] = false;
         m_isVirtual[1] = true;
-#endif
         break;
+#endif
     default:
         assert(false);
     }

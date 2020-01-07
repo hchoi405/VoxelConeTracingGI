@@ -30,6 +30,7 @@ uniform vec4 u_color;
 uniform vec3 u_emissionColor;
 
 uniform layout(r32ui) volatile uimage3D u_voxelRadiance;
+uniform layout(r32ui) volatile uimage3D u_voxelNormal;
 
 void main() 
 {
@@ -47,4 +48,7 @@ void main()
     // Color
     storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
     // storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
+
+    // Normal
+    storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, posW, vec4(normal, 1.0), faceIndices, abs(normal));
 }

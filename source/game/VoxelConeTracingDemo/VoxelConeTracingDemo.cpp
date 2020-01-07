@@ -79,6 +79,7 @@ void VoxelConeTracingDemo::initUpdate()
     // Set render pipeline input
     m_renderPipeline->putPtr("VoxelOpacity", &m_voxelOpacity);
     m_renderPipeline->putPtr("VoxelRadiance", &m_voxelRadiance);
+    m_renderPipeline->putPtr("VoxelNormal", &m_voxelNormal);
     m_renderPipeline->putPtr("ClipRegionBBoxes", &m_clipRegionBBoxes);
     m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
 
@@ -100,7 +101,7 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<RadianceInjectionPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
-        std::make_shared<SphericalImagePass>(),
+        // std::make_shared<SphericalImagePass>(),
         std::make_shared<ForwardScenePass>());
 
     // RenderPass initializations
@@ -281,6 +282,15 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_voxelRadiance.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
     m_voxelRadiance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_voxelRadiance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
+    m_voxelNormal.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_voxelNormal.bind();
+    m_voxelNormal.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_voxelNormal.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_voxelNormal.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_voxelNormal.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_voxelNormal.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
     resolutionWithBorder = VIRTUAL_VOXEL_RESOLUTION + 2;
 
