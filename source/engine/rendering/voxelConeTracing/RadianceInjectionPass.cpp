@@ -55,6 +55,7 @@ void RadianceInjectionPass::update()
     }
 
     auto shader = getSelectedShader();
+    shader->setInt("u_normalOnly", 0);
     injectByVoxelization(shader, voxelRadiance, voxelNormal, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
     copyAlpha(voxelRadiance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelRadiance, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
@@ -63,6 +64,7 @@ void RadianceInjectionPass::update()
 #ifdef VIRTUAL
     auto virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
     auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+    auto virtualVoxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelNormal");
     m_virtualClipmapUpdatePolicy = m_renderPipeline->fetchPtr<ClipmapUpdatePolicy>("VirtualClipmapUpdatePolicy");
 
     auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
@@ -79,12 +81,12 @@ void RadianceInjectionPass::update()
             m_virtualCachedClipRegions[level] = virtualClipRegions->at(level);
         }
     }
-    // auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
-
-    // injectByVoxelization(m_conservativeVoxelizationShader.get(), virtualVoxelRadiance, m_voxelizationMode,
-    //                      *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
+    shader->setInt("u_normalOnly", 1);
+    injectByVoxelization(shader, virtualVoxelRadiance, virtualVoxelNormal, m_voxelizationMode,
+                         *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
     copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelRadiance, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    downsample(virtualVoxelNormal, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
 #endif
 
     m_initializing = false;
@@ -122,7 +124,15 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     desc.mode = voxelizationMode;
     desc.clipRegions = cachedClipRegions;
     desc.voxelizationShader = shader;
-    desc.target = VoxelizationTarget::POINTCLOUD;
+    if (voxelResolution == VIRTUAL_VOXEL_RESOLUTION) {
+        auto virtualEntity = ECS::getEntityByName("virtualObject");
+        desc.target = VoxelizationTarget::ENTITIES;
+        virtualEntity.getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
+        desc.entities.push_back(virtualEntity);
+    }
+    else if (voxelResolution == VOXEL_RESOLUTION) {
+        desc.target = VoxelizationTarget::POINTCLOUD;
+    }
     desc.downsampleTransitionRegionSize = GI_SETTINGS.downsampleTransitionRegionSize;
     desc.voxelResolution = voxelResolution;
     Voxelizer *voxelizer = nullptr;
@@ -144,6 +154,11 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     for (auto level : levelsToUpdate)
     {
         voxelizer->voxelize(cachedClipRegions.at(level), level);
+    }
+
+    if (voxelResolution == VIRTUAL_VOXEL_RESOLUTION) {
+        auto virtualEntity = ECS::getEntityByName("virtualObject");
+        virtualEntity.getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_TRIANGLES, 0);
     }
 
     voxelizer->endVoxelization(m_renderPipeline->getCamera()->getViewport());

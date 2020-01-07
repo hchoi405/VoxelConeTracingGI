@@ -194,6 +194,7 @@ void VoxelizationPass::update()
     }
 
     auto virtualObject = ECS::getEntityByName("virtualObject");
+    desc.voxelizationShader = m_voxelizeShader.get();
     desc.mode = VoxelizationMode::CONSERVATIVE;
     desc.target = VoxelizationTarget::ENTITIES;
     desc.entities.clear();

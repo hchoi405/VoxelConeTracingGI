@@ -29,6 +29,8 @@ uniform float u_hasDiffuseTexture;
 uniform vec4 u_color;
 uniform vec3 u_emissionColor;
 
+uniform int u_normalOnly = 0;
+
 uniform layout(r32ui) volatile uimage3D u_voxelRadiance;
 uniform layout(r32ui) volatile uimage3D u_voxelNormal;
 
@@ -46,8 +48,10 @@ void main()
     ivec3 faceIndices = computeVoxelFaceIndices(-normal);
 
     // Color
-    storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
-    // storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
+    if (u_normalOnly != 1) {
+        storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
+        // storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
+    }
 
     // Normal
     storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, posW, vec4(normal, 1.0), faceIndices, abs(normal));
