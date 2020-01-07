@@ -116,30 +116,34 @@ void SphericalImagePass::render() const
 
 void SphericalImagePass::update()
 {
-    // Store to the sphericalTexture
-    render();
+    static bool once = true;
+    if (once) {
+        // Store to the sphericalTexture
+        render();
 
-    m_framebuffer->bind();
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
-    GLsizei channels = 3;
-    GLubyte *data = new GLubyte[m_width * m_height * channels];
-    glReadPixels(0, 0, m_width, m_height, GL_RGB, GL_UNSIGNED_BYTE, data);
+        m_framebuffer->bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        GLsizei channels = 3;
+        GLubyte *data = new GLubyte[m_width * m_height * channels];
+        glReadPixels(0, 0, m_width, m_height, GL_RGB, GL_UNSIGNED_BYTE, data);
 
-    for (int i = 0; i * 2 < m_height; ++i)
-    {
-        int idx0 = i * m_width * channels;
-        int idx1 = (m_height - 1 - i) * m_width * channels;
-        for (int j = m_width * channels; j > 0; --j)
-            std::swap(data[idx0++], data[idx1++]);
+        for (int i = 0; i * 2 < m_height; ++i)
+        {
+            int idx0 = i * m_width * channels;
+            int idx1 = (m_height - 1 - i) * m_width * channels;
+            for (int j = m_width * channels; j > 0; --j)
+                std::swap(data[idx0++], data[idx1++]);
+        }
+
+        if (!SOIL_save_image(
+                "test.bmp",
+                SOIL_SAVE_TYPE_BMP,
+                m_width, m_height, channels,
+                data))
+        {
+            std::cout << "Failed to save image." << std::endl;
+        }
+        delete data;
+        once = false;
     }
-
-    if (!SOIL_save_image(
-            "test.bmp",
-            SOIL_SAVE_TYPE_BMP,
-            m_width, m_height, channels,
-            data))
-    {
-        std::cout << "Failed to save image." << std::endl;
-    }
-    delete data;
 }

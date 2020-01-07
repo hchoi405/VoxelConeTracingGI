@@ -43,6 +43,8 @@ void main()
 
     vec3 normal = normalize(In.normalW);
     ivec3 faceIndices = computeVoxelFaceIndices(-normal);
-    // storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
-    storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
+
+    // Color
+    storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
+    // storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
 }

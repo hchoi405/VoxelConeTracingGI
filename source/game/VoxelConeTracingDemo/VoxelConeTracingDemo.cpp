@@ -100,14 +100,14 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<RadianceInjectionPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
-        // std::make_shared<SphericalImagePass>(),
+        std::make_shared<SphericalImagePass>(),
         std::make_shared<ForwardScenePass>());
 
     // RenderPass initializations
     m_renderPipeline->getRenderPass<VoxelizationPass>()->init(m_clipRegionBBoxExtentL0, m_virtualClipRegionBBoxExtentL0);
 
     // Deactivate after construction of VoxelizationPass to receive deactivated event
-    // virtualTransform->getOwner().setActive(false);
+    virtualTransform->getOwner().setActive(false);
     
     m_initializing = false;
 }
@@ -248,7 +248,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
 
 void VoxelConeTracingDemo::init3DVoxelTextures()
 {
-    GLint filter = GL_LINEAR;
+    GLint filter = GL_NEAREST;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
