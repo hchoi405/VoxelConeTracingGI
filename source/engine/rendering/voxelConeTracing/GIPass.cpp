@@ -30,6 +30,7 @@ void GIPass::update()
     // Fetch the data
     Texture3D* voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
     Texture3D* voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
+    Texture3D* voxelReflectance = m_renderPipeline->fetchPtr<Texture3D>("VoxelReflectance");
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
     auto camera = m_renderPipeline->getCamera();
 
@@ -53,6 +54,7 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture2D(emissionMap, "u_emissionMap", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", textureUnit++);
+    m_finalLightPassShader->bindTexture3D(*voxelReflectance, "u_voxelReflectance", textureUnit++);
 
     Texture3D* virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
     m_finalLightPassShader->bindTexture3D(*virtualVoxelRadiance, "u_virtualVoxelRadiance", textureUnit++);
@@ -68,7 +70,6 @@ void GIPass::update()
 
     m_finalLightPassShader->setInt("u_BRDFMode", RENDERING_SETTINGS.brdfMode);
     m_finalLightPassShader->setMatrix("u_viewProjInv", camera->viewProjInv());
-    m_finalLightPassShader->setVector("u_volumeMin", clipRegions->at(0).getMinPosWorld());
     m_finalLightPassShader->setFloat("u_voxelSizeL0", clipRegions->at(0).voxelSize);
     m_finalLightPassShader->setVector("u_volumeCenterL0", clipRegions->at(0).getCenterPosWorld());
     m_finalLightPassShader->setUnsignedInt("u_volumeDimension", VOXEL_RESOLUTION);

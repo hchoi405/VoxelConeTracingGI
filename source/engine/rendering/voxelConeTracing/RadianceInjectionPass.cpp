@@ -59,6 +59,7 @@ void RadianceInjectionPass::update()
     injectByVoxelization(shader, voxelRadiance, voxelNormal, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
     copyAlpha(voxelRadiance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelRadiance, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
+    copyAlpha(voxelNormal, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelNormal, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
 
 #ifdef VIRTUAL
@@ -86,6 +87,7 @@ void RadianceInjectionPass::update()
                          *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
     copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelRadiance, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    copyAlpha(virtualVoxelNormal, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelNormal, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
 #endif
 

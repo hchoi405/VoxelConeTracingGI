@@ -4,6 +4,7 @@
 #include "/voxelConeTracing/voxelizationFrag.glsl"
 #include "/voxelConeTracing/common.glsl"
 #include "/shadows/shadows.glsl"
+#include "/voxelConeTracing/conversion.glsl"
 
 in Geometry
 {
@@ -49,10 +50,11 @@ void main()
 
     // Color
     if (u_normalOnly != 1) {
-        storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
-        // storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
+        // storeVoxelColorAtomicRGBA8Avg6Faces(u_voxelRadiance, posW, vec4(In.color, 1.0));
+        storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(In.color, 1.0), faceIndices, abs(normal));
+        // storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, posW, vec4(1,0,0, 1.0), faceIndices, abs(normal));
     }
 
     // Normal
-    storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, posW, vec4(normal, 1.0), faceIndices, abs(normal));
+    storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, posW, vec4(packNormal(normal), 1.0), faceIndices, abs(normal));
 }

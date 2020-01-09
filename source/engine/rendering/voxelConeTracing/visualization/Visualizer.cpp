@@ -36,7 +36,6 @@ void Visualizer::visualize3DClipmapGS(bool isVirtual, GLuint texture, VoxelRegio
 
     m_voxelVisualizationShader->bind();
     m_voxelVisualizationShader->bindTexture3D(texture, "u_3dTexture");
-    m_voxelVisualizationShader->setVector("u_volumeMin", region.getMinPosWorld());
     m_voxelVisualizationShader->setInt("u_clipmapResolution", int((isVirtual)? VIRTUAL_VOXEL_RESOLUTION : VOXEL_RESOLUTION));
     m_voxelVisualizationShader->setInt("u_clipmapLevel", int(clipmapLevel));
     m_voxelVisualizationShader->setFloat("u_voxelSize", region.voxelSize);
@@ -94,7 +93,6 @@ void Visualizer::visualize3DClipmapSortedFacesGS(GLuint texture, VoxelRegion reg
 
     m_voxelFaceVisualizationShader->bind();
     m_voxelFaceVisualizationShader->bindTexture3D(texture, "u_3dTexture");
-    m_voxelFaceVisualizationShader->setVector("u_volumeMin", region.getMinPosWorld());
     m_voxelFaceVisualizationShader->setInt("u_clipmapResolution", int(VOXEL_RESOLUTION));
     m_voxelFaceVisualizationShader->setInt("u_clipmapLevel", int(clipmapLevel));
     m_voxelFaceVisualizationShader->setFloat("u_voxelSize", region.voxelSize);

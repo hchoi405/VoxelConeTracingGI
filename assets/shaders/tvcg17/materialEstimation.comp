@@ -1,0 +1,309 @@
+#version 430
+
+#extension GL_ARB_shading_language_include : enable
+#extension GL_ARB_shader_image_load_store : require
+
+#define VOXEL_TEXTURE_WITH_BORDER
+
+#include "/voxelConeTracing/conversion.glsl"
+#include "/voxelConeTracing/settings.glsl"
+#include "/voxelConeTracing/common.glsl"
+
+const float MAX_TRACE_DISTANCE = 30.0;
+const float MIN_STEP_FACTOR = 0.2;
+
+uniform sampler3D u_voxelRadiance;
+uniform sampler3D u_voxelOpacity;
+uniform sampler3D u_voxelNormal;
+uniform layout(rgba8) image3D u_voxelReflectance;
+
+uniform mat4 u_viewProj;
+uniform mat4 u_viewProjInv;
+uniform mat4 u_model;
+
+uniform ivec3 u_imageMin;
+uniform ivec3 u_regionMin;
+uniform float u_voxelSizeL0;
+uniform vec3 u_volumeCenterL0;
+uniform float u_traceStartOffset;
+uniform float u_stepFactor;
+uniform float u_occlusionDecay;
+uniform float u_indirectDiffuseIntensity;
+uniform uint u_irradianceOnly;
+
+uniform int u_clipmapResolution;
+uniform int u_clipmapResolutionWithBorder;
+uniform int u_clipmapLevel;
+
+// #define USE_32_CONES
+
+#ifdef USE_32_CONES
+// 32 Cones for higher quality (16 on average per hemisphere)
+const int DIFFUSE_CONE_COUNT = 32;
+const float DIFFUSE_CONE_APERTURE = 0.628319; // 36 degree
+
+const vec3 DIFFUSE_CONE_DIRECTIONS[32] = {
+    vec3(0.898904, 0.435512, 0.0479745),
+    vec3(0.898904, -0.435512, -0.0479745),
+    vec3(0.898904, 0.0479745, -0.435512),
+    vec3(0.898904, -0.0479745, 0.435512),
+    vec3(-0.898904, 0.435512, -0.0479745),
+    vec3(-0.898904, -0.435512, 0.0479745),
+    vec3(-0.898904, 0.0479745, 0.435512),
+    vec3(-0.898904, -0.0479745, -0.435512),
+    vec3(0.0479745, 0.898904, 0.435512),
+    vec3(-0.0479745, 0.898904, -0.435512),
+    vec3(-0.435512, 0.898904, 0.0479745),
+    vec3(0.435512, 0.898904, -0.0479745),
+    vec3(-0.0479745, -0.898904, 0.435512),
+    vec3(0.0479745, -0.898904, -0.435512),
+    vec3(0.435512, -0.898904, 0.0479745),
+    vec3(-0.435512, -0.898904, -0.0479745),
+    vec3(0.435512, 0.0479745, 0.898904),
+    vec3(-0.435512, -0.0479745, 0.898904),
+    vec3(0.0479745, -0.435512, 0.898904),
+    vec3(-0.0479745, 0.435512, 0.898904),
+    vec3(0.435512, -0.0479745, -0.898904),
+    vec3(-0.435512, 0.0479745, -0.898904),
+    vec3(0.0479745, 0.435512, -0.898904),
+    vec3(-0.0479745, -0.435512, -0.898904),
+    vec3(0.57735, 0.57735, 0.57735),
+    vec3(0.57735, 0.57735, -0.57735),
+    vec3(0.57735, -0.57735, 0.57735),
+    vec3(0.57735, -0.57735, -0.57735),
+    vec3(-0.57735, 0.57735, 0.57735),
+    vec3(-0.57735, 0.57735, -0.57735),
+    vec3(-0.57735, -0.57735, 0.57735),
+    vec3(-0.57735, -0.57735, -0.57735)
+};
+#else // 16 cones for lower quality (8 on average per hemisphere)
+const int DIFFUSE_CONE_COUNT = 16;
+const float DIFFUSE_CONE_APERTURE = 0.872665; // 50 degree
+
+const vec3 DIFFUSE_CONE_DIRECTIONS[16] = {
+    vec3(0.57735, 0.57735, 0.57735),
+    vec3(0.57735, -0.57735, -0.57735),
+    vec3(-0.57735, 0.57735, -0.57735),
+    vec3(-0.57735, -0.57735, 0.57735),
+    vec3(-0.903007, -0.182696, -0.388844),
+    vec3(-0.903007, 0.182696, 0.388844),
+    vec3(0.903007, -0.182696, 0.388844),
+    vec3(0.903007, 0.182696, -0.388844),
+    vec3(-0.388844, -0.903007, -0.182696),
+    vec3(0.388844, -0.903007, 0.182696),
+    vec3(0.388844, 0.903007, -0.182696),
+    vec3(-0.388844, 0.903007, 0.182696),
+    vec3(-0.182696, -0.388844, -0.903007),
+    vec3(0.182696, 0.388844, -0.903007),
+    vec3(-0.182696, 0.388844, 0.903007),
+    vec3(0.182696, -0.388844, 0.903007)
+};
+#endif
+
+float getMinLevel(vec3 posW, vec3 volumeCenterL0, float voxelSizeL0, float volumeDimension)
+{
+    float distanceToCenter = length(volumeCenterL0 - posW);
+    float minRadius = voxelSizeL0 * volumeDimension * 0.5;
+    float minLevel = log2(distanceToCenter / minRadius);  
+    minLevel = max(0.0, minLevel);
+
+    float radius = minRadius * exp2(ceil(minLevel));
+    float f = distanceToCenter / radius;
+    
+    // Smoothly transition from current level to the next level
+    float transitionStart = 0.5;
+    float c = 1.0 / (1.0 - transitionStart);
+    
+    return f > transitionStart ? ceil(minLevel) + (f - transitionStart) * c : ceil(minLevel);
+}
+
+vec4 sampleClipmapTexture(sampler3D clipmapTexture, vec3 posW, int clipmapLevel, vec3 faceOffsets, vec3 weight)
+{
+	float voxelSize = u_voxelSizeL0 * exp2(clipmapLevel);
+    float extent = voxelSize * u_clipmapResolution;
+	
+#ifdef VOXEL_TEXTURE_WITH_BORDER
+	vec3 samplePos = (fract(posW / extent) * u_clipmapResolution + vec3(BORDER_WIDTH)) / (float(u_clipmapResolution) + 2.0 * BORDER_WIDTH);
+#else
+    vec3 samplePos = fract(posW / extent);
+#endif
+
+    samplePos.y += clipmapLevel;
+    samplePos.y *= CLIP_LEVEL_COUNT_INV;
+    samplePos.x *= FACE_COUNT_INV;
+
+    return clamp(texture(clipmapTexture, samplePos + vec3(faceOffsets.x, 0.0, 0.0)) * weight.x +
+                 texture(clipmapTexture, samplePos + vec3(faceOffsets.y, 0.0, 0.0)) * weight.y +
+                 texture(clipmapTexture, samplePos + vec3(faceOffsets.z, 0.0, 0.0)) * weight.z, 0.0, 1.0);
+}
+
+vec4 sampleClipmapLinearly(sampler3D clipmapTexture, vec3 posW, float curLevel, ivec3 faceIndices, vec3 weight)
+{    
+    int lowerLevel = int(floor(curLevel));
+    int upperLevel = int(ceil(curLevel));
+    
+    vec3 faceOffsets = vec3(faceIndices) * FACE_COUNT_INV;
+    
+    vec4 lowSample = sampleClipmapTexture(clipmapTexture, posW, lowerLevel, faceOffsets, weight);
+    
+	if (lowerLevel == upperLevel)
+        return lowSample;
+	
+    vec4 highSample = sampleClipmapTexture(clipmapTexture, posW, upperLevel, faceOffsets, weight);
+	
+    return mix(lowSample, highSample, fract(curLevel));
+}
+
+vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel)
+{
+    // Initialize accumulated color and opacity
+    vec4 dst = vec4(0.0);
+    // Coefficient used in the computation of the diameter of a cone
+	float coneCoefficient = 2.0 * tan(aperture * 0.5);
+    
+    float curLevel = startLevel;
+    float voxelSize = u_voxelSizeL0 * exp2(curLevel);
+    
+    // Offset startPos in the direction to avoid self occlusion and reduce voxel aliasing
+    startPos += direction * voxelSize * u_traceStartOffset * 0.5;
+
+    // Distance from ray origin to current step
+    float s = 0.0;
+    
+    // Diameter of cone at s
+    float diameter = max(s * coneCoefficient, u_voxelSizeL0);
+
+    float stepFactor = max(MIN_STEP_FACTOR, u_stepFactor);
+	float occlusion = 0.0;
+    
+    ivec3 faceIndices = computeVoxelFaceIndices(direction); // Implementation in voxelConeTracing/common.glsl
+    vec3 weight = direction * direction;
+    
+    float curSegmentLength = voxelSize;
+    
+    // minimum radius from clip region center to position
+    float minRadius = u_voxelSizeL0 * u_clipmapResolution * 0.5;
+    
+    // Ray marching - compute occlusion and radiance in one go
+    while (s < maxDistance && occlusion < 1.0)
+    {
+        vec3 position = startPos + direction * s;
+        
+        float distanceToCenter = length(u_volumeCenterL0 - position);
+        float minLevel = ceil(log2(distanceToCenter / minRadius));
+        
+        curLevel = log2(diameter / u_voxelSizeL0);
+        // The startLevel is the minimum level we start off with, minLevel is the current minLevel
+        // It's important to use the max of both (and curLevel of course) because we don't want to suddenly
+        // sample at a lower level than we started off with and ensure that we don't sample in a level that is too low.
+        curLevel = min(max(max(startLevel, curLevel), minLevel), CLIP_LEVEL_COUNT - 1);
+        
+        // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
+        vec4 radiance = sampleClipmapLinearly(u_voxelRadiance, position, curLevel, faceIndices, weight);
+		float opacity = radiance.a;
+
+        voxelSize = u_voxelSizeL0 * exp2(curLevel);
+        
+        // Radiance correction
+        float correctionQuotient = curSegmentLength / voxelSize;
+        radiance.rgb = radiance.rgb * correctionQuotient;
+		
+        // Opacity correction
+        opacity = clamp(1.0 - pow(1.0 - opacity, correctionQuotient), 0.0, 1.0);
+
+        vec4 src = vec4(radiance.rgb, opacity);
+		
+        // Front-to-back compositing
+        dst += clamp(1.0 - dst.a, 0.0, 1.0) * src;
+		occlusion += (1.0 - occlusion) * opacity / (1.0 + (s + voxelSize) * u_occlusionDecay);
+
+		float sLast = s;
+        s += max(diameter, u_voxelSizeL0) * stepFactor;
+        curSegmentLength = (s - sLast);
+        diameter = s * coneCoefficient;
+    }
+    
+    return clamp(vec4(dst.rgb, 1.0 - occlusion), 0.0, 1.0);
+}
+
+vec3 worldPosFromVoxelPos(ivec3 posV)
+{
+    vec4 p = vec4(vec3(posV) * u_voxelSizeL0, 1.0);
+    return p.xyz;
+}
+
+ivec3 toImageCoords(ivec3 p, int resolution)
+{
+	return (p + ivec3(resolution) * (abs(p / resolution) + 1)) & (resolution - 1); // & (resolution - 1) is a more efficient % resolution
+}
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+void main()
+{   
+	ivec3 pos = ivec3(gl_GlobalInvocationID);
+	ivec3 posV = pos + u_regionMin;
+    ivec3 imagePos = toImageCoords(posV, u_clipmapResolution);
+    vec3 posW = worldPosFromVoxelPos(posV);
+
+#ifdef VOXEL_TEXTURE_WITH_BORDER
+	imagePos += ivec3(BORDER_WIDTH);
+#endif
+
+    // for (int i=0; i<6; ++i) 
+    // {
+    //     vec4 radiance = texelFetch(u_voxelRadiance, imagePos, 0);
+    //     if (texelFetch(u_voxelOpacity, imagePos, 0) == 0.0) // zero opacity == no face
+    //         imageStore(u_voxelReflectance, imagePos, vec4(0.0));
+    //     else
+    //         imageStore(u_voxelReflectance, imagePos, vec4(vec3(posW), 1));
+    //         // imageStore(u_voxelReflectance, imagePos, radiance);
+    //     imagePos.x += u_clipmapResolutionWithBorder;
+    // }
+    // return;
+
+	imagePos.y += u_clipmapResolutionWithBorder * u_clipmapLevel;
+    
+    for (int j = 0; j < 6; ++j)
+    {
+        vec4 normal = texelFetch(u_voxelNormal, imagePos, 0);
+        vec4 opacity = texelFetch(u_voxelOpacity, imagePos, 0);
+        if (opacity == 0.0) { // zero opacity == no face
+            imageStore(u_voxelReflectance, imagePos, vec4(0.0));
+            continue;
+        }
+    
+        vec4 radiance = texelFetch(u_voxelRadiance, imagePos, 0);
+        vec3 normalW = unpackNormal(normal.rgb);
+        // imageStore(u_voxelReflectance, imagePos, vec4(normal.rgb, 1));
+        // continue;
+
+        // Cone Casting
+        float minLevel = getMinLevel(posW, u_volumeCenterL0, u_voxelSizeL0, u_clipmapResolution);
+        // float minLevel = 0;
+        float voxelSize = u_voxelSizeL0 * exp2(minLevel);
+        vec3 startPosOffset = posW + normalW * voxelSize * u_traceStartOffset;
+
+        vec4 indirectContribution = vec4(0.0);
+        for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i)
+        {
+            float cosTheta = dot(normalW, DIFFUSE_CONE_DIRECTIONS[i]);
+            
+            if (cosTheta < 0.0)
+                continue;
+            
+            indirectContribution += castCone(startPosOffset, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE ,MAX_TRACE_DISTANCE, minLevel) * cosTheta;
+        }
+
+        // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
+        indirectContribution /= DIFFUSE_CONE_COUNT * 0.5;
+        indirectContribution.rgb *= u_indirectDiffuseIntensity;
+        indirectContribution = clamp(indirectContribution, 0.0, 1.0);
+        vec4 dstColor = vec4(indirectContribution.rgb, 1.0);
+        if (u_irradianceOnly == 1)
+            imageStore(u_voxelReflectance, imagePos, vec4(vec3(dstColor.rgb), 1));
+        else
+            imageStore(u_voxelReflectance, imagePos, vec4(radiance.rgb / vec3(dstColor.rgb), 1));
+
+        imagePos.x += u_clipmapResolutionWithBorder;
+    }
+}

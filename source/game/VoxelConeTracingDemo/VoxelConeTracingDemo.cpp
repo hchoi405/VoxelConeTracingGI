@@ -22,6 +22,7 @@
 #include "engine/rendering/voxelConeTracing/SphericalImagePass.h"
 #include "engine/rendering/renderPasses/ForwardScenePass.h"
 #include "engine/rendering/voxelConeTracing/settings/VoxelConeTracingSettings.h"
+#include "engine/rendering/tvcg17/MaterialEstimationPass.h"
 #include "engine/util/commands/RotationCommand.h"
 #include "engine/util/commands/MaterialCommand.h"
 #include "engine/util/commands/TransformCommand.h"
@@ -80,6 +81,7 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline->putPtr("VoxelOpacity", &m_voxelOpacity);
     m_renderPipeline->putPtr("VoxelRadiance", &m_voxelRadiance);
     m_renderPipeline->putPtr("VoxelNormal", &m_voxelNormal);
+    m_renderPipeline->putPtr("VoxelReflectance", &m_voxelReflectance);
     m_renderPipeline->putPtr("ClipRegionBBoxes", &m_clipRegionBBoxes);
     m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
 
@@ -100,6 +102,7 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<VoxelizationPass>(),
         // std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution), // Don't use the shadow map
         std::make_shared<RadianceInjectionPass>(),
+        std::make_shared<MaterialEstimationPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
         // std::make_shared<SphericalImagePass>(),
@@ -107,6 +110,7 @@ void VoxelConeTracingDemo::initUpdate()
 
     // RenderPass initializations
     m_renderPipeline->getRenderPass<VoxelizationPass>()->init(m_clipRegionBBoxExtentL0, m_virtualClipRegionBBoxExtentL0);
+    std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
 
     // Deactivate after construction of VoxelizationPass to receive deactivated event
     virtualTransform->getOwner().setActive(false);
@@ -218,7 +222,7 @@ void VoxelConeTracingDemo::moveCamera(Seconds deltaTime) const
 
         MainCamera->pitch(math::toRadians(dy * 0.1f));
         MainCamera->rotateY(math::toRadians(dx * 0.1f));
-        SDL_SetRelativeMouseMode(SDL_TRUE);
+        // SDL_SetRelativeMouseMode(SDL_TRUE);
     }
     else
     {
@@ -250,7 +254,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
 
 void VoxelConeTracingDemo::init3DVoxelTextures()
 {
-    GLint filter = GL_NEAREST;
+    GLint filter = GL_LINEAR;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
@@ -292,6 +296,15 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_voxelNormal.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
     m_voxelNormal.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_voxelNormal.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
+    m_voxelReflectance.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_voxelReflectance.bind();
+    m_voxelReflectance.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_voxelReflectance.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_voxelReflectance.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_voxelReflectance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_voxelReflectance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
     resolutionWithBorder = VIRTUAL_VOXEL_RESOLUTION + 2;
 
@@ -424,7 +437,7 @@ void VoxelConeTracingDemo::createDemoScene()
     virtualTransform->getOwner().setVirtual(true);
     virtualTransform->getOwner().setActive(true);
     virtualTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
-    virtualTransform->setEulerAngles(glm::vec3(0.f, 90.f, 0.f));
+    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
 #endif
 
     if (sceneRootEntity)

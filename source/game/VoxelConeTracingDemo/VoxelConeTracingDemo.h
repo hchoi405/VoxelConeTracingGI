@@ -46,11 +46,12 @@ private:
 
     // ClipRegion extent at level 0 - next level covers twice as much space as the previous level
     float m_clipRegionBBoxExtentL0{16.0f};
-    float m_virtualClipRegionBBoxExtentL0{16.0f};
+    float m_virtualClipRegionBBoxExtentL0{.0f};
 
     Texture3D m_voxelOpacity;
     Texture3D m_voxelRadiance;
     Texture3D m_voxelNormal;
+    Texture3D m_voxelReflectance;
 
     Texture3D m_virtualVoxelOpacity;
     Texture3D m_virtualVoxelRadiance;

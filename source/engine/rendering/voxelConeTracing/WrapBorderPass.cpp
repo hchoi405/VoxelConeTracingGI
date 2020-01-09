@@ -15,9 +15,11 @@ void WrapBorderPass::update()
     // Fetch the data
     auto voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
     auto voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
+    auto voxelReflectance = m_renderPipeline->fetchPtr<Texture3D>("VoxelReflectance");
 
     copyBorder(voxelOpacity, false);
     copyBorder(voxelRadiance, false);
+    copyBorder(voxelReflectance, false);
 
     auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
     auto virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
