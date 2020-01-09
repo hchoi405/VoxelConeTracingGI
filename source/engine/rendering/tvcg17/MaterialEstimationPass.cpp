@@ -32,15 +32,14 @@ void MaterialEstimationPass::update()
 
     if (m_initializing) {
         estimateMaterial(voxelRadiance, voxelOpacity, voxelNormal, voxelReflectance, clipRegions->at(0), VOXEL_RESOLUTION);
-        // downsample(voxelRadiance, *clipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION);
-        // downsample(voxelNormal, *clipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION);
+        downsample(voxelReflectance, *clipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION);
     }
 
 #ifdef VIRTUAL
     
 #endif
 
-    // m_initializing = false;
+    m_initializing = false;
 }
 
 void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3D *voxelOpacity, Texture3D *voxelNormal, Texture3D *voxelReflectance,

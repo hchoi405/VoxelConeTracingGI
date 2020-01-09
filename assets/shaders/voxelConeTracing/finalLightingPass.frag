@@ -486,14 +486,6 @@ void main()
     vec3 startPosOffset = posW + normal * voxelSize * u_traceStartOffset;
     vec3 startPos = posW;
 
-    // vec3 direction = normalize(posW - u_eyePos);
-    vec3 direction = -normal;
-    ivec3 faceIndices = computeVoxelFaceIndices(direction); // Implementation in voxelConeTracing/common.glsl
-    vec4 radiance = sampleClipmapLinearly(u_voxelReflectance, startPos, 0, faceIndices, direction*direction);
-    out_color = radiance;
-    // out_color = vec4(vec3(posW.x), 1);
-    return;
-    
 	for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i)
     {
 		float cosTheta = dot(normal, DIFFUSE_CONE_DIRECTIONS[i]);

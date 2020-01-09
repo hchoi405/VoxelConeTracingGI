@@ -113,7 +113,7 @@ void VoxelConeTracingDemo::initUpdate()
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
 
     // Deactivate after construction of VoxelizationPass to receive deactivated event
-    virtualTransform->getOwner().setActive(false);
+    // virtualTransform->getOwner().setActive(false);
     
     m_initializing = false;
 }
@@ -430,9 +430,9 @@ void VoxelConeTracingDemo::createDemoScene()
     virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 128.0f);
-    buddhaMaterial->setColor("u_color", glm::vec4(1.f, 1.f, 1.f, 1.0f));
+    buddhaMaterial->setColor("u_color", glm::vec4(.5f, .5f, .5f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-    buddhaMaterial->setColor("u_specularColor", glm::vec3(1.f));
+    buddhaMaterial->setColor("u_specularColor", glm::vec3(.5f));
     virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
     virtualTransform->getOwner().setVirtual(true);
     virtualTransform->getOwner().setActive(true);
