@@ -13,6 +13,12 @@ in Vertex
     vec2 texCoords;
 } In;
 
+struct Intersect {
+    bool hit;
+    vec3 position;
+    vec3 normal;
+};
+
 #define DIRECT_LIGHTING_BIT 1
 #define INDIRECT_DIFFUSE_LIGHTING_BIT 2
 #define INDIRECT_SPECULAR_LIGHTING_BIT 4
@@ -35,8 +41,10 @@ uniform sampler2D u_virtualMap;
 uniform sampler3D u_voxelRadiance;
 uniform sampler3D u_voxelOpacity;
 uniform sampler3D u_voxelReflectance;
+uniform sampler3D u_voxelNormal;
 uniform sampler3D u_virtualVoxelRadiance;
 uniform sampler3D u_virtualVoxelOpacity;
+uniform sampler3D u_virtualVoxelNormal;
 
 uniform float u_virtualVoxelSizeL0;
 uniform vec3 u_virtualVolumeCenterL0;
@@ -214,8 +222,10 @@ vec4 sampleVirtualClipmapLinearly(sampler3D clipmapTexture, vec3 posW, float cur
     return mix(lowSample, highSample, fract(curLevel));
 }
 
-vec4 castConeVirtual(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel)
+vec4 castConeVirtual(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel, 
+                    out Intersect isect)
 {
+    isect.hit = false;
     // float distanceToCenter = length(u_virtualVolumeCenterL0 - startPos);
     float minRadius = u_virtualVoxelSizeL0 * u_virtualVolumeDimension * 0.5;
     // float minLevel = log2(distanceToCenter / minRadius);  
@@ -294,6 +304,11 @@ vec4 castConeVirtual(vec3 startPos, vec3 direction, float aperture, float maxDis
         vec4 virtualOpacity = sampleVirtualClipmapLinearly(u_virtualVoxelOpacity, position, curLevel, faceOffsets, weight);
         radiance = vec4(vec3(0), virtualOpacity.a); // virtualOpacity.rgb is for second bounce (material, normal, etc.)
 		float opacity = radiance.a;
+        if (!isect.hit && opacity > EPSILON) {
+            isect.position = position;
+            isect.normal = sampleVirtualClipmapLinearly(u_virtualVoxelNormal, position, curLevel, faceIndices, weight).rgb;
+            isect.hit = true;
+        }
 
         voxelSize = u_virtualVoxelSizeL0 * exp2(curLevel);
         
@@ -358,8 +373,10 @@ vec4 sampleClipmapLinearly(sampler3D clipmapTexture, vec3 posW, float curLevel, 
     return mix(lowSample, highSample, fract(curLevel));
 }
 
-vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel)
+vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel, 
+            out Intersect isect)
 {
+    isect.hit = false;
     // Initialize accumulated color and opacity
     vec4 dst = vec4(0.0);
     // Coefficient used in the computation of the diameter of a cone
@@ -405,6 +422,11 @@ vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
         vec4 radiance = sampleClipmapLinearly(u_voxelRadiance, position, curLevel, faceIndices, weight);
 		float opacity = radiance.a;
+        if (!isect.hit && opacity > EPSILON) {
+            isect.position = position;
+            isect.normal = sampleClipmapLinearly(u_voxelNormal, position, curLevel, faceIndices, weight).rgb;
+            isect.hit = true;
+        }
 
         voxelSize = u_voxelSizeL0 * exp2(curLevel);
         
@@ -461,6 +483,29 @@ vec4 minLevelToColor(float minLevel)
 	return minLevelColor * 0.5;
 }
 
+vec4 castDiffuseCones(vec3 startPos, vec3 normal, float minLevel, bool traceVirtual, bool inverse = false)
+{
+    Intersect isect;
+    vec4 indirectContribution = vec4(0.0);
+    for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i)
+    {
+		float cosTheta = dot(normal, DIFFUSE_CONE_DIRECTIONS[i]);
+        
+        if (cosTheta < 0.0)
+            continue;
+        
+        if (traceVirtual && inverse) {
+            indirectContribution += (1 - castConeVirtual(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, minLevel, isect)) * cosTheta;
+        } else if (traceVirtual && !inverse) {
+            // case1: from real to virtual
+            indirectContribution += castConeVirtual(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, minLevel, isect) * cosTheta;
+        } else {
+            indirectContribution += castCone(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, minLevel, isect) * cosTheta;
+        }
+    }
+    return indirectContribution;
+}
+
 void main() 
 {
     float depth = texture2D(u_depthTexture, In.texCoords).r;
@@ -481,26 +526,22 @@ void main()
     // Compute indirect contribution
     vec4 indirectContribution = vec4(0.0);
     
-    // TODO: Check if offset is needed
+    // Offset the starting pos to avoid the self-occlusion
     float voxelSize = frag_voxelSizeL0 * exp2(isVirtualFrag? virtualMinLevel : minLevel);
     vec3 startPosOffset = posW + normal * voxelSize * u_traceStartOffset;
     vec3 startPos = posW;
 
-	for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i)
-    {
-		float cosTheta = dot(normal, DIFFUSE_CONE_DIRECTIONS[i]);
-        
-        if (cosTheta < 0.0)
-            continue;
-        
-        if (isVirtualFrag){
-            float a = castConeVirtual(startPosOffset, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, virtualMinLevel).a;
-            indirectContribution += castCone(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE ,MAX_TRACE_DISTANCE, minLevel) * cosTheta;
-            indirectContribution.rgb -= vec3(1-a) * u_indirectDiffuseShadow * cosTheta;
+	if (isVirtualFrag){
+        // Radiance
+        indirectContribution += castDiffuseCones(startPos, normal, minLevel, false);
+        // Delta (shadow)
+        if (u_virtualSelfOcclusion == 1) {
+            float a = castDiffuseCones(startPosOffset, normal, virtualMinLevel, true, true).a;
+            indirectContribution.rgb -= vec3(a) * u_indirectDiffuseShadow;
         }
-        else {
-            indirectContribution += castConeVirtual(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, virtualMinLevel) * cosTheta;
-        }
+    }
+    else {
+        indirectContribution += castDiffuseCones(startPos, normal, virtualMinLevel, true);
     }
 
     // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
@@ -521,11 +562,21 @@ void main()
     float shininess = unpackShininess(specColor.a);
     float roughness = shininessToRoughness(shininess);
     
+    // Currentlly, only for the (isVirtualFrag == true)
     if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON) {
-        specularContribution = castCone(startPos, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, minLevel).rgb * specColor.rgb * u_indirectSpecularIntensity;
-        float a = castConeVirtual(startPosOffset, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, virtualMinLevel).a;
-        if (u_virtualSelfOcclusion == 1)
+        // Radiance
+        Intersect isect;
+        specularContribution = castCone(startPos, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, minLevel, isect).rgb * specColor.rgb * u_indirectSpecularIntensity;
+
+        // Delta
+        if (u_virtualSelfOcclusion == 1) {
+            float a = castConeVirtual(startPosOffset, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, virtualMinLevel, isect).a;
+            // anti radiance
             specularContribution -= vec3(1-a) * specColor.rgb * u_indirectSpecularShadow;
+        }
+        
+        // Find hit point for virtual object and cast difffuse cones again
+        
     }
     
     vec3 directContribution = vec3(0.0);
