@@ -74,6 +74,9 @@ void VoxelConeTracingDemo::initUpdate()
     m_gui = std::make_unique<VoxelConeTracingGUI>(m_renderPipeline.get());
     m_clipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, CLIP_REGION_COUNT);
     m_virtualClipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, VIRTUAL_CLIP_REGION_COUNT);
+    auto sceneEntity = ECS::getEntityByName("dasan613.obj");
+    m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 1.5;
+    std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
     m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.1;
     std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
 
@@ -124,7 +127,7 @@ void VoxelConeTracingDemo::update()
 {
     static bool once = true;
 
-    m_gui->selectEntity(virtualTransform->getOwner(), false);
+    // m_gui->selectEntity(virtualTransform->getOwner(), false);
 
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
     m_clipmapUpdatePolicy->update();
@@ -541,7 +544,10 @@ void VoxelConeTracingDemo::animateCameraTransform()
 void VoxelConeTracingDemo::updateCameraClipRegions()
 {
     m_clipRegionBBoxes.clear();
-    glm::vec3 center = MainCamera->getPosition();
+    auto sceneEntity = ECS::getEntityByName("dasan613.obj");    
+    // glm::vec3 center = MainCamera->getPosition();
+    glm::vec3 center = sceneEntity.getComponent<Transform>()->getPosition();
+    // glm::vec3 center(-0.572, 2.166, 0.318);
     for (size_t i = 0; i < CLIP_REGION_COUNT; ++i)
         m_clipRegionBBoxes.push_back(getBBox(i, center, m_clipRegionBBoxExtentL0));
 }
