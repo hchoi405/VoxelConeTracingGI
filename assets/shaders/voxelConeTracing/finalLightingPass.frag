@@ -50,13 +50,6 @@ uniform float u_virtualVoxelSizeL0;
 uniform vec3 u_virtualVolumeCenterL0;
 uniform uint u_virtualVolumeDimension;
 
-uniform DirectionalLight u_directionalLights[MAX_DIR_LIGHT_COUNT];
-uniform DirectionalLightShadowDesc u_directionalLightShadowDescs[MAX_DIR_LIGHT_COUNT];
-uniform sampler2D u_shadowMaps[MAX_DIR_LIGHT_COUNT];
-uniform int u_numActiveDirLights;
-uniform float u_depthBias;
-uniform float u_usePoissonFilter;
-
 uniform int u_BRDFMode;
 uniform mat4 u_viewProjInv;
 uniform uint u_volumeDimension;
@@ -585,33 +578,6 @@ void main()
     {
         directContribution += emission;
     }
-    else
-    {
-        for (int i = 0; i < u_numActiveDirLights; ++i)
-        {
-            vec3 lightDir = u_directionalLights[i].direction;
-            float nDotL = max(0.0, dot(normal, -lightDir));
-            vec3 halfway = normalize(view - lightDir);
-            
-            float visibility = 1.0;
-            if (u_directionalLightShadowDescs[i].enabled != 0)
-            {
-                visibility = computeVisibility(posW, u_shadowMaps[i], u_directionalLightShadowDescs[i], u_usePoissonFilter, u_depthBias);
-            }
-            
-            vec3 lightColor = u_directionalLights[i].color;
-            
-            if (u_BRDFMode == BLINN_PHONG_MODE_IDX)
-            {
-                vec3 blinnPhong = blinnPhongBRDF(lightColor, diffuse, lightColor, specColor.rgb, normal, -lightDir, halfway, shininess);
-                directContribution += visibility * blinnPhong * u_directionalLights[i].intensity;
-            } else if (u_BRDFMode == COOK_TORRANCE_MODE_IDX)
-            {
-                vec3 cook = cookTorranceBRDF(-lightDir, normal, view, halfway, roughness, specColor.rgb * 0.5);
-                directContribution += visibility * (cook * lightColor * specColor.rgb + lightColor * diffuse * nDotL) * u_directionalLights[i].intensity;
-            }
-        }
-    }
     
     directContribution = clamp(directContribution, 0.0, 1.0);
     
@@ -642,17 +608,5 @@ void main()
     else {
         // original shading (VCT)
         out_color = clamp(out_color, 0.0, 1.0);
-
-        // max aperture
-        // out_color = vec4(castCone(u_eyePos, -view, sqrt(2/3), MAX_TRACE_DISTANCE, getMinLevel(u_eyePos)).rgb, 1.0) * u_indirectSpecularIntensity;
-
-        // control aperture
-        // out_color = vec4(castCone(u_eyePos, -view, u_viewAperture, MAX_TRACE_DISTANCE, 0).rgb, 1.0) * u_indirectSpecularIntensity;
-
-        // direct evaluation
-        // ivec3 faceIndices = computeVoxelFaceIndices(-view);
-        // vec3 w = view * view;
-        // vec3 w = vec3(1.0);
-        // out_color = sampleClipmapLinearly(u_voxelRadiance, posW, minLevel, faceIndices, w);
     }
 }
