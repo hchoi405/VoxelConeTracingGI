@@ -56,6 +56,8 @@ private:
     Texture3D m_virtualVoxelOpacity;
     Texture3D m_virtualVoxelRadiance;
     Texture3D m_virtualVoxelNormal;
+    Texture3D m_virtualVoxelDiffuse;
+    Texture3D m_virtualVoxelSpecularA;
 
     std::unique_ptr<VoxelConeTracingGUI> m_gui;
     bool m_guiEnabled{true};

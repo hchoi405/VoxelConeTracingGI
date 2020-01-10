@@ -56,6 +56,26 @@ public:
 
     std::shared_ptr<Shader> getShader() const { return m_shader; }
 
+    // Getter
+    float getFloat(const UniformName& uniformName) noexcept { return m_floatMap[uniformName]; }
+
+    glm::vec2 getVector2(const UniformName& uniformName) noexcept { return m_vec2Map[uniformName]; }
+
+    glm::vec3 getVector3(const UniformName& uniformName) noexcept { return m_vec3Map[uniformName]; }
+
+    glm::vec4 getVector4(const UniformName& uniformName) noexcept { return m_vec4Map[uniformName]; }
+
+    glm::vec3 getColor3(const UniformName& uniformName) noexcept { return m_vec3Map[uniformName]; }
+
+    glm::vec4 getColor4(const UniformName& uniformName) noexcept { return m_vec4Map[uniformName]; }
+
+    glm::mat2 getMatrix2(const UniformName& uniformName) noexcept { return m_mat2Map[uniformName]; }
+
+    glm::mat3 getMatrix3(const UniformName& uniformName) noexcept { return m_mat3Map[uniformName]; }
+
+    glm::mat4 getMatrix4(const UniformName& uniformName) noexcept { return m_mat4Map[uniformName]; }
+
+    // Setter
     void setFloat(const UniformName& uniformName, float v) noexcept { m_floatMap[uniformName] = v; }
 
     void setVector(const UniformName& uniformName, const glm::vec2& v) noexcept { m_vec2Map[uniformName] = v; }

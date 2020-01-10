@@ -20,6 +20,7 @@ MaterialEstimationPass::MaterialEstimationPass()
     // m_materialEstimaionShader = ResourceManager::getShader("shaders/tvcg17/materialEstimation.vert",
     //                                                        "shaders/tvcg17/materialEstimation.frag", "shaders/tvcg17/materialEstimation.geom");
     m_materialEstimaionShader = ResourceManager::getComputeShader("shaders/tvcg17/materialEstimation.comp");
+    m_virutalMaterialVoxelizeShader = ResourceManager::getComputeShader("shaders/tvcg17/virtualMaterialEstimation.comp");
 }
 
 void MaterialEstimationPass::update()
@@ -36,26 +37,31 @@ void MaterialEstimationPass::update()
     }
 
 #ifdef VIRTUAL
+
+    auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
+    auto virtualVoxelDiffuse = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelDiffuse");
+    auto virtualVoxelSpecularA = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelSpecularA");
+    auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
+
+    if (m_initializing) {
+        estimateVirtualMaterial(virtualVoxelOpacity, virtualVoxelDiffuse, virtualVoxelSpecularA, virtualClipRegions->at(0), VIRTUAL_VOXEL_RESOLUTION);
+        downsample(virtualVoxelDiffuse, *virtualClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
+        downsample(virtualVoxelSpecularA, *virtualClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
+    }
     
 #endif
 
     m_initializing = false;
 }
 
-void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3D *voxelOpacity, Texture3D *voxelNormal, Texture3D *voxelReflectance,
-                                              VoxelRegion regionL0, int voxelResolution) const
+void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3D *voxelOpacity, Texture3D *voxelNormal,
+                                              Texture3D *voxelReflectance, VoxelRegion regionL0, int voxelResolution) const
 {
     m_materialEstimaionShader->bind();
     m_materialEstimaionShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", 0);
     m_materialEstimaionShader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", 1);
     m_materialEstimaionShader->bindTexture3D(*voxelNormal, "u_voxelNormal", 2);
     m_materialEstimaionShader->bindImage3D(*voxelReflectance, "u_voxelReflectance", GL_READ_WRITE, GL_RGBA8, 3);
-
-    auto camera = m_renderPipeline->getCamera();
-    m_materialEstimaionShader->setMatrix("u_viewProjInv", camera->viewProjInv());
-    m_materialEstimaionShader->setMatrix("u_viewProj", camera->viewProj());
-    auto dasan = ECS::getEntityByName("dasan613.obj");
-    m_materialEstimaionShader->setMatrix("u_model", dasan.getComponent<Transform>()->getLocalToWorldMatrix());
 
     m_materialEstimaionShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
     m_materialEstimaionShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
@@ -85,6 +91,51 @@ void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3
     glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     QueryManager::endElapsedTime(QueryTarget::GPU, "Estimate Material");
+}
+
+void MaterialEstimationPass::estimateVirtualMaterial(Texture3D *voxelOpacity, Texture3D *voxelDiffuse, Texture3D *voxelSpecularA,
+                                                     VoxelRegion regionL0, int voxelResolution) const
+{
+    m_virutalMaterialVoxelizeShader->bind();
+    
+    Entity virtualEntity = ECS::getEntityByName("virtualObject");
+    auto material = virtualEntity.getComponent<MeshRenderer>()->getMaterial(0);
+
+    m_virutalMaterialVoxelizeShader->setFloat("u_shininess", material->getFloat("u_shininess"));
+    m_virutalMaterialVoxelizeShader->setVector("u_diffuseColor", material->getVector4("u_color"));
+    m_virutalMaterialVoxelizeShader->setVector("u_specularColor", material->getVector3("u_specularColor"));
+
+    m_virutalMaterialVoxelizeShader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", 0);
+    m_virutalMaterialVoxelizeShader->bindImage3D(*voxelDiffuse, "u_voxelDiffuse", GL_READ_WRITE, GL_RGBA8, 1);
+    m_virutalMaterialVoxelizeShader->bindImage3D(*voxelSpecularA, "u_voxelSpecularA", GL_READ_WRITE, GL_RGBA8, 2);
+
+    m_virutalMaterialVoxelizeShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
+    m_virutalMaterialVoxelizeShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
+    m_virutalMaterialVoxelizeShader->setVectori("u_imageMin", regionL0.getMinPosImage(regionL0.extent));
+    m_virutalMaterialVoxelizeShader->setVectori("u_regionMin", regionL0.minPos);
+    // std::cout << "u_imageMin: " << regionL0.getMinPosImage(regionL0.extent) << std::endl;
+    // std::cout << "u_regionMin: " << regionL0.minPos << std::endl;
+    // std::cout << "getMaxPos(): " << regionL0.getMaxPos() << std::endl;
+    m_virutalMaterialVoxelizeShader->setFloat("u_voxelSizeL0", regionL0.voxelSize);
+    // std::cout << "u_voxelSizeL0: " << regionL0.voxelSize << std::endl;
+    // std::cout << "u_worldMin from voxel: " << glm::vec3(regionL0.minPos) * regionL0.voxelSize << std::endl;
+    // std::cout << "u_worldMin from voxel: " << glm::vec3(regionL0.getMaxPos()) * regionL0.voxelSize << std::endl;
+    m_virutalMaterialVoxelizeShader->setVector("u_volumeCenterL0", regionL0.getCenterPosWorld());
+    m_virutalMaterialVoxelizeShader->setFloat("u_occlusionDecay", GI_SETTINGS.occlusionDecay);
+    m_virutalMaterialVoxelizeShader->setFloat("u_indirectDiffuseIntensity", GI_SETTINGS.indirectDiffuseIntensity);
+
+    m_virutalMaterialVoxelizeShader->setInt("u_clipmapResolution", voxelResolution);
+    m_virutalMaterialVoxelizeShader->setInt("u_clipmapResolutionWithBorder", voxelResolution + 2);
+    m_virutalMaterialVoxelizeShader->setInt("u_clipmapLevel", 0);
+
+    QueryManager::beginElapsedTime(QueryTarget::GPU, "Estimate Virtual Material");
+
+    GLuint groupCount = voxelResolution / 8;
+    m_virutalMaterialVoxelizeShader->dispatchCompute(groupCount, groupCount, groupCount);
+
+    glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    QueryManager::endElapsedTime(QueryTarget::GPU, "Estimate Virtual Material");
 }
 
 void MaterialEstimationPass::downsample(Texture3D *voxelRadiance, std::vector<VoxelRegion> &clipRegions, int clipRegionCount, int voxelResolution) const

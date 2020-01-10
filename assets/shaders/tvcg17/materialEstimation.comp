@@ -17,10 +17,6 @@ uniform sampler3D u_voxelOpacity;
 uniform sampler3D u_voxelNormal;
 uniform layout(rgba8) image3D u_voxelReflectance;
 
-uniform mat4 u_viewProj;
-uniform mat4 u_viewProjInv;
-uniform mat4 u_model;
-
 uniform ivec3 u_imageMin;
 uniform ivec3 u_regionMin;
 uniform float u_voxelSizeL0;

@@ -88,6 +88,8 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline->putPtr("VirtualVoxelOpacity", &m_virtualVoxelOpacity);
     m_renderPipeline->putPtr("VirtualVoxelRadiance", &m_virtualVoxelRadiance);
     m_renderPipeline->putPtr("VirtualVoxelNormal", &m_virtualVoxelNormal);
+    m_renderPipeline->putPtr("VirtualVoxelDiffuse", &m_virtualVoxelDiffuse);
+    m_renderPipeline->putPtr("VirtualVoxelSpecularA", &m_virtualVoxelSpecularA);
     m_renderPipeline->putPtr("VirtualClipRegionBBoxes", &m_virtualClipRegionBBoxes);
     m_renderPipeline->putPtr("VirtualClipmapUpdatePolicy", m_virtualClipmapUpdatePolicy.get());
 
@@ -325,6 +327,24 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
     m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_virtualVoxelRadiance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
+    m_virtualVoxelDiffuse.create(resolutionWithBorder * FACE_COUNT, VIRTUAL_CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_virtualVoxelDiffuse.bind();
+    m_virtualVoxelDiffuse.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_virtualVoxelDiffuse.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_virtualVoxelDiffuse.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_virtualVoxelDiffuse.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_virtualVoxelDiffuse.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
+    m_virtualVoxelSpecularA.create(resolutionWithBorder * FACE_COUNT, VIRTUAL_CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_virtualVoxelSpecularA.bind();
+    m_virtualVoxelSpecularA.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_virtualVoxelSpecularA.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_virtualVoxelSpecularA.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_virtualVoxelSpecularA.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_virtualVoxelSpecularA.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
     m_virtualVoxelNormal.create(resolutionWithBorder * FACE_COUNT, VIRTUAL_CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
         GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
