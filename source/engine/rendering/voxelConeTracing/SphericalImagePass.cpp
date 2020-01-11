@@ -102,7 +102,8 @@ void SphericalImagePass::render() const
     m_shader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
 
     // Spherical image
-    m_shader->setVector("u_sphericalCenter", glm::vec3(1.2987847328186035, 1.3614389896392822, -1.2158539295196533));
+    // dasan106
+    m_shader->setVector("u_sphericalCenter", glm::vec3(3.0145813524723053, 1.2589090168476105, 1.3377391546964645));
     m_shader->setFloat("u_viewAperture", DEBUG_SETTINGS.viewAperture);
     m_shader->setFloat("u_hitpointOffset", DEBUG_SETTINGS.hitpointOffset);
 
