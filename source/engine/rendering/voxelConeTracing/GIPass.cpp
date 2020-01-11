@@ -62,6 +62,10 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture3D(*virtualVoxelRadiance, "u_virtualVoxelRadiance", textureUnit++);
     Texture3D* virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
     m_finalLightPassShader->bindTexture3D(*virtualVoxelOpacity, "u_virtualVoxelOpacity", textureUnit++);
+    Texture3D* virtualVoxelDiffuse = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelDiffuse");
+    m_finalLightPassShader->bindTexture3D(*virtualVoxelDiffuse, "u_virtualVoxelDiffuse", textureUnit++);
+    Texture3D* virtualVoxelSpecularA = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelSpecularA");
+    m_finalLightPassShader->bindTexture3D(*virtualVoxelSpecularA, "u_virtualVoxelSpecularA", textureUnit++);
     Texture3D* virtualVoxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelNormal");
     m_finalLightPassShader->bindTexture3D(*virtualVoxelNormal, "u_virtualVoxelNormal", textureUnit++);
     GLuint virtualMap = m_renderPipeline->fetch<GLuint>("VirtualMap");
@@ -99,6 +103,9 @@ void GIPass::update()
     m_finalLightPassShader->setInt("u_virtualSelfOcclusion", DEBUG_SETTINGS.virtualSelfOcclusion? 1 : 0);
     m_finalLightPassShader->setFloat("u_indirectSpecularShadow", DEBUG_SETTINGS.indirectSpecularShadow);
     m_finalLightPassShader->setFloat("u_indirectDiffuseShadow", DEBUG_SETTINGS.indirectDiffuseShadow);
+    m_finalLightPassShader->setUnsignedInt("u_secondBounce", DEBUG_SETTINGS.secondBounce? 1 : 0);
+    m_finalLightPassShader->setFloat("u_secondIndirectDiffuse", DEBUG_SETTINGS.secondIndirectDiffuse);    
+    m_finalLightPassShader->setUnsignedInt("u_realReflectance", DEBUG_SETTINGS.realReflectance? 1 : 0);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

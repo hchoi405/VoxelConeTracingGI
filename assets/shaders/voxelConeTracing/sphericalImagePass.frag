@@ -13,7 +13,7 @@ in Vertex
     vec2 texCoords;
 } In;
 
-const float MAX_TRACE_DISTANCE = 30.0;
+const float MAX_TRACE_DISTANCE = 15.0;
 const float MIN_STEP_FACTOR = 0.2;
 const float MIN_SPECULAR_APERTURE = 0.05;
 

@@ -9,7 +9,7 @@
 #include "/voxelConeTracing/settings.glsl"
 #include "/voxelConeTracing/common.glsl"
 
-const float MAX_TRACE_DISTANCE = 30.0;
+const float MAX_TRACE_DISTANCE = 15.0;
 const float MIN_STEP_FACTOR = 0.2;
 
 uniform sampler3D u_voxelRadiance;

@@ -77,7 +77,7 @@ void VoxelConeTracingDemo::initUpdate()
     auto sceneEntity = ECS::getEntityByName("dasan613.obj");
     m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 1.5;
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
-    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.1;
+    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.2;
     std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
 
     // Set render pipeline input
@@ -453,9 +453,9 @@ void VoxelConeTracingDemo::createDemoScene()
     virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
     auto buddhaMaterial = EntityCreator::createMaterial();
     buddhaMaterial->setFloat("u_shininess", 128.0f);
-    buddhaMaterial->setColor("u_color", glm::vec4(.5f, .5f, .5f, 1.0f));
+    buddhaMaterial->setColor("u_color", glm::vec4(.7f, .2f, .2f, 1.0f));
     buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-    buddhaMaterial->setColor("u_specularColor", glm::vec3(.5f));
+    buddhaMaterial->setColor("u_specularColor", glm::vec3(.7f));
     virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
     virtualTransform->getOwner().setVirtual(true);
     virtualTransform->getOwner().setActive(true);
