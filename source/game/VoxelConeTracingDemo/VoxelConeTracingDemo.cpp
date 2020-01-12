@@ -219,7 +219,7 @@ void VoxelConeTracingDemo::moveCamera(Seconds deltaTime) const
 
         MainCamera->pitch(math::toRadians(dy * 0.1f));
         MainCamera->rotateY(math::toRadians(dx * 0.1f));
-        SDL_SetRelativeMouseMode(SDL_TRUE);
+        // SDL_SetRelativeMouseMode(SDL_TRUE);
     }
     else
     {
@@ -345,10 +345,13 @@ void VoxelConeTracingDemo::createDemoScene()
 
 #ifdef VIRTUAL
     // dasan106
-    glm::vec3 cameraPositionOffset(3.0145813524723053, 1.2589090168476105, 1.3377391546964645);
-    // glm::vec3 cameraPositionOffset(0.646, 0.925, -0.641);
-    camTransform->setEulerAngles(glm::radians(glm::vec3(23.900, 123.600, 0)));
-    // camTransform->setEulerAngles(glm::radians(glm::vec3(46.100, 131.600, 0)));
+    glm::vec3 cameraPositionOffset(4.10999870300293, 1.2575485706329346, 2.0999033451080322);
+    // from matterport quat [0.00016780437455882465, 0.9996918729744316, 0.023800243269027594, -0.007048359447421697]
+    camTransform->setEulerAngles(glm::radians(glm::vec3(177.27236767,   -0.80791806, -180)));
+    // camTransform->setEulerAngles(glm::radians(glm::vec3(175.44892372,   89.80878639, -180))); // test1
+    // camTransform->setEulerAngles(glm::radians(glm::vec3(-162.2424652 ,   58.60644249, -180))); // test2
+    std::cout << camTransform->getLocalRotation() << std::endl;
+    std::cout << camTransform->getForward() << std::endl;
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #else
     // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
@@ -360,15 +363,15 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("cglab/matterpak_dasan106-night-1_normal/dasan106_normal.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/matterpak_dasan106-night-1_normal/dasan106_normal.obj", shader, "cglab/", glm::vec3(1.f), true);
+    ResourceManager::getModel("cglab/dasan106_normal.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan106_normal.obj", shader, "cglab/", glm::vec3(1.f), true);
     sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "cglab/matterpak_dasan106-night-1_normal/cloud_binary.ply";
+    std::string cloudFilename = "cglab/cloud_binary_dasan106.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
