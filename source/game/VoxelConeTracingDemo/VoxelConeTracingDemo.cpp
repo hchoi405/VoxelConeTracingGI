@@ -250,6 +250,19 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
         texture->save("test", true, sgPass->getFBO());
         break;
     }
+    case SDLK_f: {
+        auto camTransform = MainCamera->getComponent<Transform>();
+        std::ofstream cameraFile("camera.txt");
+        auto euler = glm::degrees(camTransform->getEulerAngles());
+        cameraFile << camTransform->getPosition()[0] << " " << camTransform->getPosition()[1] << " " << camTransform->getPosition()[2]
+                   << std::endl
+                   << euler[0] << " " << euler[1] << " " << euler[2];
+        cameraFile.close();
+        std::cout << "Saved camera position " << camTransform->getPosition()
+                  << " and rotation " << euler
+                  << " to camera.txt" << std::endl;
+        break;
+    }
     case SDLK_F5:
         m_engine->requestScreenshot();
         break;
@@ -396,10 +409,20 @@ void VoxelConeTracingDemo::createDemoScene()
 
     camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
+    std::ifstream cameraFile("camera.txt");
+    glm::vec3 cameraPositionOffset(0.696, 0.881, -0.739);
+    glm::vec3 cameraRotation = glm::vec3(47.600, 128.900, 0);
+    if (!cameraFile.is_open()) {
+        std::cout << "failed to read camera.txt" << std::endl;
+    }
+    else {
+        cameraFile >> cameraPositionOffset[0] >> cameraPositionOffset[1] >> cameraPositionOffset[2];
+        cameraFile >> cameraRotation[0] >> cameraRotation[1] >> cameraRotation[2];
+    }
+
 #ifdef VIRTUAL
-    glm::vec3 cameraPositionOffset(-0.572, 2.166, 0.318);
     // glm::vec3 cameraPositionOffset(0.646, 0.925, -0.641);
-    camTransform->setEulerAngles(glm::radians(glm::vec3(23.900, 123.600, 0)));
+    camTransform->setEulerAngles(glm::radians(cameraRotation));
     // camTransform->setEulerAngles(glm::radians(glm::vec3(46.100, 131.600, 0)));
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #else
