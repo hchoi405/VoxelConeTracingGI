@@ -118,7 +118,7 @@ void VoxelConeTracingDemo::initUpdate()
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
 
     // Deactivate after construction of VoxelizationPass to receive deactivated event
-    // virtualTransform->getOwner().setActive(false);
+    virtualTransform->getOwner().setActive(false);
     
     m_initializing = false;
 }

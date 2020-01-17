@@ -58,7 +58,7 @@ struct GISettings : VCTSettings
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 1.0f, 16.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     
-    CheckBox directLighting{ "Direct Lighting", true };
+    CheckBox directLighting{ "Direct Lighting", false };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
     CheckBox ambientOcclusion{ "Ambient Occlusion", true };
@@ -91,7 +91,7 @@ struct DebugSettings : VCTSettings
     SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 0.25f, 0.01f, 10.f};
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     SliderFloat secondIndirectDiffuse{"Second bounce diffuse factor", 30.f, 1.f, 30.f};
-    CheckBox secondBounce{"Trace second bounce", true};
+    CheckBox secondBounce{"Trace second bounce", false};
     CheckBox realReflectance{"Apply relfectance of real object", true};
 };
 
