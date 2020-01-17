@@ -44,6 +44,7 @@ uniform sampler3D u_voxelRadiance;
 uniform sampler3D u_voxelOpacity;
 uniform sampler3D u_voxelReflectance;
 uniform sampler3D u_voxelNormal;
+uniform sampler3D u_voxelDiffuse;
 uniform sampler3D u_virtualVoxelRadiance;
 uniform sampler3D u_virtualVoxelOpacity;
 uniform sampler3D u_virtualVoxelDiffuse;
@@ -551,7 +552,8 @@ void main()
     if (depth == 1.0)
         discard;
     // if (isVirtualFrag) discard;
-    vec3 diffuse = texture(u_diffuseTexture, In.texCoords).rgb;
+    // vec3 diffuse = texture(u_diffuseTexture, In.texCoords).rgb;
+    vec3 diffuse = vec3(0.f);
     vec3 normal = unpackNormal(texture(u_normalMap, In.texCoords).rgb);
     vec3 emission = texture(u_emissionMap, In.texCoords).rgb;
     bool hasEmission = any(greaterThan(emission, vec3(0.0)));  
@@ -570,7 +572,12 @@ void main()
     vec3 startPosOffset = posW + normal * voxelSize * u_traceStartOffset;
     vec3 startPos = posW;
 
+    ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
+    vec3 weight = normal * normal;
+
 	if (isVirtualFrag){
+        diffuse = sampleClipmapLinearly(u_virtualVoxelDiffuse, startPos, minLevel, outFaceIndices, weight).rgb;
+
         // Radiance
         indirectContribution = castDiffuseCones(startPos, normal, minLevel, false);
         // Delta (shadow)
@@ -580,8 +587,8 @@ void main()
         }
     }
     else {
-        ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
-        vec3 weight = normal * normal;
+        diffuse = sampleClipmapLinearly(u_voxelDiffuse, startPos, minLevel, outFaceIndices, weight).rgb;
+        
         vec3 reflectance = sampleClipmapLinearly(u_voxelReflectance, startPos, minLevel, outFaceIndices, weight).rgb;
         // out_color = vec4(reflectance, 1);
         // return;

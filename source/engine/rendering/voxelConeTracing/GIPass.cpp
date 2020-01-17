@@ -32,6 +32,7 @@ void GIPass::update()
     Texture3D* voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
     Texture3D* voxelReflectance = m_renderPipeline->fetchPtr<Texture3D>("VoxelReflectance");
     Texture3D* voxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VoxelNormal");
+    Texture3D* voxelDiffuse = m_renderPipeline->fetchPtr<Texture3D>("VoxelDiffuse");
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
     auto camera = m_renderPipeline->getCamera();
 
@@ -57,6 +58,7 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelReflectance, "u_voxelReflectance", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelNormal, "u_voxelNormal", textureUnit++);
+    m_finalLightPassShader->bindTexture3D(*voxelDiffuse, "u_voxelDiffuse", textureUnit++);
 
     Texture3D* virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
     m_finalLightPassShader->bindTexture3D(*virtualVoxelRadiance, "u_virtualVoxelRadiance", textureUnit++);

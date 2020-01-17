@@ -34,6 +34,7 @@ uniform int u_normalOnly = 0;
 
 uniform layout(r32ui) volatile uimage3D u_voxelRadiance;
 uniform layout(r32ui) volatile uimage3D u_voxelNormal;
+uniform layout(r32ui) volatile uimage3D u_voxelDiffuse;
 
 void main() 
 {
@@ -47,6 +48,16 @@ void main()
 
     vec3 normal = normalize(In.normalW);
     ivec3 faceIndices = computeVoxelFaceIndices(-normal);
+
+    // Read texture from mesh and fill the u_voxelDiffuse
+    vec4 color = vec4(0.0);
+    if (u_hasDiffuseTexture > 0.0)
+    {
+        float lod = log2(float(textureSize(u_diffuseTexture0, 0).x) / u_clipmapResolution);
+        color = textureLod(u_diffuseTexture0, In.uv, lod);
+    }
+
+    storeVoxelColorAtomicRGBA8Avg(u_voxelDiffuse, posW, color, faceIndices, abs(normal));
 
     // Color
     if (u_normalOnly != 1) {

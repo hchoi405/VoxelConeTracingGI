@@ -145,6 +145,8 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     voxelizer->beginVoxelization(desc);
     shader->bindImage3D(*voxelRadiance, "u_voxelRadiance", GL_READ_WRITE, GL_R32UI, 0);
     shader->bindImage3D(*voxelNormal, "u_voxelNormal", GL_READ_WRITE, GL_R32UI, 1);
+    auto voxelDiffuse = m_renderPipeline->fetchPtr<Texture3D>("VoxelDiffuse");
+    shader->bindImage3D(*voxelDiffuse, "u_voxelDiffuse", GL_READ_WRITE, GL_R32UI, 2);
 
     // Set ShadowMap/Light uniforms
     GLint shadowMapStartTextureUnit = 5;

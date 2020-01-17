@@ -52,6 +52,7 @@ private:
     Texture3D m_voxelRadiance;
     Texture3D m_voxelNormal;
     Texture3D m_voxelReflectance;
+    Texture3D m_voxelDiffuse;
 
     Texture3D m_virtualVoxelOpacity;
     Texture3D m_virtualVoxelRadiance;

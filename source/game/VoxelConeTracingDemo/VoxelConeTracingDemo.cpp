@@ -75,7 +75,7 @@ void VoxelConeTracingDemo::initUpdate()
     m_clipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, CLIP_REGION_COUNT);
     m_virtualClipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, VIRTUAL_CLIP_REGION_COUNT);
     auto sceneEntity = ECS::getEntityByName("dasan613.obj");
-    m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 1.5;
+    m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 2;
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
     m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.2;
     std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
@@ -85,6 +85,7 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline->putPtr("VoxelRadiance", &m_voxelRadiance);
     m_renderPipeline->putPtr("VoxelNormal", &m_voxelNormal);
     m_renderPipeline->putPtr("VoxelReflectance", &m_voxelReflectance);
+    m_renderPipeline->putPtr("VoxelDiffuse", &m_voxelDiffuse);
     m_renderPipeline->putPtr("ClipRegionBBoxes", &m_clipRegionBBoxes);
     m_renderPipeline->putPtr("ClipmapUpdatePolicy", m_clipmapUpdatePolicy.get());
 
@@ -259,7 +260,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
 
 void VoxelConeTracingDemo::init3DVoxelTextures()
 {
-    GLint filter = GL_LINEAR;
+    GLint filter = GL_NEAREST;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
@@ -310,6 +311,15 @@ void VoxelConeTracingDemo::init3DVoxelTextures()
     m_voxelReflectance.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
     m_voxelReflectance.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
     m_voxelReflectance.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
+
+    m_voxelDiffuse.create(resolutionWithBorder * FACE_COUNT, CLIP_REGION_COUNT * resolutionWithBorder, resolutionWithBorder, 
+        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, Texture3DSettings::Custom);
+    m_voxelDiffuse.bind();
+    m_voxelDiffuse.setParameteri(GL_TEXTURE_WRAP_S, wrapS);
+    m_voxelDiffuse.setParameteri(GL_TEXTURE_WRAP_T, wrapT);
+    m_voxelDiffuse.setParameteri(GL_TEXTURE_WRAP_R, wrapR);
+    m_voxelDiffuse.setParameteri(GL_TEXTURE_MIN_FILTER, filter);
+    m_voxelDiffuse.setParameteri(GL_TEXTURE_MAG_FILTER, filter);
 
     resolutionWithBorder = VIRTUAL_VOXEL_RESOLUTION + 2;
 
@@ -397,10 +407,14 @@ void VoxelConeTracingDemo::createDemoScene()
     camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
 #ifdef VIRTUAL
-    glm::vec3 cameraPositionOffset(-0.572, 2.166, 0.318);
-    // glm::vec3 cameraPositionOffset(0.646, 0.925, -0.641);
-    camTransform->setEulerAngles(glm::radians(glm::vec3(23.900, 123.600, 0)));
+    // glm::vec3 cameraPositionOffset(4.10999870300293, 1.2575485706329346, 2.0999033451080322);
+    // glm::vec3 cameraPositionOffset(4.311, 0.420, 1.282);
+    glm::vec3 cameraPositionOffset(4.92608379, 2.61660186, 1.61549848);
     // camTransform->setEulerAngles(glm::radians(glm::vec3(46.100, 131.600, 0)));
+    // answer(euler, xyz, degree): 7.748, 122.567, 0
+    // answer(quat, xyzw): 0.03246219,  0.87500391, -0.05925288,  0.47937821
+    // camTransform->setEulerAngles(glm::radians(glm::vec3(28.100, -84.103, 0)));
+    // camTransform->setRotation(toGlmQuat(-0.15583934,  0.3321522 ,  0.77681071, -0.51181456));
     camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #else
     // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
@@ -412,15 +426,15 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
+    ResourceManager::getModel("cglab/mesh_dasan106_aligned.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/mesh_dasan106_aligned.obj", shader, "cglab/", glm::vec3(1.f), true);
     sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "cglab/cloud_binary.ply";
+    std::string cloudFilename = "cglab/dasan106_compensated_normal_aligned.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
@@ -458,9 +472,10 @@ void VoxelConeTracingDemo::createDemoScene()
     buddhaMaterial->setColor("u_specularColor", glm::vec3(.7f));
     virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
     virtualTransform->getOwner().setVirtual(true);
-    virtualTransform->getOwner().setActive(true);
-    virtualTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
-    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    virtualTransform->getOwner().setActive(false);
+    virtualTransform->setPosition(glm::vec3(2.350, -0.900, 0.400));
+    virtualTransform->setLocalScale(glm::vec3(0.8));
+    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, -90.f)));
 #endif
 
     if (sceneRootEntity)
