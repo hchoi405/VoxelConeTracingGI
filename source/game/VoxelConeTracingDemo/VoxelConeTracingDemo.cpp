@@ -580,7 +580,7 @@ void VoxelConeTracingDemo::updateVirtualClipRegions()
     // add bbox for each clip level i around the virtual object
     m_virtualClipRegionBBoxes.clear();
     for (size_t i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i) {
-        m_virtualClipRegionBBoxes.push_back(getBBox(i, virtualTransform->getPosition(), m_virtualClipRegionBBoxExtentL0));
+        m_virtualClipRegionBBoxes.push_back(getBBox(i, virtualTransform->getPosition(), m_virtualClipRegionBBoxExtentL0 / exp2f(i)));
     }
 }
 
