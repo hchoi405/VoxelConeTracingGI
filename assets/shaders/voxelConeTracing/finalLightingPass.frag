@@ -13,7 +13,7 @@ in Vertex
     vec2 texCoords;
 } In;
 
-struct Intersect {
+struct Intersection {
     bool hit;
     vec3 position;
     vec3 normal;
@@ -181,8 +181,8 @@ float getMinLevel(vec3 posW, vec3 volumeCenterL0, float voxelSizeL0, float volum
     return f > transitionStart ? ceil(minLevel) + (f - transitionStart) * c : ceil(minLevel);
 }
 
-bool inBox(vec3 p, vec3 low, vec3 high) {
-    return all(greaterThan(p, low)) && all(lessThan(p, high));
+bool inBox(vec3 p, AABBox3D box) {
+    return all(greaterThan(p, box.minPos)) && all(lessThan(p, box.maxPos));
 }
 
 bool inSphere(vec3 p, vec3 center, float radius) {
@@ -223,51 +223,40 @@ vec4 sampleVirtualClipmapLinearly(sampler3D clipmapTexture, vec3 posW, float cur
 }
 
 vec4 castConeVirtual(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel, 
-                    out Intersect isect)
+                    out Intersection isect)
 {
     isect.hit = false;
-    // float distanceToCenter = length(u_virtualVolumeCenterL0 - startPos);
     float minRadius = u_virtualVoxelSizeL0 * u_virtualVolumeDimension * 0.5;
-    // float minLevel = log2(distanceToCenter / minRadius);  
-    // startLevel = max(0.0, minLevel);
+
+    float curLevel = startLevel;
+    float voxelSize = u_virtualVoxelSizeL0 * exp2(curLevel);
+
+    // 2 is multiplied to avoid missing voxel region for higher clipmap level
+    float maxVolumeExtent = u_virtualVoxelSizeL0 * u_virtualVolumeDimension * 2;
 
     // Find the intersection point with the AABB of virtual objectfor at the cone direction
     // and use the point as a start startLevel for cone casting
-    // Ray ray = Ray(startPos, direction);
-    // AABBox3D aabb = AABBox3D(u_virtualMin, u_virtualMax);
-    // vec2 tMinMax = rayIntersectsAABB(ray, aabb);
-    // bool intersected = (tMinMax[0] < tMinMax[1] && tMinMax[0] > 0.0);
-    bool intersected = false;
+    float s = 0.0;
+    Ray ray = Ray(startPos, direction);
+    AABBox3D aabb = AABBox3D(u_virtualVolumeCenterL0 - maxVolumeExtent * 0.5f, u_virtualVolumeCenterL0 + maxVolumeExtent * 0.5f);
+    vec2 tMinMax = rayIntersectsAABB(ray, aabb);
+    bool intersected = (tMinMax[0] < tMinMax[1] && tMinMax[0] > 0.0) || inBox(startPos, aabb);
+    if (!intersected) return vec4(vec3(0), 1); // It means no occlusion
 
-    // bool intersected = (tMinMax[0] < tMinMax[1] && tMinMax[0] > 0.0);
-    // if (tMinMax[0] > tMinMax[1]) return vec4(0, 0, 1, 1);
-    // if (!intersected) return vec4(0, 0, 0, 0);
-    // if (tMinMax[0] < 0.0) return vec4(1, 0, 0, 1);
-    // else return vec4(vec3(1),1);
-    // else return vec4(1-vec3(tMinMax[0]) / u_indirectDiffuseIntensity, 1);
+    // Start from the object's bounding box if the startPos is not in the box
+    // and end at the object's bounding box
+    if (tMinMax[0] > 0.f) {
+        s = tMinMax[0];
+    }
+    maxDistance = tMinMax[1];
 
     // Initialize accumulated color and opacity
     vec4 dst = vec4(0.0);
     // Coefficient used in the computation of the diameter of a cone
 	float coneCoefficient = 2.0 * tan(aperture * 0.5);
-    
-    // Start from the object's bounding box and end at the object's bounding box
-    float s = 0.0;
-    // float s = (intersected)? tMinMax[0] : 0.0;
-    // maxDistance = (intersected)? tMinMax[1] : maxDistance;
-    // return vec4(vec3(s), 1.0);
 
     // Diameter of cone at start position is the l0 voxel size
     float diameter = max(s * coneCoefficient, u_virtualVoxelSizeL0);
-
-    // Skip too far regions
-    // if (startLevel > VIRTUAL_CLIP_LEVEL_COUNT) return vec4(1,0,0,1);
-    // else if (startLevel == VIRTUAL_CLIP_LEVEL_COUNT) return vec4(0,1,0,1);
-    // else return vec4(0,0,1,1);
-    // return vec4(vec3((VIRTUAL_CLIP_LEVEL_COUNT-startLevel) * VIRTUAL_CLIP_LEVEL_COUNT_INV),1);
-
-    float curLevel = startLevel;
-    float voxelSize = u_virtualVoxelSizeL0 * exp2(curLevel);
 
     float stepFactor = max(MIN_VIRTUAL_STEP_FACTOR, u_virtualStepFactor);
 	float occlusion = 0.0;
@@ -370,7 +359,7 @@ vec4 sampleClipmapLinearly(sampler3D clipmapTexture, vec3 posW, float curLevel, 
 }
 
 vec4 castCone(vec3 startPos, vec3 direction, float aperture, float maxDistance, float startLevel, 
-            out Intersect isect)
+            out Intersection isect)
 {
     isect.hit = false;
     // Initialize accumulated color and opacity
@@ -483,7 +472,7 @@ vec4 minLevelToColor(float minLevel)
 
 vec4 castDiffuseCones(vec3 startPos, vec3 normal, float minLevel, bool traceVirtual, bool inverse = false)
 {
-    Intersect tmpIsect;
+    Intersection tmpIsect;
     vec4 indirectContribution = vec4(0.0);
     for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i)
     {
@@ -498,7 +487,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float minLevel, bool traceVirt
         } else if (traceVirtual && !inverse) {
 
             // Find hitpoint with virtual object
-            Intersect isect;
+            Intersection isect;
             indirectContribution += castConeVirtual(startPos, DIFFUSE_CONE_DIRECTIONS[i], DIFFUSE_CONE_APERTURE, MAX_TRACE_DISTANCE, minLevel, isect) * cosTheta;
 
             // vec3 weight = DIFFUSE_CONE_DIRECTIONS[i] * DIFFUSE_CONE_DIRECTIONS[i];
@@ -612,7 +601,7 @@ void main()
     // Currentlly, only for the (isVirtualFrag == true)
     if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON) {
         // Radiance
-        Intersect isect;
+        Intersection isect;
         specularContribution = castCone(startPos, specularConeDirection, max(roughness, MIN_SPECULAR_APERTURE), MAX_TRACE_DISTANCE, minLevel, isect).rgb * specColor.rgb * u_indirectSpecularIntensity;
 
         // Delta
