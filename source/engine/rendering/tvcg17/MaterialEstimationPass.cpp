@@ -17,8 +17,6 @@
 MaterialEstimationPass::MaterialEstimationPass()
     : RenderPass("MaterialEstimationPass")
 {
-    // m_materialEstimaionShader = ResourceManager::getShader("shaders/tvcg17/materialEstimation.vert",
-    //                                                        "shaders/tvcg17/materialEstimation.frag", "shaders/tvcg17/materialEstimation.geom");
     m_materialEstimaionShader = ResourceManager::getComputeShader("shaders/tvcg17/materialEstimation.comp");
     m_virutalMaterialVoxelizeShader = ResourceManager::getComputeShader("shaders/tvcg17/virtualMaterialEstimation.comp");
 }
@@ -32,8 +30,16 @@ void MaterialEstimationPass::update()
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
 
     if (m_initializing) {
-        estimateMaterial(voxelRadiance, voxelOpacity, voxelNormal, voxelReflectance, clipRegions->at(0), VOXEL_RESOLUTION);
-        downsample(voxelReflectance, *clipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION);
+        QueryManager::beginElapsedTime(QueryTarget::GPU, "Material Estimation");
+        for (int i = 0; i < CLIP_REGION_COUNT; ++i)
+        {
+            estimateMaterial(voxelRadiance, voxelOpacity, voxelNormal, voxelReflectance, clipRegions->at(i), i, VOXEL_RESOLUTION);
+        }
+        QueryManager::endElapsedTime(QueryTarget::GPU, "Material Estimation");
+
+        QueryManager::beginElapsedTime(QueryTarget::GPU, "Material Downsampling");
+        Downsampler::downsample(voxelReflectance, clipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION);
+        QueryManager::endElapsedTime(QueryTarget::GPU, "Material Downsampling");
     }
 
 #ifdef VIRTUAL
@@ -44,9 +50,17 @@ void MaterialEstimationPass::update()
     auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
 
     if (m_initializing) {
-        estimateVirtualMaterial(virtualVoxelOpacity, virtualVoxelDiffuse, virtualVoxelSpecularA, virtualClipRegions->at(0), VIRTUAL_VOXEL_RESOLUTION);
-        downsample(virtualVoxelDiffuse, *virtualClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
-        downsample(virtualVoxelSpecularA, *virtualClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
+        QueryManager::beginElapsedTime(QueryTarget::GPU, "Virtual Material Estimation");
+        for (int i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
+        {
+            estimateVirtualMaterial(virtualVoxelOpacity, virtualVoxelDiffuse, virtualVoxelSpecularA, virtualClipRegions->at(i), i, VIRTUAL_VOXEL_RESOLUTION);
+        }
+        QueryManager::endElapsedTime(QueryTarget::GPU, "Virtual Material Estimation");
+
+        QueryManager::beginElapsedTime(QueryTarget::GPU, "Virtual Material Downsampling");
+        Downsampler::downsample(virtualVoxelDiffuse, virtualClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
+        Downsampler::downsample(virtualVoxelSpecularA, virtualClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION);
+        QueryManager::endElapsedTime(QueryTarget::GPU, "Virtual Material Downsampling");
     }
     
 #endif
@@ -55,7 +69,7 @@ void MaterialEstimationPass::update()
 }
 
 void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3D *voxelOpacity, Texture3D *voxelNormal,
-                                              Texture3D *voxelReflectance, VoxelRegion regionL0, int voxelResolution) const
+                                              Texture3D *voxelReflectance, VoxelRegion region, int cliplevel, int voxelResolution) const
 {
     m_materialEstimaionShader->bind();
     m_materialEstimaionShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", 0);
@@ -65,23 +79,23 @@ void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3
 
     m_materialEstimaionShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
     m_materialEstimaionShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
-    m_materialEstimaionShader->setVectori("u_imageMin", regionL0.getMinPosImage(regionL0.extent));
-    m_materialEstimaionShader->setVectori("u_regionMin", regionL0.minPos);
-    // std::cout << "u_imageMin: " << regionL0.getMinPosImage(regionL0.extent) << std::endl;
-    // std::cout << "u_regionMin: " << regionL0.minPos << std::endl;
-    // std::cout << "getMaxPos(): " << regionL0.getMaxPos() << std::endl;
-    m_materialEstimaionShader->setFloat("u_voxelSizeL0", regionL0.voxelSize);
-    // std::cout << "u_voxelSizeL0: " << regionL0.voxelSize << std::endl;
-    // std::cout << "u_worldMin from voxel: " << glm::vec3(regionL0.minPos) * regionL0.voxelSize << std::endl;
-    // std::cout << "u_worldMin from voxel: " << glm::vec3(regionL0.getMaxPos()) * regionL0.voxelSize << std::endl;
-    m_materialEstimaionShader->setVector("u_volumeCenterL0", regionL0.getCenterPosWorld());
+    m_materialEstimaionShader->setVectori("u_imageMin", region.getMinPosImage(region.extent));
+    m_materialEstimaionShader->setVectori("u_regionMin", region.minPos);
+    // std::cout << "u_imageMin: " << region.getMinPosImage(region.extent) << std::endl;
+    // std::cout << "u_regionMin: " << region.minPos << std::endl;
+    // std::cout << "getMaxPos(): " << region.getMaxPos() << std::endl;
+    m_materialEstimaionShader->setFloat("u_voxelSizeL0", region.voxelSize);
+    // std::cout << "u_voxelSizeL0: " << region.voxelSize << std::endl;
+    // std::cout << "u_worldMin from voxel: " << glm::vec3(region.minPos) * region.voxelSize << std::endl;
+    // std::cout << "u_worldMin from voxel: " << glm::vec3(region.getMaxPos()) * region.voxelSize << std::endl;
+    m_materialEstimaionShader->setVector("u_volumeCenterL0", region.getCenterPosWorld());
     m_materialEstimaionShader->setFloat("u_occlusionDecay", GI_SETTINGS.occlusionDecay);
     m_materialEstimaionShader->setFloat("u_indirectDiffuseIntensity", GI_SETTINGS.indirectDiffuseIntensity);
     m_materialEstimaionShader->setUnsignedInt("u_irradianceOnly", DEBUG_SETTINGS.irradianceOnly.value? 1 : 0);
 
     m_materialEstimaionShader->setInt("u_clipmapResolution", voxelResolution);
     m_materialEstimaionShader->setInt("u_clipmapResolutionWithBorder", voxelResolution + 2);
-    m_materialEstimaionShader->setInt("u_clipmapLevel", 0);
+    m_materialEstimaionShader->setInt("u_clipmapLevel", cliplevel);
 
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Estimate Material");
 
@@ -94,7 +108,7 @@ void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3
 }
 
 void MaterialEstimationPass::estimateVirtualMaterial(Texture3D *voxelOpacity, Texture3D *voxelDiffuse, Texture3D *voxelSpecularA,
-                                                     VoxelRegion regionL0, int voxelResolution) const
+                                                     VoxelRegion region, int cliplevel, int voxelResolution) const
 {
     m_virutalMaterialVoxelizeShader->bind();
     
@@ -111,22 +125,22 @@ void MaterialEstimationPass::estimateVirtualMaterial(Texture3D *voxelOpacity, Te
 
     m_virutalMaterialVoxelizeShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
     m_virutalMaterialVoxelizeShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
-    m_virutalMaterialVoxelizeShader->setVectori("u_imageMin", regionL0.getMinPosImage(regionL0.extent));
-    m_virutalMaterialVoxelizeShader->setVectori("u_regionMin", regionL0.minPos);
-    // std::cout << "u_imageMin: " << regionL0.getMinPosImage(regionL0.extent) << std::endl;
-    // std::cout << "u_regionMin: " << regionL0.minPos << std::endl;
-    // std::cout << "getMaxPos(): " << regionL0.getMaxPos() << std::endl;
-    m_virutalMaterialVoxelizeShader->setFloat("u_voxelSizeL0", regionL0.voxelSize);
-    // std::cout << "u_voxelSizeL0: " << regionL0.voxelSize << std::endl;
-    // std::cout << "u_worldMin from voxel: " << glm::vec3(regionL0.minPos) * regionL0.voxelSize << std::endl;
-    // std::cout << "u_worldMin from voxel: " << glm::vec3(regionL0.getMaxPos()) * regionL0.voxelSize << std::endl;
-    m_virutalMaterialVoxelizeShader->setVector("u_volumeCenterL0", regionL0.getCenterPosWorld());
+    m_virutalMaterialVoxelizeShader->setVectori("u_imageMin", region.getMinPosImage(region.extent));
+    m_virutalMaterialVoxelizeShader->setVectori("u_regionMin", region.minPos);
+    // std::cout << "u_imageMin: " << region.getMinPosImage(region.extent) << std::endl;
+    // std::cout << "u_regionMin: " << region.minPos << std::endl;
+    // std::cout << "getMaxPos(): " << region.getMaxPos() << std::endl;
+    m_virutalMaterialVoxelizeShader->setFloat("u_voxelSize", region.voxelSize);
+    // std::cout << "u_voxelSize: " << region.voxelSize << std::endl;
+    // std::cout << "u_worldMin from voxel: " << glm::vec3(region.minPos) * region.voxelSize << std::endl;
+    // std::cout << "u_worldMin from voxel: " << glm::vec3(region.getMaxPos()) * region.voxelSize << std::endl;
+    m_virutalMaterialVoxelizeShader->setVector("u_volumeCenter", region.getCenterPosWorld());
     m_virutalMaterialVoxelizeShader->setFloat("u_occlusionDecay", GI_SETTINGS.occlusionDecay);
     m_virutalMaterialVoxelizeShader->setFloat("u_indirectDiffuseIntensity", GI_SETTINGS.indirectDiffuseIntensity);
 
     m_virutalMaterialVoxelizeShader->setInt("u_clipmapResolution", voxelResolution);
     m_virutalMaterialVoxelizeShader->setInt("u_clipmapResolutionWithBorder", voxelResolution + 2);
-    m_virutalMaterialVoxelizeShader->setInt("u_clipmapLevel", 0);
+    m_virutalMaterialVoxelizeShader->setInt("u_clipmapLevel", cliplevel);
 
     QueryManager::beginElapsedTime(QueryTarget::GPU, "Estimate Virtual Material");
 
@@ -136,13 +150,4 @@ void MaterialEstimationPass::estimateVirtualMaterial(Texture3D *voxelOpacity, Te
     glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     QueryManager::endElapsedTime(QueryTarget::GPU, "Estimate Virtual Material");
-}
-
-void MaterialEstimationPass::downsample(Texture3D *voxelRadiance, std::vector<VoxelRegion> &clipRegions, int clipRegionCount, int voxelResolution) const
-{
-    QueryManager::beginElapsedTime(QueryTarget::GPU, "Reflectance Downsampling");
-
-    Downsampler::downsample(voxelRadiance, &clipRegions, clipRegionCount, voxelResolution);
-    
-    QueryManager::endElapsedTime(QueryTarget::GPU, "Reflectance Downsampling");
 }

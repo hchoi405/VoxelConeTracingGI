@@ -15,8 +15,8 @@ uniform layout(rgba8) image3D u_voxelSpecularA;
 
 uniform ivec3 u_imageMin;
 uniform ivec3 u_regionMin;
-uniform float u_voxelSizeL0;
-uniform vec3 u_volumeCenterL0;
+uniform float u_voxelSize;
+uniform vec3 u_volumeCenter;
 uniform float u_traceStartOffset;
 uniform float u_stepFactor;
 uniform float u_occlusionDecay;
@@ -32,7 +32,7 @@ uniform int u_clipmapLevel;
 
 vec3 worldPosFromVoxelPos(ivec3 posV)
 {
-    vec4 p = vec4(vec3(posV) * u_voxelSizeL0, 1.0);
+    vec4 p = vec4(vec3(posV) * u_voxelSize, 1.0);
     return p.xyz;
 }
 
@@ -55,22 +55,23 @@ void main()
 	imagePos += ivec3(BORDER_WIDTH);
 #endif
 
-    // for (int i=0; i<6; ++i) 
-    // {
-    //     if (texelFetch(u_voxelOpacity, imagePos, 0) == 0.0) { // zero opacity == no face
-            // imageStore(u_voxelDiffuse, imagePos, vec4(0.0));
-            // imageStore(u_voxelSpecularA, imagePos, vec4(0.0));
-    //     }
-    //     else {
-    //         imageStore(u_voxelDiffuse, imagePos, vec4(vec3(posW), 1));
-    //         imageStore(u_voxelSpecularA, imagePos, vec4(vec3(posW), 1));
-    //     }
-    //     imagePos.x += u_clipmapResolutionWithBorder;
-    // }
-    // return;
-
 	imagePos.y += u_clipmapResolutionWithBorder * u_clipmapLevel;
-    
+
+    for (int i=0; i<6; ++i) 
+    {
+        if (texelFetch(u_voxelOpacity, imagePos, 0) == 0.0) { // zero opacity == no face
+            imageStore(u_voxelDiffuse, imagePos, vec4(0.0));
+            imageStore(u_voxelSpecularA, imagePos, vec4(0.0));
+        }
+        else {
+            imageStore(u_voxelDiffuse, imagePos, vec4(vec3(posW), 1));
+            imageStore(u_voxelSpecularA, imagePos, vec4(vec3(posW), 1));
+        }
+        imageStore(u_voxelDiffuse, imagePos, vec4(vec3(1), 1));
+        imagePos.x += u_clipmapResolutionWithBorder;
+    }
+    return;
+
     for (int j = 0; j < 6; ++j)
     {
         vec4 opacity = texelFetch(u_voxelOpacity, imagePos, 0);

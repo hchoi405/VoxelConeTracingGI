@@ -158,6 +158,7 @@ void VoxelConeTracingDemo::update()
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);
         // Use injection pass only once because one update is enough for point cloud
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
+        m_renderPipeline->getRenderPass<MaterialEstimationPass>()->setEnabled(once);
         once = false;
         m_renderPipeline->getRenderPass<SceneGeometryPass>()->setEnabled(true);
     }
