@@ -13,6 +13,7 @@
 #include "engine/rendering/util/ImageCleaner.h"
 #include "engine/util/ECSUtil/ECSUtil.h"
 #include "ClipmapUpdatePolicy.h"
+#include "CopyAlpha.h"
 
 RadianceInjectionPass::RadianceInjectionPass()
     : RenderPass("RadianceInjectionPass")
@@ -25,8 +26,6 @@ RadianceInjectionPass::RadianceInjectionPass()
 
     m_pointCloudVoxelizationShader = ResourceManager::getShader("shaders/voxelConeTracing/injectLightByPointCloud.vert",
                                                                 "shaders/voxelConeTracing/injectLightByPointCloud.frag", "shaders/voxelConeTracing/injectLightByPointCloud.geom");
-
-    m_copyAlphaShader = ResourceManager::getComputeShader("shaders/voxelConeTracing/copyAlpha6Faces.comp");
 
     m_cachedClipRegions.resize(CLIP_REGION_COUNT);
     m_virtualCachedClipRegions.resize(VIRTUAL_CLIP_REGION_COUNT);
@@ -57,9 +56,10 @@ void RadianceInjectionPass::update()
     auto shader = getSelectedShader();
     shader->setInt("u_normalOnly", 0);
     injectByVoxelization(shader, voxelRadiance, voxelNormal, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
-    copyAlpha(voxelRadiance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
+
+    CopyAlpha::copyAlpha(voxelRadiance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelRadiance, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
-    copyAlpha(voxelNormal, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
+    CopyAlpha::copyAlpha(voxelNormal, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelNormal, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
 
 #ifdef VIRTUAL
@@ -85,9 +85,9 @@ void RadianceInjectionPass::update()
     shader->setInt("u_normalOnly", 1);
     injectByVoxelization(shader, virtualVoxelRadiance, virtualVoxelNormal, m_voxelizationMode,
                          *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
-    copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    CopyAlpha::copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelRadiance, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
-    copyAlpha(virtualVoxelNormal, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    CopyAlpha::copyAlpha(virtualVoxelNormal, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelNormal, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
 #endif
 
@@ -165,36 +165,6 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
 
     voxelizer->endVoxelization(m_renderPipeline->getCamera()->getViewport());
     QueryManager::endElapsedTime(QueryTarget::GPU, "Radiance Voxelization");
-}
-
-void RadianceInjectionPass::copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int clipLevel, int voxelResolution) const
-{
-    m_copyAlphaShader->bind();
-    m_copyAlphaShader->bindTexture3D(*voxelOpacity, "u_srcTexture", 0);
-    m_copyAlphaShader->bindImage3D(*voxelRadiance, "u_dstImage", GL_READ_WRITE, GL_RGBA8, 0);
-
-    m_copyAlphaShader->setInt("u_clipmapResolution", voxelResolution);
-    m_copyAlphaShader->setInt("u_clipmapResolutionWithBorder", voxelResolution + 2);
-    m_copyAlphaShader->setInt("u_clipmapLevel", clipLevel);
-
-    GLuint groupCount = voxelResolution / 8;
-    m_copyAlphaShader->dispatchCompute(groupCount, groupCount, groupCount);
-}
-
-void RadianceInjectionPass::copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int voxelResolution, ClipmapUpdatePolicy *clipmapUpdatePolicy) const
-{
-    QueryManager::beginElapsedTime(QueryTarget::GPU, "Copy Alpha");
-    auto &levelsToUpdate = clipmapUpdatePolicy->getLevelsScheduledForUpdate();
-
-    // Copy alpha from opacity texture (this allows us to access just one texture during GI pass)
-    for (auto level : levelsToUpdate)
-    {
-        copyAlpha(voxelRadiance, voxelOpacity, level, voxelResolution);
-    }
-
-    glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-    QueryManager::endElapsedTime(QueryTarget::GPU, "Copy Alpha");
 }
 
 void RadianceInjectionPass::downsample(Texture3D *voxelRadiance, std::vector<VoxelRegion> &cachedClipRegions, int clipRegionCount,

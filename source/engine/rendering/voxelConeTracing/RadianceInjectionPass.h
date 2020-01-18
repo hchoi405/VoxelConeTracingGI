@@ -36,14 +36,11 @@ private:
 
     void downsample(Texture3D *voxelRadiance, std::vector<VoxelRegion> &cachedClipRegions, int clipRegionCount, int voxelResolution,
                     ClipmapUpdatePolicy *clipmapUpdatePolicy) const;
-    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int clipLevel, int voxelResolution) const;
-    void copyAlpha(Texture3D *voxelRadiance, Texture3D *voxelOpacity, int voxelResolution, ClipmapUpdatePolicy *clipmapUpdatePolicy) const;
 
 private:
     std::shared_ptr<Shader> m_conservativeVoxelizationShader;
     std::shared_ptr<Shader> m_msaaVoxelizationShader;
     std::shared_ptr<Shader> m_pointCloudVoxelizationShader;
-    std::shared_ptr<Shader> m_copyAlphaShader;
     VoxelizationMode m_voxelizationMode{VoxelizationMode::CONSERVATIVE};
 
     ClipmapUpdatePolicy *m_clipmapUpdatePolicy{nullptr};
