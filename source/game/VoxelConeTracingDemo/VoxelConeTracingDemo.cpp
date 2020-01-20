@@ -31,6 +31,9 @@
 #include "engine/rendering/renderer/MeshRenderers.h"
 #include "engine/util/ECSUtil/EntityCreator.h"
 
+using namespace glm;
+#include "engine/rendering/tvcg17/common/commonStruct.h"
+
 VoxelConeTracingDemo::VoxelConeTracingDemo()
 {
     Input::subscribe(this);
@@ -63,6 +66,7 @@ VoxelConeTracingDemo::VoxelConeTracingDemo()
 void VoxelConeTracingDemo::initUpdate()
 {
     ResourceManager::setShaderIncludePath("shaders");
+    ResourceManager::setShaderIncludePath("../source/engine/rendering/tvcg17/common");
 
     createDemoScene();
 

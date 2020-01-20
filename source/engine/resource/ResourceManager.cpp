@@ -153,7 +153,7 @@ void ResourceManager::setShaderIncludePath(const std::string& path)
         {
             file::Path p(filename);
 
-            if (p.getExtension() == ".glsl")
+            if (p.getExtension() == ".glsl" || p.getExtension() == ".h")
             {
                 std::string fPath = directoryPath + "/" + filename;
                 std::string rPath(fPath.substr(pathLength));

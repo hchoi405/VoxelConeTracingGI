@@ -7,43 +7,13 @@
 #include "/shadows/shadows.glsl"
 #include "/intersection.glsl"
 #include "/voxelConeTracing/conversion.glsl"
+#include "/commonStruct.h"
 
 in Vertex
 {
     vec2 texCoords;
 } In;
 
-struct VCTIntersection {
-    bool hit;
-    vec3 position;
-    vec3 normal;
-    float level;
-    bool hitOnly;
-};
-
-struct VCTCone {
-    vec3 p;
-    vec3 dir;
-    float aperture;
-    float curLevel;
-    int depth;
-};
-
-struct VCTScene {
-    float voxelSizeL0;
-    uint volumeDimension;
-    vec3 volumeCenter;
-    uint maxClipmapLevel;
-    float maxClipmapLevelInv;
-    bool isVirtual;
-
-};
-
-struct VCTParams {
-    float stepFactor;
-    float occlusionDecay;
-    float maxDistance;
-};
 
 #define DIRECT_LIGHTING_BIT 1
 #define INDIRECT_DIFFUSE_LIGHTING_BIT 2
