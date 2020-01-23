@@ -20,8 +20,6 @@ in Vertex
 #define INDIRECT_SPECULAR_LIGHTING_BIT 4
 #define AMBIENT_OCCLUSION_BIT 8
 
-// #define DEBUG
-
 const float MAX_TRACE_DISTANCE = 15.0;
 const float MIN_STEP_FACTOR = 0.2;
 const float MIN_SPECULAR_APERTURE = 0.05;
@@ -54,6 +52,7 @@ uniform vec3 u_eyePos;
 uniform float u_voxelSizeL0;
 uniform vec3 u_volumeCenterL0;
 uniform float u_stepFactor;
+uniform float u_virtualStepFactor;
 uniform float u_viewAperture;
 uniform int u_lightingMask;
 uniform float u_indirectDiffuseIntensity;
@@ -79,6 +78,7 @@ uniform float u_indirectSpecularShadow;
 uniform float u_indirectDiffuseShadow;
 uniform uint u_secondBounce;
 uniform float u_secondIndirectDiffuse;
+uniform float u_secondIndirectSpecular;
 uniform uint u_realReflectance;
 
 layout(location = 0) out vec4 out_color;
@@ -219,7 +219,7 @@ vec4 sampleUnifiedClipmapLinearly(sampler3D clipmapTexture, vec3 position, float
     return mix(lowSample, highSample, fract(curLevel));
 }
 
-vec4 castConeUnified(in VCTCone c, const VCTScene scene, inout VCTIntersection primaryIsect)
+vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection primaryIsect, bool primaryOnly = false)
 {
     primaryIsect.hit = false;
     // Initialize accumulated color and opacity
@@ -261,7 +261,7 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, inout VCTIntersection p
     // Diameter of cone at start position is the l0 voxel size
     float diameter = max(s * coneCoefficient, scene.voxelSizeL0);
 
-    float stepFactor = max(MIN_STEP_FACTOR, params.stepFactor);
+    float stepFactor = max(MIN_STEP_FACTOR, scene.stepFactor);
 	float occlusion = 0.0;
 
     ivec3 faceIndices = computeVoxelFaceIndices(c.dir); // Implementation in voxelConeTracing/common.glsl
@@ -291,7 +291,7 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, inout VCTIntersection p
             primaryIsect.normal = unpackNormal(sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0, scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight).rgb);
             primaryIsect.level = c.curLevel;
             primaryIsect.hit = true;
-            if(primaryIsect.hitOnly) break;
+            if(primaryOnly) break;
         }
 
         voxelSize = scene.voxelSizeL0 * exp2(c.curLevel);
@@ -349,6 +349,7 @@ vec4 minLevelToColor(float minLevel)
 	return minLevelColor * 0.5;
 }
 
+// minLevel: minimum level at primary intersection point for real/virtual object
 vec4 castDiffuseCones(vec3 startPos, vec3 normal, float minLevel, bool traceVirtual, bool inverse = false)
 {
     VCTIntersection tmpIsect;
@@ -374,21 +375,47 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float minLevel, bool traceVirt
             // Find hitpoint with virtual object
             VCTIntersection isect;
 
-            indirectContribution += castConeUnified(c, virtualScene, isect) * cosTheta;
+            // Accumulate the opacity
+            indirectContribution.a += castConeUnified(c, virtualScene, isect).a * cosTheta;
 
             // 2nd: from virtual to real
             if (isect.hit && u_secondBounce == 1) {
+                // indirectContribution += vec4(1,0,0,1);
+                // continue;
                 vec3 weight = DIFFUSE_CONE_DIRECTIONS[i] * DIFFUSE_CONE_DIRECTIONS[i];
                 ivec3 inFaceIndices = computeVoxelFaceIndices(DIFFUSE_CONE_DIRECTIONS[i]);
+                vec3 faceOffsets = vec3(inFaceIndices) * FACE_COUNT_INV;
                 // minLevel: virtualMinLevel
-                vec3 diffuse = sampleUnifiedClipmapLinearly(getDiffuse(virtualScene.isVirtual), isect.position, c.curLevel, virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, inFaceIndices, weight).rgb;
-                vec4 specularA = sampleUnifiedClipmapLinearly(getSpecularA(virtualScene.isVirtual), isect.position, c.curLevel, virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, inFaceIndices, weight);
+                vec3 diffuse = sampleUnifiedClipmapLinearly(getDiffuse(virtualScene.isVirtual), isect.position, isect.level, virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, faceOffsets, weight).rgb;
+                vec4 specularA = sampleUnifiedClipmapLinearly(getSpecularA(virtualScene.isVirtual), isect.position, isect.level, virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, faceOffsets, weight);
                 vec3 specular = specularA.rgb;
                 float shininess = specularA.a;
                 float roughness = shininessToRoughness(shininess);
 
+                // indirectContribution += vec4(diffuse, 1);
+                // continue;
+
                 // minLevel2: real min level at hit position
-                float minLevel2 = getMinLevel(isect.position, u_volumeCenterL0, u_voxelSizeL0, u_volumeDimension);   
+                float minLevel2 = getMinLevel(isect.position, realScene.volumeCenter, realScene.voxelSizeL0, realScene.volumeDimension);   
+
+                VCTCone c2;
+                c2.p = isect.position;
+                c2.dir = reflect(c.dir, isect.normal);
+                c2.aperture = max(roughness, MIN_SPECULAR_APERTURE);
+                c2.curLevel = minLevel2;
+                // vec4 specularContribution = castConeUnified(c2, realScene, tmpIsect);
+                // vec3 virtualContribution = diffuse * specularContribution.rgb * u_secondIndirectSpecular * cosTheta;
+                // indirectContribution.rgb += virtualContribution.rgb;
+
+                // indirectContribution.rgb += isect.position;
+                // indirectContribution.rgb += vec3(1-indirectContribution.a);
+                // indirectContribution.rgb += specularContribution.rgb * u_secondIndirectSpecular * cosTheta;
+                // indirectContribution.rgb += diffuse * u_secondIndirectSpecular;
+                // indirectContribution.rgb += vec3(1.f);
+                
+                vec4 realContribution = castConeUnified(c, realScene, tmpIsect) * cosTheta;
+                indirectContribution.rgb -= realContribution.rgb;
+
                 vec4 diffuseContribution = vec4(0.0);
                 for (int j = 0; j < DIFFUSE_CONE_COUNT; ++j) {
                     float cosTheta2 = dot(isect.normal, DIFFUSE_CONE_DIRECTIONS[j]);
@@ -397,16 +424,17 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float minLevel, bool traceVirt
                         continue;
 
                     VCTCone c2;
-                    c.p = isect.position;
-                    c.dir = DIFFUSE_CONE_DIRECTIONS[j];
-                    c.aperture = DIFFUSE_CONE_APERTURE;
-                    c.curLevel = minLevel2;
+                    c2.p = isect.position;
+                    c2.dir = DIFFUSE_CONE_DIRECTIONS[j];
+                    c2.aperture = DIFFUSE_CONE_APERTURE;
+                    c2.curLevel = minLevel2;
 
                     diffuseContribution += castConeUnified(c2, realScene, tmpIsect) * cosTheta2;
                 }
                 diffuseContribution /= DIFFUSE_CONE_COUNT * 0.5;
-                indirectContribution.rgb += diffuse * diffuseContribution.rgb * u_secondIndirectDiffuse;
+                indirectContribution.rgb += diffuseContribution.rgb * u_secondIndirectDiffuse;
             }
+
         // : from virtual to real
         } else { 
             indirectContribution += castConeUnified(c, realScene, tmpIsect) * cosTheta;
@@ -428,9 +456,6 @@ void main()
     vec3 posW = worldPosFromDepth(depth);
     vec3 view = normalize(u_eyePos - posW);
     vec4 specColor = texture(u_specularMap, In.texCoords);
-    
-    float minLevel = getMinLevel(posW, u_volumeCenterL0, u_voxelSizeL0, u_volumeDimension);
-    float virtualMinLevel = getMinLevel(posW, u_virtualVolumeCenterL0, u_virtualVoxelSizeL0, u_virtualVolumeDimension);
 
     // Scene setup
     virtualScene.voxelSizeL0 = u_virtualVoxelSizeL0;
@@ -438,6 +463,7 @@ void main()
     virtualScene.volumeCenter = u_virtualVolumeCenterL0;
     virtualScene.maxClipmapLevel = VIRTUAL_CLIP_LEVEL_COUNT;
     virtualScene.maxClipmapLevelInv = VIRTUAL_CLIP_LEVEL_COUNT_INV;
+    virtualScene.stepFactor = u_virtualStepFactor;
     virtualScene.isVirtual = true;
 
     realScene.voxelSizeL0 = u_voxelSizeL0;
@@ -445,12 +471,15 @@ void main()
     realScene.volumeCenter = u_volumeCenterL0;
     realScene.maxClipmapLevel = CLIP_LEVEL_COUNT;
     realScene.maxClipmapLevelInv = CLIP_LEVEL_COUNT_INV;
+    realScene.stepFactor = u_stepFactor;
     realScene.isVirtual = false;
 
     // Parameter setup
-    params.stepFactor = u_stepFactor;
     params.occlusionDecay = u_occlusionDecay;
     params.maxDistance = MAX_TRACE_DISTANCE;
+
+    float minLevel = getMinLevel(posW, realScene.volumeCenter, realScene.voxelSizeL0, realScene.volumeDimension);
+    float virtualMinLevel = getMinLevel(posW, virtualScene.volumeCenter, virtualScene.voxelSizeL0, virtualScene.volumeDimension);
     
     // Compute indirect contribution
     vec4 indirectContribution = vec4(0.0);
@@ -471,24 +500,25 @@ void main()
     }
     else {
         ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
+        vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
         vec3 weight = normal * normal;
-        vec3 reflectance = sampleUnifiedClipmapLinearly(u_voxelReflectance, startPos, minLevel, realScene.voxelSizeL0, realScene.volumeDimension, realScene.maxClipmapLevelInv, outFaceIndices, weight).rgb;
+        vec3 reflectance = sampleUnifiedClipmapLinearly(u_voxelReflectance, startPos, minLevel, realScene.voxelSizeL0, realScene.volumeDimension, realScene.maxClipmapLevelInv, faceOffsets, weight).rgb;
 
         // Occlusion-based shadow + color bleeding of virtual object
-        indirectContribution = castDiffuseCones(startPos, normal, virtualMinLevel, true);
-        indirectContribution.rgb *= reflectance;
+        indirectContribution = castDiffuseCones(startPosOffset, normal, virtualMinLevel, true);
+
+        if (u_realReflectance == 1)
+            indirectContribution.rgb *= reflectance;
     }
 
     // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
 	indirectContribution /= DIFFUSE_CONE_COUNT * 0.5;
     indirectContribution.a *= u_ambientOcclusionFactor;
-#ifdef DEBUG
-    out_color = vec4(vec3(1-indirectContribution.a), 1) ;
-    return;
-#endif
+    // out_color = vec4(indirectContribution.rgb, 1) ;
+    // return;
     
 	indirectContribution.rgb *= diffuse * u_indirectDiffuseIntensity;
-    indirectContribution = clamp(indirectContribution, 0.0, 1.0);
+    indirectContribution = clamp(indirectContribution, -1.0, 1.0);
     
 	// Specular cone
     vec3 specularConeDirection = reflect(-view, normal);
@@ -504,6 +534,7 @@ void main()
         c.dir = specularConeDirection;
         c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
         c.curLevel = minLevel;
+        c.depth = 0;
 
         // Radiance
         VCTIntersection isect;
@@ -550,7 +581,12 @@ void main()
         out_color.rgb = vec3(indirectContribution.a);
         
     if (u_visualizeMinLevelSelection > 0)
-        out_color *= minLevelToColor(minLevel);
+    {
+        if (isVirtualFrag)
+            out_color *= minLevelToColor(virtualMinLevel);
+        else
+            out_color *= minLevelToColor(minLevel);
+    }
 
     if (isVirtualFrag) {
         out_color = clamp(out_color, 0.0, 1.0);

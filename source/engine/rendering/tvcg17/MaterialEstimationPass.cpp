@@ -23,6 +23,8 @@ MaterialEstimationPass::MaterialEstimationPass()
 
 void MaterialEstimationPass::update()
 {
+    static unsigned char zero[]{0, 0, 0, 0};
+    
     auto voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
     auto voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
     auto voxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VoxelNormal");
@@ -30,6 +32,7 @@ void MaterialEstimationPass::update()
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
 
     if (m_initializing) {
+        glClearTexImage(*voxelReflectance, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
         QueryManager::beginElapsedTime(QueryTarget::GPU, "Material Estimation");
         for (int i = 0; i < CLIP_REGION_COUNT; ++i)
         {
@@ -50,6 +53,8 @@ void MaterialEstimationPass::update()
     auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
 
     if (m_initializing) {
+        glClearTexImage(*virtualVoxelDiffuse, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+        glClearTexImage(*virtualVoxelSpecularA, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
         QueryManager::beginElapsedTime(QueryTarget::GPU, "Virtual Material Estimation");
         for (int i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
         {
@@ -65,7 +70,7 @@ void MaterialEstimationPass::update()
     
 #endif
 
-    m_initializing = false;
+    // m_initializing = false;
 }
 
 void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3D *voxelOpacity, Texture3D *voxelNormal,
