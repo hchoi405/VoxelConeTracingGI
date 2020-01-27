@@ -98,8 +98,7 @@ glm::vec3 Transform::getLocalEulerAngles() const { return math::eulerAngles(m_ro
 
 void Transform::setEulerAngles(const glm::vec3& eulerAngles)
 {
-    glm::quat rotation = math::eulerYXZQuat(eulerAngles);
-    m_rotation = m_parent ? m_parent->getWorldToLocalRotation() * rotation : rotation;
+    m_rotation = math::eulerYXZQuat(eulerAngles);
     updateCache();
     m_eulerAnglesWorld = eulerAngles;
 }
