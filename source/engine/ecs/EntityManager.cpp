@@ -84,6 +84,14 @@ void EntityManager::setVirtual(const Entity& entity, bool _virtual)
 {
     assert(entity);
     m_virtuals[entity.m_id] = _virtual;
+
+    if (entity.hasComponent<Transform>())
+    {
+        for (auto childTransform : entity.getComponentPtr<Transform>()->getChildren())
+        {
+            childTransform->getOwner().setVirtual(_virtual);
+        }
+    }
 }
 
 bool EntityManager::isVirtual(const Entity& entity)
