@@ -2,6 +2,7 @@
 #include <engine/rendering/shader/Shader.h>
 #include <engine/rendering/geometry/Mesh.h>
 #include <engine/rendering/architecture/RenderPass.h>
+#include <engine/rendering/Material.h>
 #include "../voxelConeTracing/voxelization.h"
 #include "../voxelConeTracing/Globals.h"
 #include "../voxelConeTracing/ClipmapUpdatePolicy.h"
@@ -21,7 +22,7 @@ private:
     void estimateMaterial(Texture3D *voxelRadiance, Texture3D *voxelOpacity, Texture3D *voxelNormal, Texture3D *voxelReflectance,
                           VoxelRegion regionL0, int cliplevel, int voxelResolution) const;
     void estimateVirtualMaterial(Texture3D *virtualVoxelOpacity, Texture3D *voxelDiffuse, Texture3D *voxelSpecularA,
-                                 VoxelRegion regionL0, int cliplevel, int virtualVoxelResolution) const;
+                                 VoxelRegion regionL0, int cliplevel, int virtualVoxelResolution, std::shared_ptr<Material> material) const;
 
 private:
     std::shared_ptr<Shader> m_materialEstimaionShader;

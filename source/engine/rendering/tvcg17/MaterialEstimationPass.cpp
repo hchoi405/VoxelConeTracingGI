@@ -56,9 +56,14 @@ void MaterialEstimationPass::update()
         glClearTexImage(*virtualVoxelDiffuse, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
         glClearTexImage(*virtualVoxelSpecularA, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
         QueryManager::beginElapsedTime(QueryTarget::GPU, "Virtual Material Estimation");
+        auto virtualTransform = ECS::getEntityByName("virtualObject").getComponent<Transform>();
         for (int i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i)
         {
-            estimateVirtualMaterial(virtualVoxelOpacity, virtualVoxelDiffuse, virtualVoxelSpecularA, virtualClipRegions->at(i), i, VIRTUAL_VOXEL_RESOLUTION);
+            for (size_t j = 0; j < virtualTransform->getChildren().size(); ++j)
+            {
+                auto material = virtualTransform->getChildren()[j]->getOwner().getComponent<MeshRenderer>()->getMaterial(0);
+                estimateVirtualMaterial(virtualVoxelOpacity, virtualVoxelDiffuse, virtualVoxelSpecularA, virtualClipRegions->at(i), i, VIRTUAL_VOXEL_RESOLUTION, material);
+            }
         }
         QueryManager::endElapsedTime(QueryTarget::GPU, "Virtual Material Estimation");
 
@@ -113,12 +118,9 @@ void MaterialEstimationPass::estimateMaterial(Texture3D *voxelRadiance, Texture3
 }
 
 void MaterialEstimationPass::estimateVirtualMaterial(Texture3D *voxelOpacity, Texture3D *voxelDiffuse, Texture3D *voxelSpecularA,
-                                                     VoxelRegion region, int cliplevel, int voxelResolution) const
+                                                     VoxelRegion region, int cliplevel, int voxelResolution, std::shared_ptr<Material> material) const
 {
     m_virutalMaterialVoxelizeShader->bind();
-    
-    Entity virtualEntity = ECS::getEntityByName("virtualObject");
-    auto material = virtualEntity.getComponent<MeshRenderer>()->getMaterial(0);
 
     m_virutalMaterialVoxelizeShader->setFloat("u_shininess", material->getFloat("u_shininess"));
     m_virutalMaterialVoxelizeShader->setVector("u_diffuseColor", material->getVector4("u_color"));

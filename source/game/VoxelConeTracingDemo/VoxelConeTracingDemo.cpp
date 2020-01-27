@@ -122,7 +122,7 @@ void VoxelConeTracingDemo::initUpdate()
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
 
     // Deactivate after construction of VoxelizationPass to receive deactivated event
-    virtualTransform->getOwner().setActive(false);
+    // virtualTransform->getOwner().setActive(false);
     
     m_initializing = false;
 }
@@ -268,6 +268,9 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
                   << " to camera.txt" << std::endl;
         break;
     }
+    case SDLK_z:
+        m_gui->selectEntity(virtualTransform->getOwner(), false);
+    break;
     case SDLK_F5:
         m_engine->requestScreenshot();
         break;
@@ -476,19 +479,49 @@ void VoxelConeTracingDemo::createDemoScene()
     // virtualTransform->setPosition(glm::vec3(1.35, 0.55, -1.3));
     // virtualTransform->getOwner().setVirtual(true);
 
-    // // Virtual Buddha
-    ResourceManager::getModel("meshes/buddha/buddha.ply")->name = "virtualObject";
-    virtualTransform = ECSUtil::loadMeshEntities("meshes/buddha/buddha.ply", shader, "", glm::vec3(10.f), true);
-    auto buddhaMaterial = EntityCreator::createMaterial();
-    buddhaMaterial->setFloat("u_shininess", 128.0f);
-    buddhaMaterial->setColor("u_color", glm::vec4(.7f, .2f, .2f, 1.0f));
-    buddhaMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-    buddhaMaterial->setColor("u_specularColor", glm::vec3(.7f));
-    virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial, 0);
-    virtualTransform->getOwner().setVirtual(true);
-    virtualTransform->getOwner().setActive(true);
-    virtualTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
-    virtualTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    // Virtual Buddha
+    auto vo1 = ResourceManager::getModel("meshes/buddha/buddha.ply");
+    vo1->name = "vo1";
+    auto vo2 = ResourceManager::getModel("meshes/buddha/buddha2.ply");
+    vo2->name = "vo2";
+
+    auto virtualObject = ECS::createEntity("virtualObject");
+    virtualObject.addComponent<Transform>();
+    auto parentTransform = virtualObject.getComponent<Transform>();
+
+    // buddha 1
+    auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(10.f), true);
+    auto buddhaMaterial1 = EntityCreator::createMaterial();
+    buddhaMaterial1->setFloat("u_shininess", 128.0);
+    buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
+    buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
+    buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
+    voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
+    voTransform1->getOwner().setVirtual(true);
+    voTransform1->getOwner().setActive(true);
+    voTransform1->setLocalPosition(glm::vec3(-0.5, 0, 0));
+    voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
+    voTransform1->setParent(parentTransform);
+
+    // buddha 2
+    auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(10.f), true);
+    auto buddhaMaterial2 = EntityCreator::createMaterial();
+    buddhaMaterial2->setFloat("u_shininess", 255.0);
+    buddhaMaterial2->setColor("u_color", glm::vec4());
+    buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
+    buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
+    voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
+    voTransform2->getOwner().setVirtual(true);
+    voTransform2->getOwner().setActive(true);
+    voTransform2->setLocalPosition(glm::vec3(0.5, 0, 0));
+    voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    voTransform2->setParent(parentTransform);
+    
+    parentTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
+    parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    parentTransform->getOwner().setVirtual(true);
+
+    virtualTransform = parentTransform;
 #endif
 
     if (sceneRootEntity)

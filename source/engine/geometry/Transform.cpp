@@ -119,6 +119,10 @@ void Transform::setParent(ComponentPtr<Transform> parent)
     m_parent = parent;
     m_root = parent->getRoot();
     m_parent->m_children.push_back(ComponentPtr<Transform>(getOwner()));
+    
+    // CAUTION! This function should be called after transforming the child (this) and before transform the parent
+    // Update parent's bbox to include child's
+    m_parent->m_originalBBox.unite(m_worldBBox);
 
     updateCacheHierarchy();
 }

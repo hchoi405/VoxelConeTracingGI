@@ -91,7 +91,7 @@ struct DebugSettings : VCTSettings
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     SliderFloat secondIndirectDiffuse{"Second bounce diffuse factor", 1.f, 1.f, 30.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular factor", 1.f, 1.f, 16.f};
-    CheckBox secondBounce{"Trace second bounce", true};
+    CheckBox secondBounce{"Trace second bounce", false};
     CheckBox realReflectance{"Apply relfectance of real object", true};
 };
 

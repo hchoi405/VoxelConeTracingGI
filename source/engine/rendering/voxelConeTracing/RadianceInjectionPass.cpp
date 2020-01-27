@@ -129,7 +129,10 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     if (voxelResolution == VIRTUAL_VOXEL_RESOLUTION) {
         auto virtualEntity = ECS::getEntityByName("virtualObject");
         desc.target = VoxelizationTarget::ENTITIES;
-        virtualEntity.getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
+        auto childTransforms = virtualEntity.getComponent<Transform>()->getChildren();
+        for (auto childT: childTransforms) {
+            childT->getOwner().getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
+        }
         desc.entities.push_back(virtualEntity);
     }
     else if (voxelResolution == VOXEL_RESOLUTION) {
@@ -160,7 +163,10 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
 
     if (voxelResolution == VIRTUAL_VOXEL_RESOLUTION) {
         auto virtualEntity = ECS::getEntityByName("virtualObject");
-        virtualEntity.getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_TRIANGLES, 0);
+        auto childTransforms = virtualEntity.getComponent<Transform>()->getChildren();
+        for (auto childT: childTransforms) {
+            childT->getOwner().getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_TRIANGLES, 0);
+        }
     }
 
     voxelizer->endVoxelization(m_renderPipeline->getCamera()->getViewport());
