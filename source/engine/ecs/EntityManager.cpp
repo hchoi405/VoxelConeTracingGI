@@ -1,4 +1,5 @@
 #include "EntityManager.h"
+#include "engine/geometry/Transform.h"
 #include "engine/event/event.h"
 #include "engine/event/EntityDeactivatedEvent.h"
 #include "engine/event/EntityActivatedEvent.h"
@@ -59,6 +60,13 @@ void EntityManager::setActive(const Entity& entity, bool active)
     assert(entity);
     bool wasActive = m_active[entity.m_id];
     m_active[entity.m_id] = active;
+    if (entity.hasComponent<Transform>())
+    {
+        for (auto childTransform : entity.getComponentPtr<Transform>()->getChildren())
+        {
+            childTransform->getOwner().setActive(active);
+        }
+    }
 
     if (wasActive && !active)
         Event::transmit<EntityDeactivatedEvent>(entity);
