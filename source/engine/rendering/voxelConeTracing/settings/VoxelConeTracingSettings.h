@@ -55,8 +55,8 @@ struct GISettings : VCTSettings
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 2.0f};
-    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 11.0f, 1.0f, 30.0f};
-    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 1.0f, 16.0f };
+    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
+    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     
     CheckBox directLighting{ "Direct Lighting", true };

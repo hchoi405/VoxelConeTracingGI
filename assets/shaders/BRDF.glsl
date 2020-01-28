@@ -4,6 +4,14 @@
 #define BLINN_PHONG_MODE_IDX 0
 #define COOK_TORRANCE_MODE_IDX 1
 
+#ifndef PI
+#define PI 3.14159265
+#endif
+
+#ifndef INV_PI
+#define INV_PI 0.318309886183791
+#endif
+
 float fresnel(vec3 viewVector, vec3 halfway)
 {
     return pow(1.0 - dot(viewVector, halfway), 5);
@@ -33,6 +41,28 @@ vec3 blinnPhongBRDF(vec3 Id, vec3 kd, vec3 Is, vec3 ks, vec3 normal, vec3 lightV
         specular = Is * ks * specFactor;
     
     return diffuse + specular;
+}
+
+vec3 sampleBeckmann(vec2 u, vec3 n, float roughness)
+{
+    float phi = u.x * 2 * PI;
+    float theta = acos(1.0 / (1 - roughness*roughness*log(1-u.y)));
+    float sinTheta = sin(theta);
+    float cosPhi = cos(phi);
+    float sinPhi = sin(phi);
+    float cosTheta = cos(theta);
+    vec3 ph = vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+
+    // Make arbitrary coordinate using normal
+    vec3 tangent, bitangent;
+    if (abs(n.x) > abs(n.y))
+        tangent = vec3(-n.z, 0, n.x) / sqrt(n.x * n.x + n.z * n.z);
+    else
+        tangent = vec3(0, n.z, -n.y) / sqrt(n.y * n.y + n.z * n.z);
+    bitangent = cross(n, tangent);
+    
+    /* Make our hemisphere orient around the normal. */
+    return tangent * ph.x + bitangent * ph.y + n * ph.z;
 }
 
 float beckmannNDF(vec3 n, vec3 h, float roughness)
@@ -67,6 +97,40 @@ vec3 cookTorranceBRDF(vec3 l, vec3 n, vec3 v, vec3 h, float roughness, vec3 F0)
     float denominator = 4.0 * nl * nv;
     
     return max(vec3(0.0), numerator / denominator);
+}
+
+/**
+ * Generate a cosine-weighted random point on the unit hemisphere oriented around 'n'.
+ * 
+ * @param rand a vector containing pseudo-random values
+ * @param n    the normal to orient the hemisphere around
+ * @returns    the cosine-weighted point on the oriented hemisphere
+ */
+vec3 randomCosineWeightedHemispherePoint(vec3 rand, vec3 n, out float pdf) {
+    float r = rand.x * 0.5 + 0.5;      // [-1..1) -> [0..1)
+    float angle = (rand.y + 1.0) * PI; // [-1..1] -> [0..2*PI)
+    float sr = sqrt(r);
+    vec2 p = vec2(sr * cos(angle), sr * sin(angle));
+    /*
+    * Unproject disk point up onto hemisphere:
+    * 1.0 == sqrt(x*x + y*y + z*z) -> z = sqrt(1.0 - x*x - y*y)
+    */
+    vec3 ph = vec3(p.xy, sqrt(1.0 - p * p));
+
+    // PDF
+    pdf = ph.z * INV_PI;
+
+    /*
+    * Compute some arbitrary tangent space for orienting
+    * our hemisphere 'ph' around the normal. We use the camera's up vector
+    * to have some fix reference vector over the whole screen.
+    */
+    vec3 tangent = normalize(rand);
+    vec3 bitangent = cross(tangent, n);
+    tangent = cross(bitangent, n);
+
+    /* Make our hemisphere orient around the normal. */
+    return tangent * ph.x + bitangent * ph.y + n * ph.z;
 }
 
 #endif

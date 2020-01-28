@@ -82,7 +82,7 @@ void main()
         }
     
         imageStore(u_voxelDiffuse, imagePos, vec4(u_diffuseColor.rgb, 1.0));
-        imageStore(u_voxelSpecularA, imagePos, vec4(u_specularColor, u_shininess));
+        imageStore(u_voxelSpecularA, imagePos, vec4(u_specularColor, packShininess(u_shininess)));
 
         imagePos.x += u_clipmapResolutionWithBorder;
     }

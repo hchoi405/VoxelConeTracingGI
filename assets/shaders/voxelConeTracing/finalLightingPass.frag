@@ -2,12 +2,13 @@
 #extension GL_ARB_shading_language_include : enable
 
 #include "/voxelConeTracing/settings.glsl"
-#include "/BRDF.glsl"
 #include "/voxelConeTracing/common.glsl"
+#include "/BRDF.glsl"
 #include "/shadows/shadows.glsl"
 #include "/intersection.glsl"
 #include "/voxelConeTracing/conversion.glsl"
 #include "/commonStruct.h"
+#include "/util/noise.glsl"
 
 in Vertex
 {
@@ -448,7 +449,7 @@ void main()
     float depth = texture2D(u_depthTexture, In.texCoords).r;
     if (depth == 1.0)
         discard;
-    // if (isVirtualFrag) discard;
+    // if (!isVirtualFrag) discard;
     vec3 diffuse = texture(u_diffuseTexture, In.texCoords).rgb;
     vec3 normal = unpackNormal(texture(u_normalMap, In.texCoords).rgb);
     vec3 emission = texture(u_emissionMap, In.texCoords).rgb;
@@ -529,6 +530,7 @@ void main()
     
     // Currentlly, only for the (isVirtualFrag == true)
     if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON) {
+        VCTIntersection isect;
         VCTCone c;
         c.p = startPos;
         c.dir = specularConeDirection;
@@ -536,19 +538,29 @@ void main()
         c.curLevel = minLevel;
         c.depth = 0;
 
-        // Radiance
-        VCTIntersection isect;
-        specularContribution = castConeUnified(c, realScene, isect).rgb * specColor.rgb * u_indirectSpecularIntensity;
+        vec3 indirectSpecular = vec3(0);
+        const int n = 1; 
+        for (int i=0; i<n; ++i) {
+            // sample next direction (for light direction)
+            vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i*2)));
+            vec3 direction = sampleBeckmann(u, normal, roughness); 
+            // vec3 direction = -reflect(view, normal);
 
-        // Delta
-        if (u_virtualSelfOcclusion == 1) {
-            c.p = startPosOffset;
-            c.curLevel = virtualMinLevel;
-            float a = castConeUnified(c, virtualScene, isect).a;
-            // anti radiance
-            specularContribution -= vec3(1-a) * specColor.rgb * u_indirectSpecularShadow;
+            vec3 lightDir = -direction;
+            vec3 halfway = normalize(view - lightDir);
+            float nDotL = max(0.0, dot(normal, -lightDir));
+            // for the last term F0, use 0.04 if it's plastic, use albeo if it's metal
+            vec3 cook = cookTorranceBRDF(-lightDir, normal, view, halfway, roughness, vec3(0.04));
+            c.dir = direction;
+            vec4 intensity = castConeUnified(c, realScene, isect) * u_indirectSpecularIntensity;
+            indirectSpecular += cook * specColor.rgb * intensity.rgb;
+            // out_color.rgb = indirectSpecular;
+            // return;
         }
-        
+        indirectSpecular /= n;
+
+        indirectContribution.rgb += indirectSpecular;
+
         // Find hit point for virtual object and cast difffuse cones again
         
     }
