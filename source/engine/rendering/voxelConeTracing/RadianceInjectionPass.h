@@ -30,8 +30,8 @@ public:
     Shader *getSelectedShader();
 
 private:
-    void injectByVoxelization(Shader *shader, Texture3D *voxelRadiance, Texture3D *voxelNormal,
-                              VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy, int voxelResolution, 
+    void injectByVoxelization(Shader *shader, Texture3D *voxelRadiance, Texture3D *voxelNormal, Texture3D *voxelDiffuse,
+                              Texture3D *voxelSpecularA, VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy, int voxelResolution,
                               std::vector<VoxelRegion> &cachedClipRegions);
 
     void downsample(Texture3D *voxelRadiance, std::vector<VoxelRegion> &cachedClipRegions, int clipRegionCount, int voxelResolution,

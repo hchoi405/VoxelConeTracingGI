@@ -36,6 +36,7 @@ void RadianceInjectionPass::update()
     auto voxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VoxelRadiance");
     auto voxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VoxelOpacity");
     auto voxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VoxelNormal");
+    auto voxelReflectance = m_renderPipeline->fetchPtr<Texture3D>("VoxelReflectance");
     m_clipmapUpdatePolicy = m_renderPipeline->fetchPtr<ClipmapUpdatePolicy>("ClipmapUpdatePolicy");
 
     auto clipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("ClipRegions");
@@ -55,17 +56,21 @@ void RadianceInjectionPass::update()
 
     auto shader = getSelectedShader();
     shader->setInt("u_normalOnly", 0);
-    injectByVoxelization(shader, voxelRadiance, voxelNormal, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
+    injectByVoxelization(shader, voxelRadiance, voxelNormal, voxelReflectance, nullptr, m_voxelizationMode, *m_clipmapUpdatePolicy, VOXEL_RESOLUTION, m_cachedClipRegions);
 
     CopyAlpha::copyAlpha(voxelRadiance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelRadiance, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     CopyAlpha::copyAlpha(voxelNormal, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
     downsample(voxelNormal, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
+    CopyAlpha::copyAlpha(voxelReflectance, voxelOpacity, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
+    downsample(voxelReflectance, m_cachedClipRegions, CLIP_REGION_COUNT, VOXEL_RESOLUTION, m_clipmapUpdatePolicy);
 
 #ifdef VIRTUAL
     auto virtualVoxelRadiance = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelRadiance");
     auto virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
     auto virtualVoxelNormal = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelNormal");
+    auto virtualVoxelDiffuse = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelDiffuse");
+    auto virtualVoxelSpecularA = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelSpecularA");
     m_virtualClipmapUpdatePolicy = m_renderPipeline->fetchPtr<ClipmapUpdatePolicy>("VirtualClipmapUpdatePolicy");
 
     auto virtualClipRegions = m_renderPipeline->fetchPtr<std::vector<VoxelRegion>>("VirtualClipRegions");
@@ -83,19 +88,22 @@ void RadianceInjectionPass::update()
         }
     }
     shader->setInt("u_normalOnly", 1);
-    injectByVoxelization(shader, virtualVoxelRadiance, virtualVoxelNormal, m_voxelizationMode,
-                         *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
+    injectByVoxelization(shader, virtualVoxelRadiance, virtualVoxelNormal, virtualVoxelDiffuse, virtualVoxelSpecularA, m_voxelizationMode, *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
     CopyAlpha::copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelRadiance, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     CopyAlpha::copyAlpha(virtualVoxelNormal, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelNormal, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    CopyAlpha::copyAlpha(virtualVoxelDiffuse, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    downsample(virtualVoxelDiffuse, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    CopyAlpha::copyAlpha(virtualVoxelSpecularA, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
+    downsample(virtualVoxelSpecularA, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
 #endif
 
     m_initializing = false;
 }
 
-void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxelRadiance, Texture3D *voxelNormal,
-                                                 VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy, int voxelResolution,
+void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxelRadiance, Texture3D *voxelNormal, Texture3D *voxelDiffuse,
+                                                 Texture3D *voxelSpecularA, VoxelizationMode voxelizationMode, ClipmapUpdatePolicy &clipmapUpdatePolicy, int voxelResolution,
                                                  std::vector<VoxelRegion> &cachedClipRegions)
 {
     static unsigned char zero[]{0, 0, 0, 0};
@@ -148,13 +156,13 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     voxelizer->beginVoxelization(desc);
     shader->bindImage3D(*voxelRadiance, "u_voxelRadiance", GL_READ_WRITE, GL_R32UI, 0);
     shader->bindImage3D(*voxelNormal, "u_voxelNormal", GL_READ_WRITE, GL_R32UI, 1);
-
-    // Set ShadowMap/Light uniforms
-    GLint shadowMapStartTextureUnit = 5;
-    ECSUtil::setDirectionalLightUniforms(shader, shadowMapStartTextureUnit, SHADOW_SETTINGS.radianceVoxelizationPCFRadius);
-
-    shader->setFloat("u_depthBias", SHADOW_SETTINGS.depthBias);
-    shader->setFloat("u_usePoissonFilter", SHADOW_SETTINGS.usePoissonFilter ? 1.0f : 0.0f);
+    shader->bindImage3D(*voxelDiffuse, "u_voxelDiffuse", GL_READ_WRITE, GL_R32UI, 2);
+    if (voxelSpecularA) {
+        shader->bindImage3D(*voxelSpecularA, "u_voxelSpecularA", GL_READ_WRITE, GL_R32UI, 3);
+        shader->setUnsignedInt("u_noSpecular", 0);
+    }
+    else
+        shader->setUnsignedInt("u_noSpecular", 1);
 
     for (auto level : levelsToUpdate)
     {

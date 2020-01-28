@@ -22,7 +22,6 @@
 #include "engine/rendering/voxelConeTracing/SphericalImagePass.h"
 #include "engine/rendering/renderPasses/ForwardScenePass.h"
 #include "engine/rendering/voxelConeTracing/settings/VoxelConeTracingSettings.h"
-#include "engine/rendering/tvcg17/MaterialEstimationPass.h"
 #include "engine/util/commands/RotationCommand.h"
 #include "engine/util/commands/MaterialCommand.h"
 #include "engine/util/commands/TransformCommand.h"
@@ -111,7 +110,6 @@ void VoxelConeTracingDemo::initUpdate()
         std::make_shared<VoxelizationPass>(),
         // std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution), // Don't use the shadow map
         std::make_shared<RadianceInjectionPass>(),
-        std::make_shared<MaterialEstimationPass>(),
         std::make_shared<WrapBorderPass>(),
         std::make_shared<GIPass>(),
         // std::make_shared<SphericalImagePass>(),
@@ -162,7 +160,6 @@ void VoxelConeTracingDemo::update()
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);
         // Use injection pass only once because one update is enough for point cloud
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(once);
-        m_renderPipeline->getRenderPass<MaterialEstimationPass>()->setEnabled(once);
         once = false;
         m_renderPipeline->getRenderPass<SceneGeometryPass>()->setEnabled(true);
     }
