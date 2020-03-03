@@ -25,7 +25,7 @@ void Engine::init(Game* game)
     assert(game);
     m_game = game;
     m_game->m_engine = this;
-    Screen::init(1920, 1080, false);
+    Screen::init(640, 480, false);
     m_initialized = true;
     Input::subscribe(this);
     MeshRenderers::init();

@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation as R
 def cmp(a):
     return int(a.split('_')[-1].split('.')[0])
 
-filelist = sorted(glob.glob("./assets/cglab/odometry/*.txt"), key=cmp)
+filelist = sorted(glob.glob("./assets/dasan613_ipad_original/odometry/*.txt"), key=cmp)
 print('number of files: ', len(filelist))
 
 
@@ -49,6 +49,16 @@ zrot90 = np.asarray(
      [0, 0, 1, 0],
      [0, 0, 0, 1]]
 )
+zrot180 = np.eye(4)
+zrot180[:3,:3] = R.from_euler('z', 180, degrees=True).as_matrix()
+
+xrot180 = np.eye(4)
+# xrot180[:3,:3] = R.from_euler('x', 180, degrees=True).as_matrix()
+xrot180[:3,:3] = R.from_euler('x', -180, degrees=True).as_matrix()
+
+yrot180 = np.eye(4)
+yrot180[:3,:3] = R.from_euler('y', 180, degrees=True).as_matrix()
+
 yrot90 = np.asarray(
     [[0, 0, 1, 0],
      [0, 1, 0, 0],
@@ -65,53 +75,29 @@ xflip = np.asarray(
      [0, 1, 0, 0],
      [0, 0, 1, 0],
      [0, 0, 0, 1]])
-
-# %%
-c = b@a
-print('')
-print('\tb @ a\n', c)
-d = zflip @ c
-print('\tzflip @ b @ a\n', d)
-print('\tTranslation\n', d@[0, 0, 0, 1])
-print('\tRotatoin in matrix\n', d[0:3, 0:3])
-print('\tRotatoin in quaternion (x,y,z,w)\n',
-      R.from_matrix(d[0:3, 0:3]).as_quat())
-
-# %%
-# print(xzswap@xrot90)
-# print(xrot90@xzswap)
-
-# c = b@a@zrot90@yrot90
-# print('Rotation\n\t', repr(R.from_matrix(c[0:3, 0:3]).as_quat()))
-# print('Translation\n\t', repr(c@[0, 0, 0, 1]), '\n')
-
-# c = zrot90@yrot90@b@a
-# print('Rotation\n\t', repr(R.from_matrix(c[0:3, 0:3]).as_quat()))
-# print('Translation\n\t', repr(c@[0, 0, 0, 1]), '\n')
-
-#**
-c = b@a@yrot90@zrot90
-print('Rotation\n\t', repr(R.from_matrix(c[0:3, 0:3]).as_quat()))
-print('Translation\n\t', repr(c@[0, 0, 0, 1]), '\n')
-
-# c = yrot90@zrot90@b@a
-# print('Rotation\n\t', repr(R.from_matrix(c[0:3, 0:3]).as_quat()))
-# print('Translation\n\t', repr(c@[0, 0, 0, 1]), '\n')
+print(zflip)
 
 def mat2TQ(a):
-    c = b@a@yrot90@zrot90
+    # c = a@yrot180@zrot180
+    c = a@xrot180
     tmp = R.from_matrix(c[0:3, 0:3]).as_quat()
+
+    # flip quaternion
+    tmp[2] = -tmp[2] # y
+    tmp[3] = -tmp[3] # z
+
+    # tmp = R.from_matrix(c[0:3, 0:3]).as_euler('xyz', degrees=True)
+    # tmp[0] = -tmp[0]
+    # tmp = R.from_euler('xyz', tmp, degrees=True).as_quat()
     Q = np.copy(tmp)
-    Q[0] = tmp[3]
-    Q[1] = tmp[0]
-    Q[2] = tmp[1]
-    Q[3] = tmp[2]
     T = c@[0, 0, 0, 1]
     T = T[0:3]
-    T[2] = -T[2]
+    T[0] += -5.5
+    T[1] += -5.2
+    T[2] += -5.29
+    # T[2] = -T[2]
     return [T, Q]
 
-#%%
 out = open('output.txt','w')
 for filepath in filelist:
     # print(filepath.split('_')[-1].split('.')[0])

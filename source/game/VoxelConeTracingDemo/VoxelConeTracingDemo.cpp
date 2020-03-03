@@ -39,27 +39,27 @@ VoxelConeTracingDemo::VoxelConeTracingDemo()
 
     Random::randomize();
 
-    // std::ifstream in("../output.txt");
-    // if (!in.is_open()) {
-    //     std::cout << "Failed to open output.txt" << std::endl;
-    //     exit(-1);
-    // }
-    // std::cout << "reading started... ";
-    // while(!in.eof()) {
-    //     glm::vec3 pos;
-    //     glm::quat rot;
-    //     in >> pos[0];
-    //     in >> pos[1];
-    //     in >> pos[2];
-    //     in >> rot.w;
-    //     in >> rot.x;
-    //     in >> rot.y;
-    //     in >> rot.z;
-    //     translations.push_back(pos);
-    //     rotations.push_back(rot);
-    // }
-    // in.close();
-    // std::cout << "finished!" << std::endl;
+    std::ifstream in("../output.txt");
+    if (!in.is_open()) {
+        std::cout << "Failed to open output.txt" << std::endl;
+        exit(-1);
+    }
+    std::cout << "reading started... ";
+    while(!in.eof()) {
+        glm::vec3 pos;
+        glm::quat rot;
+        in >> pos[0];
+        in >> pos[1];
+        in >> pos[2];
+        in >> rot.x;
+        in >> rot.y;
+        in >> rot.z;
+        in >> rot.w;
+        translations.push_back(pos);
+        rotations.push_back(rot);
+    }
+    in.close();
+    std::cout << "finished!" << std::endl;
 }
 
 void VoxelConeTracingDemo::initUpdate()
@@ -412,24 +412,32 @@ void VoxelConeTracingDemo::createDemoScene()
 
     MainCamera = camComponent;
 
-    camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
+    camComponent->setPerspective(48.44, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
     std::ifstream cameraFile("camera.txt");
-    glm::vec3 cameraPositionOffset(0.696, 0.881, -0.739);
-    glm::vec3 cameraRotation = glm::vec3(47.600, 128.900, 0);
+    glm::vec3 cameraPositionOffset;
+    glm::vec3 cameraRotation;
     if (!cameraFile.is_open()) {
         std::cout << "failed to read camera.txt" << std::endl;
     }
     else {
-        cameraFile >> cameraPositionOffset[0] >> cameraPositionOffset[1] >> cameraPositionOffset[2];
-        cameraFile >> cameraRotation[0] >> cameraRotation[1] >> cameraRotation[2];
+        if (rotations.empty()) {
+            cameraFile >> cameraPositionOffset[0] >> cameraPositionOffset[1] >> cameraPositionOffset[2];
+            cameraFile >> cameraRotation[0] >> cameraRotation[1] >> cameraRotation[2];
+            camTransform->setEulerAngles(glm::radians(cameraRotation));
+            camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+        } else {
+            std::cout << "Set camera's parameter using the first element of sequence" << std::endl;
+            camTransform->setPosition(translations[0]);
+            camTransform->setRotation(rotations[0]);
+        }
     }
 
 #ifdef VIRTUAL
     // glm::vec3 cameraPositionOffset(0.646, 0.925, -0.641);
-    camTransform->setEulerAngles(glm::radians(cameraRotation));
+    // camTransform->setEulerAngles(glm::radians(cameraRotation));
     // camTransform->setEulerAngles(glm::radians(glm::vec3(46.100, 131.600, 0)));
-    camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
 #else
     // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
     // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
@@ -440,24 +448,24 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("cglab/dasan613.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan613.obj", shader, "cglab/", glm::vec3(1.f), true);
-    sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    ResourceManager::getModel("dasan613_ipad/dasan613-2.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("dasan613_ipad/dasan613-2.obj", shader, "cglab/", glm::vec3(1.f, 1, 1), true);
+    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "cglab/cloud_binary.ply";
+    std::string cloudFilename = "dasan613_ipad/cloud_normal.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
     // whether the model given with the filename is already loaded
     ResourceManager::getModel(cloudFilename)->name = pcEntityName; 
-    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f), false);
+    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f, 1, 1), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
-    pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);
@@ -486,33 +494,34 @@ void VoxelConeTracingDemo::createDemoScene()
     virtualObject.addComponent<Transform>();
     auto parentTransform = virtualObject.getComponent<Transform>();
 
-    // buddha 1
-    auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(3.5f), true);
-    auto buddhaMaterial1 = EntityCreator::createMaterial();
-    buddhaMaterial1->setFloat("u_shininess", 255.0);
-    buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
-    buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
-    buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
-    voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
-    voTransform1->getOwner().setVirtual(true);
-    voTransform1->getOwner().setActive(true);
-    voTransform1->setLocalPosition(glm::vec3(-0.5, -0.5, 0));
-    voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
-    voTransform1->setParent(parentTransform);
+    // // buddha 1
+    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(3.5f), true);
+    // auto buddhaMaterial1 = EntityCreator::createMaterial();
+    // buddhaMaterial1->setFloat("u_shininess", 255.0);
+    // buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
+    // buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
+    // buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
+    // voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
+    // voTransform1->getOwner().setVirtual(true);
+    // voTransform1->getOwner().setActive(true);
+    // voTransform1->setLocalPosition(glm::vec3(-0.5, -0.5, 0));
+    // voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
+    // voTransform1->setParent(parentTransform);
 
-    // buddha 2
-    auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(3.5f), true);
-    auto buddhaMaterial2 = EntityCreator::createMaterial();
-    buddhaMaterial2->setFloat("u_shininess", 255.0);
-    buddhaMaterial2->setColor("u_color", glm::vec4(1));
-    buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
-    buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
-    voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
-    voTransform2->getOwner().setVirtual(true);
-    voTransform2->getOwner().setActive(true);
-    voTransform2->setLocalPosition(glm::vec3(0.5, -0.5, 0));
-    voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
-    voTransform2->setParent(parentTransform);
+    // // buddha 2
+    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(3.5f), true);
+    // auto buddhaMaterial2 = EntityCreator::createMaterial();
+    // buddhaMaterial2->setFloat("u_shininess", 255.0);
+    // buddhaMaterial2->setColor("u_color", glm::vec4(1));
+    // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
+    // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
+    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
+    // voTransform2->getOwner().setVirtual(true);
+    // voTransform2->getOwner().setActive(true);
+    // voTransform2->setLocalPosition(glm::vec3(0.5, -0.5, 0));
+    // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    // voTransform2->setParent(parentTransform);
+
     
     parentTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
     parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
