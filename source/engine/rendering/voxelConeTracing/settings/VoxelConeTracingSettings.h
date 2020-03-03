@@ -99,7 +99,7 @@ struct DemoSettings : VCTSettings
 {
     DemoSettings()
     {
-        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, /*animateCamera,*/ &cameraSpeed });
+        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &animateCamera, &cameraSpeed });
     }
 
     CheckBox animateLight{ "Animate Light", false };
