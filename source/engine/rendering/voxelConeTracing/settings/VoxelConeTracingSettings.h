@@ -55,11 +55,11 @@ struct GISettings : VCTSettings
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 2.0f};
-    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
+    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 10.f, 0.1f, 15.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     
-    CheckBox directLighting{ "Direct Lighting", false };
+    CheckBox directLighting{ "Direct Lighting", true };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
     CheckBox ambientOcclusion{ "Ambient Occlusion", false };
@@ -74,7 +74,7 @@ struct DebugSettings : VCTSettings
     DebugSettings()
     {
         guiElements.insert(guiElements.end(), {
-            /* &viewAperture, &hitpointOffset, &raymarchingCounter,
+            &hitpointOffset, /* &viewAperture, &raymarchingCounter,
         &indirectVirtualRadius, &opacityCorrection,  */
         &virtualSelfOcclusion, &indirectSpecularShadow,
         &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance,
@@ -82,7 +82,7 @@ struct DebugSettings : VCTSettings
     }
 
     SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
-    SliderFloat hitpointOffset{"Offset of hitpoint to normal direction", 0.f, -1.0f, 1.0f};
+    SliderFloat hitpointOffset{"Offset of hitpoint to normal direction", 10.f, 0.0f, 10.0f};
     SliderFloat raymarchingCounter{"Ray Marching Counter (darker part = small)", 1, 0, 10};
     SliderFloat indirectVirtualRadius{"indirectVirtualRadius", 1, 1, 256};
     CheckBox opacityCorrection{"Opacity Correction", true};
@@ -90,12 +90,12 @@ struct DebugSettings : VCTSettings
     SliderFloat indirectSpecularShadow{"indirectSpecularShadow", 0.45f, 0.01f, 10.f};
     SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 2.5f, 0.01f, 10.f};
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
-    SliderFloat secondIndirectDiffuse{"Second bounce diffuse factor", 1.f, 1.f, 30.f};
-    SliderFloat secondIndirectSpecular{"Second bounce specular factor", 1.f, 1.f, 16.f};
-    CheckBox secondBounce{"Trace second bounce", false};
-    CheckBox realReflectance{"Apply relfectance of real object", false};
+    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intensity", 0.5f, 0.01f, 3.f};
+    SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
+    CheckBox secondBounce{"Trace second bounce", true};
+    CheckBox realReflectance{"Apply relfectance of real object", true};
     CheckBox renderReal{"Toggle whether render real fragment", true};
-    CheckBox renderVirtual{"Toggle whether render virtual fragment", false};
+    CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
 };
 
 struct DemoSettings : VCTSettings

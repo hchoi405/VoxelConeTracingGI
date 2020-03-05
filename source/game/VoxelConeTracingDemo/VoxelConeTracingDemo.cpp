@@ -80,7 +80,7 @@ void VoxelConeTracingDemo::initUpdate()
     auto sceneEntity = ECS::getEntityByName("dasan613.obj");
     m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 1.5;
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
-    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.2;
+    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.5;
     std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
 
     // Set render pipeline input
@@ -604,8 +604,11 @@ void VoxelConeTracingDemo::updateCameraClipRegions()
     m_clipRegionBBoxes.clear();
     auto sceneEntity = ECS::getEntityByName("dasan613.obj");    
     // glm::vec3 center = MainCamera->getPosition();
-    glm::vec3 center = sceneEntity.getComponent<Transform>()->getPosition();
-    // glm::vec3 center(-0.572, 2.166, 0.318);
+    // glm::vec3 center = sceneEntity.getComponent<Transform>()->getPosition();
+
+    // Align with virtual object's clip region
+    glm::vec3 center = virtualTransform->getPosition();
+
     for (size_t i = 0; i < CLIP_REGION_COUNT; ++i)
         m_clipRegionBBoxes.push_back(getBBox(i, center, m_clipRegionBBoxExtentL0));
 }

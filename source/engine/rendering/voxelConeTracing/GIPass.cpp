@@ -98,13 +98,14 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
     m_finalLightPassShader->setFloat("u_virtualStepFactor", GI_SETTINGS.virtualStepFactor);
 
+    m_finalLightPassShader->setFloat("u_hitpointOffset", DEBUG_SETTINGS.hitpointOffset);
     m_finalLightPassShader->setFloat("u_viewAperture", DEBUG_SETTINGS.viewAperture);
     m_finalLightPassShader->setInt("u_virtualSelfOcclusion", DEBUG_SETTINGS.virtualSelfOcclusion? 1 : 0);
     m_finalLightPassShader->setFloat("u_indirectSpecularShadow", DEBUG_SETTINGS.indirectSpecularShadow);
     m_finalLightPassShader->setFloat("u_indirectDiffuseShadow", DEBUG_SETTINGS.indirectDiffuseShadow);
     m_finalLightPassShader->setUnsignedInt("u_secondBounce", DEBUG_SETTINGS.secondBounce? 1 : 0);
-    m_finalLightPassShader->setFloat("u_secondIndirectDiffuse", DEBUG_SETTINGS.secondIndirectDiffuse);    
-    m_finalLightPassShader->setFloat("u_secondIndirectSpecular", DEBUG_SETTINGS.secondIndirectSpecular);
+    m_finalLightPassShader->setFloat("u_secondIndirectDiffuseIntensity", DEBUG_SETTINGS.secondIndirectDiffuse);    
+    m_finalLightPassShader->setFloat("u_secondIndirectSpecularIntensity", DEBUG_SETTINGS.secondIndirectSpecular);
     m_finalLightPassShader->setUnsignedInt("u_realReflectance", DEBUG_SETTINGS.realReflectance? 1 : 0);
 
     m_finalLightPassShader->setUnsignedInt("u_renderReal", DEBUG_SETTINGS.renderReal? 1 : 0);

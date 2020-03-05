@@ -43,6 +43,7 @@ void VoxelizationPass::init(float extentWorldLevel0, float virtualExtentWorldLev
         m_clipRegions[i].extent = glm::ivec3(extent);
         m_clipRegions[i].voxelSize = (extentWorldLevel0 * std::exp2f(static_cast<float>(i))) / extent;
     }
+    std::cout << "voxelSizeL0: " << m_clipRegions[0].voxelSize << std::endl;
 
     // Move regions to be "centered" (close to the center in discrete voxel coordinates) around the camera
     auto clipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("ClipRegionBBoxes");
@@ -67,6 +68,7 @@ void VoxelizationPass::init(float extentWorldLevel0, float virtualExtentWorldLev
         m_virtualClipRegions[i].extent = glm::ivec3(extent);
         m_virtualClipRegions[i].voxelSize = (virtualExtentWorldLevel0 * std::exp2f(static_cast<float>(i))) / extent;
     }
+    std::cout << "virtualVoxelSizeL0: " << m_virtualClipRegions[0].voxelSize << std::endl;
     auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
     for (uint32_t clipmapLevel = 0; clipmapLevel < VIRTUAL_CLIP_REGION_COUNT; ++clipmapLevel)
     {
