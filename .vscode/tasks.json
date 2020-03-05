@@ -19,7 +19,7 @@
         {
             "label": "release build",
             "type": "shell",
-            "command": "cmake -DCMAKE_BUILD_TYPE=Relase .. && make -j$(nproc)",
+            "command": "cmake -DCMAKE_BUILD_TYPE=Releaase .. && make -j$(nproc)",
             "options": {
                 "cwd": "${workspaceFolder}/build"
             },

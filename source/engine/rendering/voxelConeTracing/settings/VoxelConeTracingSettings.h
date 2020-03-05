@@ -55,14 +55,14 @@ struct GISettings : VCTSettings
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 2.0f};
-    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
+    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     
-    CheckBox directLighting{ "Direct Lighting", true };
+    CheckBox directLighting{ "Direct Lighting", false };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
     CheckBox indirectSpecularLighting{ "Indirect Specular Lighting", true };
-    CheckBox ambientOcclusion{ "Ambient Occlusion", true };
+    CheckBox ambientOcclusion{ "Ambient Occlusion", false };
     ComboBox radianceInjectionMode = ComboBox("Radiance Injection Mode", { "Conservative", "MSAA", "Point Cloud" }, 2);
     CheckBox visualizeMinLevelSelection{"Visualize Min Level Selection", false};
     SliderInt downsampleTransitionRegionSize{ "Downsample Transition Region Size", 10, 1, VOXEL_RESOLUTION / 4 };
@@ -77,7 +77,8 @@ struct DebugSettings : VCTSettings
             /* &viewAperture, &hitpointOffset, &raymarchingCounter,
         &indirectVirtualRadius, &opacityCorrection,  */
         &virtualSelfOcclusion, &indirectSpecularShadow,
-        &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance});
+        &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance,
+        &renderReal, &renderVirtual});
     }
 
     SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
@@ -87,12 +88,14 @@ struct DebugSettings : VCTSettings
     CheckBox opacityCorrection{"Opacity Correction", true};
     CheckBox virtualSelfOcclusion{"Self occlusion for virtual object", true};
     SliderFloat indirectSpecularShadow{"indirectSpecularShadow", 0.45f, 0.01f, 10.f};
-    SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 0.25f, 0.01f, 10.f};
+    SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 2.5f, 0.01f, 10.f};
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     SliderFloat secondIndirectDiffuse{"Second bounce diffuse factor", 1.f, 1.f, 30.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular factor", 1.f, 1.f, 16.f};
     CheckBox secondBounce{"Trace second bounce", false};
-    CheckBox realReflectance{"Apply relfectance of real object", true};
+    CheckBox realReflectance{"Apply relfectance of real object", false};
+    CheckBox renderReal{"Toggle whether render real fragment", true};
+    CheckBox renderVirtual{"Toggle whether render virtual fragment", false};
 };
 
 struct DemoSettings : VCTSettings

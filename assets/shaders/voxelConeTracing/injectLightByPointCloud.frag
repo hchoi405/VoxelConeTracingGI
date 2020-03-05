@@ -57,7 +57,8 @@ void main()
     // Normal
     storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, posW, vec4(packNormal(normal), 1.0), faceIndices, abs(normal));
     
-    // Diffuse
+    // Diffuse (only for virtual object)
+    // For real object, materialEstimation.comp should be used
     storeVoxelColorAtomicRGBA8Avg(u_voxelDiffuse, posW, u_color, faceIndices, abs(normal));
 
     // Specular

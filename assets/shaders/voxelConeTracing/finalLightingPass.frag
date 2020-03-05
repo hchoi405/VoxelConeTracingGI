@@ -23,7 +23,7 @@ in Vertex
 
 const float MAX_TRACE_DISTANCE = 15.0;
 const float MIN_STEP_FACTOR = 0.2;
-const float MIN_SPECULAR_APERTURE = 0.05;
+const float MIN_SPECULAR_APERTURE = 0.05; // 2.86 degrees
 
 uniform sampler2D u_diffuseTexture;
 uniform sampler2D u_normalMap;
@@ -65,7 +65,7 @@ uniform int u_visualizeMinLevelSelection = 0;
 uniform bool u_useNormalMapping;
 
 sampler3D getOpacity(bool isVirtual) { return isVirtual? u_virtualVoxelOpacity : u_voxelOpacity; }
-sampler3D getRadiance(bool isVirtual) { return isVirtual? u_virtualVoxelRadiance : u_voxelRadiance; }
+sampler3D getRadiance(bool isVirtual) { return isVirtual? u_virtualVoxelDiffuse : u_voxelRadiance; }
 sampler3D getNormal(bool isVirtual) { return isVirtual? u_virtualVoxelNormal : u_voxelNormal; }
 sampler3D getDiffuse(bool isVirtual) { return isVirtual? u_virtualVoxelDiffuse : u_voxelReflectance; }
 sampler3D getSpecularA(bool isVirtual) { return isVirtual? u_virtualVoxelSpecularA : u_voxelReflectance; }
@@ -74,6 +74,8 @@ VCTScene virtualScene, realScene;
 VCTParams params;
 
 // Debug
+uniform uint u_renderReal;
+uniform uint u_renderVirtual;
 uniform int u_virtualSelfOcclusion;
 uniform float u_indirectSpecularShadow;
 uniform float u_indirectDiffuseShadow;
@@ -176,6 +178,16 @@ float getMinLevel(vec3 posW, vec3 volumeCenterL0, float voxelSizeL0, float volum
     float c = 1.0 / (1.0 - transitionStart);
     
     return f > transitionStart ? ceil(minLevel) + (f - transitionStart) * c : ceil(minLevel);
+}
+
+float getRealMinLevel(vec3 posW)
+{
+    return getMinLevel(posW, u_volumeCenterL0, u_voxelSizeL0, u_volumeDimension);
+}
+
+float getVirtualMinLevel(vec3 posW)
+{
+    return getMinLevel(posW, u_virtualVolumeCenterL0, u_virtualVoxelSizeL0, u_virtualVolumeDimension);
 }
 
 bool inBox(vec3 p, AABBox3D box) {
@@ -292,6 +304,7 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection pri
             primaryIsect.normal = unpackNormal(sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0, scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight).rgb);
             primaryIsect.level = c.curLevel;
             primaryIsect.hit = true;
+            primaryIsect.t = s;
             if(primaryOnly) break;
         }
 
@@ -449,7 +462,8 @@ void main()
     float depth = texture2D(u_depthTexture, In.texCoords).r;
     if (depth == 1.0)
         discard;
-    // if (!isVirtualFrag) discard;
+    if (u_renderReal == 0 && !isVirtualFrag) discard;
+    if (u_renderVirtual == 0 && isVirtualFrag) discard;
     vec3 diffuse = texture(u_diffuseTexture, In.texCoords).rgb;
     vec3 normal = unpackNormal(texture(u_normalMap, In.texCoords).rgb);
     vec3 emission = texture(u_emissionMap, In.texCoords).rgb;
@@ -479,20 +493,21 @@ void main()
     params.occlusionDecay = u_occlusionDecay;
     params.maxDistance = MAX_TRACE_DISTANCE;
 
-    float minLevel = getMinLevel(posW, realScene.volumeCenter, realScene.voxelSizeL0, realScene.volumeDimension);
-    float virtualMinLevel = getMinLevel(posW, virtualScene.volumeCenter, virtualScene.voxelSizeL0, virtualScene.volumeDimension);
+    float realMinLevel = getRealMinLevel(posW);
+    float virtualMinLevel = getVirtualMinLevel(posW);
     
     // Compute indirect contribution
     vec4 indirectContribution = vec4(0.0);
     
     // Offset the starting pos to avoid the self-occlusion
-    float voxelSize = frag_voxelSizeL0 * exp2(isVirtualFrag? virtualMinLevel : minLevel);
+    float voxelSize = frag_voxelSizeL0 * exp2(isVirtualFrag? virtualMinLevel : realMinLevel);
     vec3 startPosOffset = posW + normal * voxelSize * u_traceStartOffset;
     vec3 startPos = posW;
 
 	if (isVirtualFrag){
         // Radiance
-        indirectContribution = castDiffuseCones(startPos, normal, minLevel, false);
+        indirectContribution = castDiffuseCones(startPos, normal, realMinLevel, virtualMinLevel, false, true);
+        indirectContribution.rgb *= diffuse;
         // Delta (shadow)
         if (u_virtualSelfOcclusion == 1) {
             float a = castDiffuseCones(startPosOffset, normal, virtualMinLevel, true, true).a;
@@ -503,31 +518,22 @@ void main()
         ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
         vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
         vec3 weight = normal * normal;
-        vec3 reflectance = sampleUnifiedClipmapLinearly(u_voxelReflectance, startPos, minLevel, realScene.voxelSizeL0, realScene.volumeDimension, realScene.maxClipmapLevelInv, faceOffsets, weight).rgb;
+        vec3 reflectance = sampleUnifiedClipmapLinearly(u_voxelReflectance, startPos, realMinLevel, realScene.voxelSizeL0, realScene.volumeDimension, realScene.maxClipmapLevelInv, faceOffsets, weight).rgb;
 
-        // Occlusion-based shadow + color bleeding of virtual object
-        indirectContribution = castDiffuseCones(startPosOffset, normal, virtualMinLevel, true);
+        // Occlusion-based shadow + color bleeding from virtual object
+        indirectContribution = castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, true);
 
         if (u_realReflectance == 1)
             indirectContribution.rgb *= reflectance;
     }
 
-    // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
-	indirectContribution /= DIFFUSE_CONE_COUNT * 0.5;
-    indirectContribution.a *= u_ambientOcclusionFactor;
-    // out_color = vec4(indirectContribution.rgb, 1) ;
-    // return;
-    
-	indirectContribution.rgb *= diffuse * u_indirectDiffuseIntensity;
-    indirectContribution = clamp(indirectContribution, -1.0, 1.0);
-    
-	// Specular cone
+    // Specular cone
     vec3 specularConeDirection = reflect(-view, normal);
     vec3 specularContribution = vec3(0.0);
     
     float shininess = unpackShininess(specColor.a);
     float roughness = shininessToRoughness(shininess);
-    
+
     // Currentlly, only for the (isVirtualFrag == true)
     if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON) {
         VCTIntersection isect;
@@ -535,7 +541,7 @@ void main()
         c.p = startPos;
         c.dir = specularConeDirection;
         c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
-        c.curLevel = minLevel;
+        c.curLevel = realMinLevel;
         c.depth = 0;
 
         vec3 indirectSpecular = vec3(0);
@@ -564,6 +570,18 @@ void main()
         // Find hit point for virtual object and cast difffuse cones again
         
     }
+
+    // out_color = vec4(indirectContribution.rgb, 1);
+    // if (any(lessThan(out_color, vec4(0))))
+        // out_color = abs(out_color);
+    // else
+        // out_color = vec4(0,0,1,1);
+    // return;
+    // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
+    indirectContribution.a *= u_ambientOcclusionFactor;
+
+	indirectContribution.rgb *= u_indirectDiffuseIntensity;
+    indirectContribution = clamp(indirectContribution, 0.0, 1.0);
     
     vec3 directContribution = vec3(0.0);
     
@@ -597,7 +615,7 @@ void main()
         if (isVirtualFrag)
             out_color *= minLevelToColor(virtualMinLevel);
         else
-            out_color *= minLevelToColor(minLevel);
+            out_color *= minLevelToColor(realMinLevel);
     }
 
     if (isVirtualFrag) {

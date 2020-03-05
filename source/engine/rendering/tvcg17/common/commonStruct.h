@@ -6,6 +6,7 @@ struct VCTIntersection {
     vec3 position;
     vec3 normal;
     float level;
+    float t;
 };
 
 struct VCTCone {

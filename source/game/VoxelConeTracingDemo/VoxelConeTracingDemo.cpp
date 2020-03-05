@@ -496,7 +496,7 @@ void VoxelConeTracingDemo::createDemoScene()
     voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
     voTransform1->getOwner().setVirtual(true);
     voTransform1->getOwner().setActive(true);
-    voTransform1->setLocalPosition(glm::vec3(-0.38, 0, 0));
+    voTransform1->setLocalPosition(glm::vec3(-0.5, 0, 0));
     voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
     voTransform1->setParent(parentTransform);
 
@@ -510,7 +510,7 @@ void VoxelConeTracingDemo::createDemoScene()
     voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
     voTransform2->getOwner().setVirtual(true);
     voTransform2->getOwner().setActive(true);
-    voTransform2->setLocalPosition(glm::vec3(0.38, 0, 0));
+    voTransform2->setLocalPosition(glm::vec3(0.5, 0, 0));
     voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
     voTransform2->setParent(parentTransform);
     
