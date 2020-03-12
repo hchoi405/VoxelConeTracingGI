@@ -456,7 +456,7 @@ void VoxelConeTracingDemo::createDemoScene()
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "dasan613_ipad/cloud_normal.ply";
+    std::string cloudFilename = "dasan613_ipad/cloud_normal_subsampled.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
@@ -494,37 +494,37 @@ void VoxelConeTracingDemo::createDemoScene()
     virtualObject.addComponent<Transform>();
     auto parentTransform = virtualObject.getComponent<Transform>();
 
-    // // buddha 1
-    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(3.5f), true);
-    // auto buddhaMaterial1 = EntityCreator::createMaterial();
-    // buddhaMaterial1->setFloat("u_shininess", 255.0);
-    // buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
-    // buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
-    // buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
-    // voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
-    // voTransform1->getOwner().setVirtual(true);
-    // voTransform1->getOwner().setActive(true);
-    // voTransform1->setLocalPosition(glm::vec3(-0.5, -0.5, 0));
-    // voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
-    // voTransform1->setParent(parentTransform);
+    // buddha 1
+    auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(3.5f), true);
+    auto buddhaMaterial1 = EntityCreator::createMaterial();
+    buddhaMaterial1->setFloat("u_shininess", 255.0);
+    buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
+    buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
+    buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
+    voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
+    voTransform1->getOwner().setVirtual(true);
+    voTransform1->getOwner().setActive(true);
+    voTransform1->setLocalPosition(glm::vec3(-0.5, -0.5, 0));
+    voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
+    voTransform1->setParent(parentTransform);
 
-    // // buddha 2
-    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(3.5f), true);
-    // auto buddhaMaterial2 = EntityCreator::createMaterial();
-    // buddhaMaterial2->setFloat("u_shininess", 255.0);
-    // buddhaMaterial2->setColor("u_color", glm::vec4(1));
-    // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
-    // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
-    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
-    // voTransform2->getOwner().setVirtual(true);
-    // voTransform2->getOwner().setActive(true);
-    // voTransform2->setLocalPosition(glm::vec3(0.5, -0.5, 0));
-    // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
-    // voTransform2->setParent(parentTransform);
+    // buddha 2
+    auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(3.5f), true);
+    auto buddhaMaterial2 = EntityCreator::createMaterial();
+    buddhaMaterial2->setFloat("u_shininess", 255.0);
+    buddhaMaterial2->setColor("u_color", glm::vec4(1));
+    buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
+    buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
+    voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
+    voTransform2->getOwner().setVirtual(true);
+    voTransform2->getOwner().setActive(true);
+    voTransform2->setLocalPosition(glm::vec3(0.5, -0.5, 0));
+    voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    voTransform2->setParent(parentTransform);
 
     
-    parentTransform->setPosition(glm::vec3(1.35, 0.95, -1.3));
-    parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    parentTransform->setPosition(glm::vec3(0, 0.95, 0));
+    // parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
     parentTransform->getOwner().setVirtual(true);
 
     virtualTransform = parentTransform;
@@ -588,6 +588,8 @@ void VoxelConeTracingDemo::animateCameraTransform()
         static CommandChain commandChain({tCommand}, false);
         if (commandChain.done()) {
             if (frame < rotations.size()-1) {
+                m_engine->requestScreenshot();
+                m_guiEnabled = false;
                 frame++;
                 tCommand = std::make_shared<TransformCommand>(cameraTransform, translations[frame], translations[frame+1], rotations[frame], rotations[frame+1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
                 commandChain = CommandChain({tCommand}, false);    

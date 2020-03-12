@@ -7,6 +7,7 @@
 #include "/voxelConeTracing/voxelizationFrag.glsl"
 #include "/voxelConeTracing/common.glsl"
 #include "/shadows/shadows.glsl"
+#include "/voxelConeTracing/conversion.glsl"
 
 in Geometry
 {
@@ -27,10 +28,16 @@ uniform sampler2D u_opacityMap0;
 uniform float u_hasEmissionMap;
 uniform float u_hasOpacityMap;
 uniform float u_hasDiffuseTexture;
+uniform float u_shininess;
 uniform vec4 u_color;
 uniform vec3 u_emissionColor;
+uniform vec3 u_specularColor;
+uniform uint u_noSpecular = 0;
 
 uniform layout(r32ui) volatile uimage3D u_voxelRadiance;
+uniform layout(r32ui) volatile uimage3D u_voxelNormal;
+uniform layout(r32ui) volatile uimage3D u_voxelDiffuse;
+uniform layout(r32ui) volatile uimage3D u_voxelSpecularA;
 
 void main() 
 {
@@ -87,13 +94,22 @@ void main()
             lightContribution += nDotL * visibility * u_directionalLights[i].color * u_directionalLights[i].intensity;
         }
         
-        if (all(equal(lightContribution, vec3(0.0))))
-            discard;
-        
-		vec3 radiance = lightContribution * color.rgb * color.a;
-        radiance = clamp(radiance, 0.0, 1.0);
-		
 		ivec3 faceIndices = computeVoxelFaceIndices(-normal);
-        storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, in_cvFrag.posW, vec4(radiance, 1.0), faceIndices, abs(normal));
+        if (!all(equal(lightContribution, vec3(0.0)))) {
+            vec3 radiance = lightContribution * color.rgb * color.a;
+            radiance = clamp(radiance, 0.0, 1.0);
+            storeVoxelColorAtomicRGBA8Avg(u_voxelRadiance, in_cvFrag.posW, vec4(radiance, 1.0), faceIndices, abs(normal));
+        }
+        
+        // Normal
+        storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, in_cvFrag.posW, vec4(packNormal(normal), 1.0), faceIndices, abs(normal));
+        
+        // Diffuse (only for virtual object)
+        // For real object, materialEstimation.comp should be used
+        storeVoxelColorAtomicRGBA8Avg(u_voxelDiffuse, in_cvFrag.posW, u_color, faceIndices, abs(normal));
+
+        // Specular
+        if (u_noSpecular == 0)
+            storeVoxelColorAtomicRGBA8Avg(u_voxelSpecularA, in_cvFrag.posW, vec4(u_specularColor, packShininess(u_shininess)), faceIndices, abs(normal));
 	}
 }

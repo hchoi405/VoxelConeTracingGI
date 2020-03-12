@@ -518,7 +518,7 @@ void main()
             if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 c.curLevel = virtualIsect.level;
                 c.p = virtualIsect.position;
-                c.dir = reflect(-c.dir, virtualIsect.normal);
+                c.dir = reflect(c.dir, virtualIsect.normal);
                 // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
                 if (u_secondBounce == 1)
                     virtualIndirectContribution.rgb += castConeUnified(c, realScene, realIsect).rgb;

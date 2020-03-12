@@ -87,8 +87,8 @@ void RadianceInjectionPass::update()
             m_virtualCachedClipRegions[level] = virtualClipRegions->at(level);
         }
     }
-    shader->setInt("u_normalOnly", 1);
-    injectByVoxelization(shader, virtualVoxelRadiance, virtualVoxelNormal, virtualVoxelDiffuse, virtualVoxelSpecularA, m_voxelizationMode, *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
+    shader = m_conservativeVoxelizationShader.get();
+    injectByVoxelization(shader, virtualVoxelRadiance, virtualVoxelNormal, virtualVoxelDiffuse, virtualVoxelSpecularA, VoxelizationMode::CONSERVATIVE, *m_virtualClipmapUpdatePolicy, VIRTUAL_VOXEL_RESOLUTION, m_virtualCachedClipRegions);
     CopyAlpha::copyAlpha(virtualVoxelRadiance, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     downsample(virtualVoxelRadiance, m_virtualCachedClipRegions, VIRTUAL_CLIP_REGION_COUNT, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
     CopyAlpha::copyAlpha(virtualVoxelNormal, virtualVoxelOpacity, VIRTUAL_VOXEL_RESOLUTION, m_virtualClipmapUpdatePolicy);
@@ -137,10 +137,6 @@ void RadianceInjectionPass::injectByVoxelization(Shader *shader, Texture3D *voxe
     if (voxelResolution == VIRTUAL_VOXEL_RESOLUTION) {
         auto virtualEntity = ECS::getEntityByName("virtualObject");
         desc.target = VoxelizationTarget::ENTITIES;
-        auto childTransforms = virtualEntity.getComponent<Transform>()->getChildren();
-        for (auto childT: childTransforms) {
-            childT->getOwner().getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
-        }
         desc.entities.push_back(virtualEntity);
     }
     else if (voxelResolution == VOXEL_RESOLUTION) {
