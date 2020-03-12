@@ -83,8 +83,8 @@ def mat2TQ(a):
     tmp = R.from_matrix(c[0:3, 0:3]).as_quat()
 
     # flip quaternion
-    tmp[2] = -tmp[2] # y
-    tmp[3] = -tmp[3] # z
+    tmp[2] = -tmp[2] # z
+    tmp[3] = -tmp[3] # w
 
     # tmp = R.from_matrix(c[0:3, 0:3]).as_euler('xyz', degrees=True)
     # tmp[0] = -tmp[0]
@@ -92,10 +92,11 @@ def mat2TQ(a):
     Q = np.copy(tmp)
     T = c@[0, 0, 0, 1]
     T = T[0:3]
+    
     T[0] += -5.5
     T[1] += -5.2
     T[2] += -5.29
-    # T[2] = -T[2]
+    T[2] = -T[2]
     return [T, Q]
 
 out = open('output.txt','w')
