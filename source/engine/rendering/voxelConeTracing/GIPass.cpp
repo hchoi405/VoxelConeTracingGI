@@ -95,6 +95,7 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_usePoissonFilter", SHADOW_SETTINGS.usePoissonFilter ? 1.0f : 0.0f);
 
     m_finalLightPassShader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
+    m_finalLightPassShader->setFloat("u_traceDirectionOffset", GI_SETTINGS.traceDirectionOffset);
     m_finalLightPassShader->setFloat("u_stepFactor", GI_SETTINGS.stepFactor);
     m_finalLightPassShader->setFloat("u_virtualStepFactor", GI_SETTINGS.virtualStepFactor);
 
@@ -108,8 +109,11 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_secondIndirectSpecularIntensity", DEBUG_SETTINGS.secondIndirectSpecular);
     m_finalLightPassShader->setUnsignedInt("u_realReflectance", DEBUG_SETTINGS.realReflectance? 1 : 0);
 
+    m_finalLightPassShader->setUnsignedInt("u_debugFlag", DEBUG_SETTINGS.debugFlag? 1 : 0);
     m_finalLightPassShader->setUnsignedInt("u_renderReal", DEBUG_SETTINGS.renderReal? 1 : 0);
     m_finalLightPassShader->setUnsignedInt("u_renderVirtual", DEBUG_SETTINGS.renderVirtual? 1 : 0);
+
+    m_finalLightPassShader->setFloat("u_ambientSecondIntensity", DEBUG_SETTINGS.ambientSecondIntensity);
 
 
     int lightingMask = 0;
@@ -120,7 +124,8 @@ void GIPass::update()
 
     m_finalLightPassShader->setInt("u_lightingMask", lightingMask);
 
-    m_finalLightPassShader->setFloat("u_indirectDiffuseIntensity", GI_SETTINGS.indirectDiffuseIntensity);
+    m_finalLightPassShader->setFloat("u_realIndirectDiffuseIntensity", GI_SETTINGS.realIndirectDiffuseIntensity);
+    m_finalLightPassShader->setFloat("u_virtualIndirectDiffuseIntensity", GI_SETTINGS.virtualIndirectDiffuseIntensity);
     m_finalLightPassShader->setFloat("u_indirectSpecularIntensity", GI_SETTINGS.indirectSpecularIntensity);
     m_finalLightPassShader->setInt("u_visualizeMinLevelSelection", GI_SETTINGS.visualizeMinLevelSelection ? 1 : 0);
 

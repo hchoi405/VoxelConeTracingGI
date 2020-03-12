@@ -45,19 +45,21 @@ struct GISettings : VCTSettings
     GISettings()
     {
         guiElements.insert(guiElements.end(), {&occlusionDecay, &ambientOcclusionFactor, &stepFactor, &virtualStepFactor,
-                          &indirectDiffuseIntensity, &indirectSpecularIntensity, &traceStartOffset,
-                          &directLighting, &indirectDiffuseLighting, &indirectSpecularLighting, &ambientOcclusion,
-                          &radianceInjectionMode, &visualizeMinLevelSelection, &downsampleTransitionRegionSize,
-                          &updateOneClipLevelPerFrame });
+                          &realIndirectDiffuseIntensity, &virtualIndirectDiffuseIntensity, &indirectSpecularIntensity, 
+                          &traceStartOffset, &traceDirectionOffset, &directLighting, &indirectDiffuseLighting, 
+                          &indirectSpecularLighting, &ambientOcclusion, &radianceInjectionMode, 
+                          &visualizeMinLevelSelection, &downsampleTransitionRegionSize, &updateOneClipLevelPerFrame });
     }
 
     SliderFloat occlusionDecay{"Occlusion Decay", 5.0f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 2.0f};
-    SliderFloat indirectDiffuseIntensity{"Indirect Diffuse Intensity", 10.f, 0.1f, 15.0f};
+    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 10.f, 0.1f, 15.0f};
+    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
+    SliderFloat traceDirectionOffset{"Trace Direction Offset", 1.5f, 0.0f, 8.0f};
     
     CheckBox directLighting{ "Direct Lighting", true };
     CheckBox indirectDiffuseLighting{ "Indirect Diffuse Lighting", true };
@@ -73,12 +75,12 @@ struct DebugSettings : VCTSettings
 {
     DebugSettings()
     {
-        guiElements.insert(guiElements.end(), {
+        guiElements.insert(guiElements.end(), { &debugFlag,
             &hitpointOffset, /* &viewAperture, &raymarchingCounter,
         &indirectVirtualRadius, &opacityCorrection,  */
         &virtualSelfOcclusion, &indirectSpecularShadow,
         &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance,
-        &renderReal, &renderVirtual});
+        &renderReal, &renderVirtual, &ambientSecondIntensity});
     }
 
     SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
@@ -90,12 +92,14 @@ struct DebugSettings : VCTSettings
     SliderFloat indirectSpecularShadow{"indirectSpecularShadow", 0.45f, 0.01f, 10.f};
     SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 2.5f, 0.01f, 10.f};
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
-    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intensity", 0.5f, 0.01f, 3.f};
+    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intensity", 0.3f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
     CheckBox secondBounce{"Trace second bounce", true};
     CheckBox realReflectance{"Apply relfectance of real object", true};
+    CheckBox debugFlag{"Flag for Debug", false};
     CheckBox renderReal{"Toggle whether render real fragment", true};
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
+    SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
 };
 
 struct DemoSettings : VCTSettings

@@ -65,6 +65,32 @@ vec3 sampleBeckmann(vec2 u, vec3 n, float roughness)
     return tangent * ph.x + bitangent * ph.y + n * ph.z;
 }
 
+vec3 sampleUniformHemisphere(vec2 u, vec3 n) {
+    float z = u[0];
+    float r = sqrt(max(0.f, 1.f - z * z));
+    float phi = 2 * PI * u[1];
+    float theta = acos(z);
+    // return Vector3f(r * std::cos(phi), r * std::sin(phi), z);
+
+    float sinTheta = sin(theta);
+    float cosPhi = cos(phi);
+    float sinPhi = sin(phi);
+    float cosTheta = cos(theta);
+    vec3 ph = vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+
+    // Make arbitrary coordinate using normal
+    vec3 tangent, bitangent;
+    if (abs(n.x) > abs(n.y))
+        tangent = vec3(-n.z, 0, n.x) / sqrt(n.x * n.x + n.z * n.z);
+    else
+        tangent = vec3(0, n.z, -n.y) / sqrt(n.y * n.y + n.z * n.z);
+    bitangent = cross(n, tangent);
+    
+    /* Make our hemisphere orient around the normal. */
+    return tangent * ph.x + bitangent * ph.y + n * ph.z;
+
+}
+
 float beckmannNDF(vec3 n, vec3 h, float roughness)
 {
     float rSq = roughness * roughness;

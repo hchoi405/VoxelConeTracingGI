@@ -56,11 +56,13 @@ uniform float u_stepFactor;
 uniform float u_virtualStepFactor;
 uniform float u_viewAperture;
 uniform int u_lightingMask;
-uniform float u_indirectDiffuseIntensity;
+uniform float u_realIndirectDiffuseIntensity;
+uniform float u_virtualIndirectDiffuseIntensity;
 uniform float u_indirectSpecularIntensity;
 uniform float u_occlusionDecay = 1.0;
 uniform float u_ambientOcclusionFactor;
 uniform float u_traceStartOffset;
+uniform float u_traceDirectionOffset;
 uniform int u_visualizeMinLevelSelection = 0;
 uniform bool u_useNormalMapping;
 
@@ -74,6 +76,7 @@ VCTScene virtualScene, realScene;
 VCTParams params;
 
 // Debug
+uniform uint u_debugFlag;
 uniform uint u_renderReal;
 uniform uint u_renderVirtual;
 uniform int u_virtualSelfOcclusion;
@@ -83,7 +86,7 @@ uniform uint u_secondBounce;
 uniform float u_secondIndirectDiffuseIntensity;
 uniform float u_secondIndirectSpecularIntensity;
 uniform uint u_realReflectance;
-uniform float u_hitpointOffset;
+uniform float u_ambientSecondIntensity;
 
 layout(location = 0) out vec4 out_color;
 
@@ -245,7 +248,7 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection pri
     float voxelSize = scene.voxelSizeL0 * exp2(c.curLevel);
 
     // Offset startPos in the direction to avoid self occlusion and reduce voxel aliasing
-    c.p += c.dir * voxelSize * u_traceStartOffset * 0.5;
+    c.p += c.dir * voxelSize * u_traceDirectionOffset * 0.5;
 
     float s = 0.0;
     float maxDistance = params.maxDistance;
@@ -410,145 +413,31 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
         if (traceVirtual) {
             c.curLevel = virtualMinLevel;
             vec4 virtualRet = castConeUnified(c, virtualScene, virtualIsect) * cosTheta;
-            // For ambient occlusion (used for DEBUGGING)
-            indirectContribution.a += virtualRet.a;
-            // Use cone-traced diffuse material of virtual object for smooth result
-            vec3 virtualDiffuse = virtualRet.rgb;
 
             c.curLevel = realMinLevel;
             vec4 realRet = castConeUnified(c, realScene, realIsect) * cosTheta;
 
             // Second hit virtual
-            if (virtualIsect.hit && virtualIsect.t < realIsect.t)
-            // if (virtualIsect.hit && virtualIsect.t < realIsect.t)
-            // if (false)
+            if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t)
             {
+                // For ambient occlusion (used for DEBUGGING)
+                indirectContribution.a += virtualRet.a;
+
+                // Use cone-traced diffuse material of virtual object for smooth result
+                vec3 virtualDiffuse = virtualRet.rgb;
+
                 // Virtual object at second bounce (e.g. real->virtual) is assumed to be diffuse
                 // So cast diffuse cones
                 vec4 secondIntensity = castSecondRealDiffuseCones(virtualIsect.position, virtualIsect.normal, 
                     realMinLevel);
 
-                // Get the material from the virtual object
-                // ivec3 outFaceIndices = computeVoxelFaceIndices(-virtualIsect.normal);
-                // vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
-                // vec3 weight = virtualIsect.normal * virtualIsect.normal;
-                // vec3 diffuse = sampleUnifiedClipmapLinearly(
-                //     getDiffuse(true), virtualIsect.position, virtualIsect.level, virtualScene.voxelSizeL0, 
-                //     virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, faceOffsets, weight).rgb;
-                // vec4 specularA = sampleUnifiedClipmapLinearly(
-                //     getSpecularA(true), virtualIsect.position, virtualIsect.level, virtualScene.voxelSizeL0, 
-                //     virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, faceOffsets, weight);
-                // float shininess = unpackShininess(specularA.a);
-                // float roughness = shininessToRoughness(shininess);
-                
-                // Debug
-                // indirectContribution.rgb += vec3(secondIntensity.rgb);
-                // indirectContribution.rgb += vec3(diffuse);
-                // indirectContribution.rgb += vec3(secondIntensity.rgb * diffuse * u_secondIndirectDiffuseIntensity);
-
                 // Radiance from virtual object
                 indirectContribution.rgb += secondIntensity.rgb * virtualDiffuse * u_secondIndirectDiffuseIntensity;
+
                 // Anti-radiance from real object (apply occlusion based smoothing)
                 indirectContribution.rgb -= (1 - virtualRet.a) * realRet.rgb; 
-
-                // indirectContribution.rgb += vec3(virtualRet.a); // visibility of virtual object
-                // indirectContribution.rgb += virtualRet.a                                     // alhpa 
-                //         * (secondIntensity.rgb * diffuse * u_secondIndirectDiffuseIntensity  // 
-                //         - realRet.rgb);                                                      // 
-
-                // Sample according to the virtual object's BRDF (Cook-Torrance)
-                // vec3 virtualContribution = vec3(0);
-                // const int n = 1; 
-                // for (int i=0; i<n; ++i) {
-                //     // sample next direction (for light direction)
-                //     vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i*2)));
-                //     vec3 direction = sampleBeckmann(u, virtualIsect.normal, roughness); 
-                //     // vec3 direction = -reflect(view, normal);
-
-                //     vec3 lightDir = -direction;
-                //     vec3 halfway = normalize(c.dir - lightDir);
-                //     float nDotL = max(0.0, dot(virtualIsect.normal, -lightDir));
-                //     // for the last term F0, use 0.04 if it's plastic, use albeo if it's metal
-                //     vec3 cook = cookTorranceBRDF(-lightDir, virtualIsect.normal, c.dir, halfway, roughness, vec3(0.04));
-                //     c.dir = direction;
-                //     vec4 intensity = castConeUnified(c, realScene, isect) * virtualContributionIntensity;
-                //     virtualContribution += cook * specColor.rgb * intensity.rgb;
-                //     // out_color.rgb = virtualContribution;
-                //     // return;
-                // }
-                // virtualContribution /= n;
-
-                // indirectContribution.rgb += diffuse * cosTheta;
-
-                // Sample light intensity
-                // if (delta)
-                // {
-                //     c.p = virtualIsect.position;
-                //     c.curLevel = realMinLevel;
-                //     vec4 realRet = castConeUnified(c, realScene, realIsect);
-                //     if (virtualIsect.t < realIsect.t) {
-                //         indirectContribution.rgb -= realRet.rgb * cosTheta;
-                //     }
-                // }
             }
         } 
-        // First hit virtual (THIS SHOULDN'T BE USED)
-        else {
-            // c.p = startPos + normal * u_voxelSizeL0 * exp2(realMinLevel) * u_hitpointOffset;
-            // c.curLevel = realMinLevel;
-            // vec4 realRet = castConeUnified(c, realScene, realIsect) * cosTheta;
-
-            // indirectContribution += realRet;
-
-            // c.p = startPos + normal * u_virtualVoxelSizeL0 * exp2(virtualMinLevel) * u_hitpointOffset;
-            // c.curLevel = virtualMinLevel;
-            // vec4 virtualRet = castConeUnified(c, virtualScene, virtualIsect) * cosTheta;
-
-            // // Hit any virtual object before real object
-            // if (virtualIsect.hit && virtualIsect.t < realIsect.t)
-            // {
-            //     vec3 diffuse = virtualRet.rgb;
-            //     // indirectContribution.rgb += diffuse;
-            //     // continue;
-                
-            //     if (u_secondBounce == 1)
-            //     {
-            //         c.p = virtualIsect.position;
-            //         // c.curLevel = getRealMinLevel(c.p);
-            //         c.curLevel = virtualIsect.level;
-
-            //         ivec3 faceIndices = computeVoxelFaceIndices(c.dir);
-            //         vec3 faceOffsets = vec3(faceIndices) * FACE_COUNT_INV;
-            //         vec3 weight = c.dir * c.dir;
-            //         vec4 specColor = sampleUnifiedClipmapLinearly(getSpecularA(true), c.p, c.curLevel, virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, faceOffsets, weight);
-            //         float shininess = unpackShininess(specColor.a);
-            //         float roughness = shininessToRoughness(shininess);
-
-            //         const int n = 1; 
-            //         for (int i=0; i<n; ++i) {
-            //             // sample next direction (for light direction)
-            //             vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i*2)));
-            //             vec3 direction = sampleBeckmann(u, virtualIsect.normal, roughness); 
-
-            //             vec3 lightDir = -direction;
-            //             vec3 halfway = normalize(c.dir - lightDir);
-            //             float nDotL = max(0.0, dot(virtualIsect.normal, -lightDir));
-            //             // for the last term F0, use 0.04 if it's plastic, use albeo if it's metal
-            //             vec3 cook = cookTorranceBRDF(-lightDir, virtualIsect.normal, c.dir, halfway, roughness, vec3(0.04));
-            //             c.dir = direction;
-            //             vec4 intensity = castConeUnified(c, realScene, tmpIsect) * u_indirectSpecularIntensity;
-            //             // indirectContribution.rgb += intensity.rgb;
-            //             // indirectContribution.rgb += intensity.rgb * (cook * specColor.rgb + diffuse); // - realRet.rgb;
-            //             indirectContribution.rgb += intensity.rgb * (cook * specColor.rgb + diffuse);
-            //         }
-            //         indirectContribution.rgb /= n;
-            //     }
-            // }
-            // else {
-            //     indirectContribution += realRet;
-            // }
-
-        }
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
@@ -601,57 +490,87 @@ void main()
     vec3 startPos = posW;
 
 	if (isVirtualFrag){
-        // // Diifuse Cones
-        // indirectContribution = castDiffuseCones(startPos, normal, realMinLevel, virtualMinLevel, false, true);
-        // indirectContribution.rgb *= diffuse;
+        vec3 virtualIndirectContribution = vec3(0.0);
 
-        // // New
-        // vec3 specularConeDirection = reflect(-view, normal);
-        // vec3 specularContribution = vec3(0.0);
+        float shininess = unpackShininess(specColor.a);
+        float roughness = shininessToRoughness(shininess);
 
-        // float shininess = unpackShininess(specColor.a);
-        // float roughness = shininessToRoughness(shininess);
-        // if (any(greaterThan(specColor.rgb, vec3(EPSILON))) && specColor.a > EPSILON) {
-        //     VCTIntersection isect;
-        //     VCTCone c;
-        //     c.p = startPos;
-        //     c.dir = specularConeDirection;
-        //     c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
-        //     c.curLevel = realMinLevel;
-        //     c.depth = 0;
+        VCTIntersection realIsect, virtualIsect;
+        VCTCone c;
+        c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
+        c.depth = 0;
+        const int nSumbsample = 1;
+        for (int i=0; i<nSumbsample; ++i) {
+            // sample next direction (for light direction)
+            vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i*2)));
+            vec3 direction = sampleBeckmann(u, normal, roughness); 
+            c.dir = direction;
 
-        //     vec3 indirectSpecular = vec3(0);
-        //     const int n = 1; 
-        //     for (int i=0; i<n; ++i) {
-        //         // sample next direction (for light direction)
-        //         vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i*2)));
-        //         vec3 direction = sampleBeckmann(u, normal, roughness); 
-        //         // vec3 direction = -reflect(view, normal);
+            c.p = startPos;
+            c.curLevel = realMinLevel;
+            vec4 lightIntensity = castConeUnified(c, realScene, realIsect);
 
-        //         vec3 lightDir = -direction;
-        //         vec3 halfway = normalize(view - lightDir);
-        //         float nDotL = max(0.0, dot(normal, -lightDir));
-        //         // for the last term F0, use 0.04 if it's plastic, use albeo if it's metal
-        //         vec3 cook = cookTorranceBRDF(-lightDir, normal, view, halfway, roughness, vec3(0.04));
-        //         c.dir = direction;
-        //         vec4 intensity = castConeUnified(c, realScene, isect) * u_indirectSpecularIntensity;
-        //         indirectSpecular += cook * specColor.rgb * intensity.rgb;
-        //         // out_color.rgb = indirectSpecular;
-        //         // return;
-        //     }
-        //     indirectSpecular /= n;
+            c.p = startPosOffset;
+            c.curLevel = 0; // manually set to zero for smoothness
+            vec4 occlusion = castConeUnified(c, virtualScene, virtualIsect);
+            
+            // 1. Occluded by virtual object
+            if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                vec4 secondIntensity = vec4(u_ambientSecondIntensity); // ambient light
 
-        //     specularContribution.rgb += indirectSpecular;
-        // }
+                ivec3 outFaceIndices = computeVoxelFaceIndices(-virtualIsect.normal);
+                vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
+                vec3 weight = virtualIsect.normal * virtualIsect.normal;
+                vec3 secondDiffuse = sampleUnifiedClipmapLinearly(getDiffuse(true), virtualIsect.position, virtualIsect.level,
+                                    virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, 
+                                    faceOffsets, weight).rgb;
+                vec4 secondSpecularA = sampleUnifiedClipmapLinearly(getSpecularA(true), virtualIsect.position, virtualIsect.level,
+                                    virtualScene.voxelSizeL0, virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, 
+                                    faceOffsets, weight);
+                float shininess2 = unpackShininess(secondSpecularA.a);
+                float roughness2 = shininessToRoughness(shininess2);
 
-        // indirectContribution.rgb += specularContribution;
+                VCTCone c2;
+                c2.p = virtualIsect.position;
+                c2.curLevel = realMinLevel;
+                // c2.aperture = max(roughness, MIN_SPECULAR_APERTURE);
+                c2.aperture = DIFFUSE_CONE_APERTURE;
+                c2.depth = 0;
 
-        // Delta (shadow)
-        if (u_virtualSelfOcclusion == 1) {
-            // vec3 ret = castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, true).rgb;
-            // indirectContribution.rgb += ret.rgb;
-            // indirectContribution.rgb *= ret.a * u_indirectDiffuseShadow;
+                for (int j=0; j<1; ++j) {
+                    vec2 u = vec2(rand2D(In.texCoords + ivec2(i+j)), rand2D(In.texCoords + ivec2((i+j)*2)));
+                    vec3 direction = sampleBeckmann(u, virtualIsect.normal, roughness2); 
+                    c2.dir = direction;
+                    vec4 secondIntensity = castConeUnified(c2, realScene, realIsect);
+
+                    virtualIndirectContribution.rgb += secondIntensity.rgb * diffuse * secondDiffuse * u_virtualIndirectDiffuseIntensity;
+                }
+            }
+            // 2. Shading using light from real object
+            else {
+                vec3 lightDir = -direction;
+                vec3 halfway = normalize(view - lightDir);
+                float nDotL = max(0.0, dot(normal, -lightDir));
+
+                // Diffuse
+                vec3 F = fresnelSchlick(vec3(0.04), -lightDir, halfway);
+                virtualIndirectContribution += (vec3(1)-F) * nDotL * diffuse * lightIntensity.rgb;
+
+                // Specular
+                // for the last term F0, use 0.04 if it's plastic, use albeo if it's metal
+                vec3 cook = cookTorranceBRDF(-lightDir, normal, view, halfway, roughness, vec3(0.04));
+                if (
+                    any(greaterThan(specColor, vec4(EPSILON))) && 
+                    any(greaterThan(cook, vec3(EPSILON)))) {
+                    // specular
+                    virtualIndirectContribution += cook * specColor.rgb * lightIntensity.rgb
+                        * u_indirectSpecularIntensity;
+                }
+            }
         }
+        virtualIndirectContribution /= nSumbsample;
+
+        indirectContribution.rgb += virtualIndirectContribution;
     }
     else {
         ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
@@ -669,18 +588,13 @@ void main()
 
         if (u_realReflectance == 1)
             indirectContribution.rgb *= reflectance;
+
+	    indirectContribution.rgb *= u_realIndirectDiffuseIntensity;
     }
 
-    // out_color = vec4(indirectContribution.rgb, 1);
-    // if (any(lessThan(out_color, vec4(0))))
-        // out_color = abs(out_color);
-    // else
-        // out_color = vec4(0,0,1,1);
-    // return;
     // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of these cones
     indirectContribution.a *= u_ambientOcclusionFactor;
 
-	indirectContribution.rgb *= u_indirectDiffuseIntensity;
     // Do not clamp for the anti-radiance
     // indirectContribution = clamp(indirectContribution, 0.0, 1.0);
     
