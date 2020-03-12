@@ -23,6 +23,7 @@ in Vertex
 
 const float MAX_TRACE_DISTANCE = 15.0;
 const float MIN_STEP_FACTOR = 0.2;
+// const float MIN_SPECULAR_APERTURE = 0.1; // 5.73 degrees
 const float MIN_SPECULAR_APERTURE = 0.05; // 2.86 degrees
 
 uniform sampler2D u_diffuseTexture;
@@ -500,6 +501,36 @@ void main()
         c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
         c.depth = 0;
         const int nSumbsample = 1;
+        
+        // Perfect reflection (TEST)
+        if (true) {
+            c.dir = reflect(-view, normal);
+            c.p = startPos;
+            c.aperture = MIN_SPECULAR_APERTURE;
+
+            c.curLevel = realMinLevel;
+            vec4 dst = castConeUnified(c, realScene, realIsect);
+
+            c.curLevel = 0;
+            c.p = startPosOffset;
+            vec4 occlusion = castConeUnified(c, virtualScene, virtualIsect);
+
+            if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                c.curLevel = virtualIsect.level;
+                c.p = virtualIsect.position;
+                c.dir = reflect(-c.dir, virtualIsect.normal);
+                // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
+                if (u_secondBounce == 1)
+                    virtualIndirectContribution.rgb += castConeUnified(c, realScene, realIsect).rgb;
+                else
+                    virtualIndirectContribution.rgb += occlusion.rgb;
+            }
+            else {
+                virtualIndirectContribution.rgb += dst.rgb;
+            }
+        }
+        // Cook-Torrance BRDF
+        else
         for (int i=0; i<nSumbsample; ++i) {
             // sample next direction (for light direction)
             vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i*2)));
