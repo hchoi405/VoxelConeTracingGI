@@ -54,7 +54,7 @@ struct GISettings : VCTSettings
     SliderFloat occlusionDecay{"Occlusion Decay", 5.0f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
-    SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 2.0f};
+    SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 1.0f};
     SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 10.f, 0.1f, 15.0f};
     SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.f, 0.1f, 3.0f };

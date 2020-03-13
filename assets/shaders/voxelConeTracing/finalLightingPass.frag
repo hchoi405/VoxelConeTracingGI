@@ -323,7 +323,17 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection pri
         // Primary intersection
         if (!primaryIsect.hit && opacity > EPSILON) {
             primaryIsect.position = position;
-            primaryIsect.normal = unpackNormal(sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0, scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight).rgb);
+            primaryIsect.normal = unpackNormal(
+                sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                             scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                    .rgb);
+            primaryIsect.diffuse =
+                sampleUnifiedClipmapLinearly(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                             scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                    .rgb;
+            primaryIsect.specularA =
+                sampleUnifiedClipmapLinearly(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                             scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
             primaryIsect.level = c.curLevel;
             primaryIsect.hit = true;
             primaryIsect.t = s;
@@ -371,7 +381,7 @@ vec4 minLevelToColor(float minLevel)
 	return minLevelColor * 0.5;
 }
 
-// Diffuse cones for second bounce
+// Diffuse cones for second bounce in real
 vec4 castSecondRealDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel)
 {
     vec4 indirectContribution = vec4(0.0);
@@ -389,6 +399,25 @@ vec4 castSecondRealDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel)
         c.dir = DIFFUSE_CONE_DIRECTIONS[i];
         c.aperture = DIFFUSE_CONE_APERTURE;
         indirectContribution += castConeUnified(c, realScene, realIsect);
+    }
+    return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
+}
+
+// Diffuse cones for second bounce in virtual
+vec4 castSecondVirtualDiffuseCones(vec3 startPos, vec3 normal, float virtualMinLevel) {
+    vec4 indirectContribution = vec4(0.0);
+    VCTCone c;
+    c.p = startPos;  // offset is present inside castConeUnified
+    c.curLevel = virtualMinLevel;
+    for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i) {
+        VCTIntersection virtualIsect;
+        float cosTheta = dot(normal, DIFFUSE_CONE_DIRECTIONS[i]);
+
+        if (cosTheta < 0.0) continue;
+
+        c.dir = DIFFUSE_CONE_DIRECTIONS[i];
+        c.aperture = DIFFUSE_CONE_APERTURE;
+        indirectContribution += castConeUnified(c, virtualScene, virtualIsect);
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
@@ -501,8 +530,8 @@ void main()
         c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
         c.depth = 0;
         const int nSumbsample = 1;
-        
-        // Perfect reflection (TEST)
+
+        // Perfect reflection
         if (true) {
             c.dir = reflect(-view, normal);
             c.p = startPos;
@@ -520,9 +549,27 @@ void main()
                 c.p = virtualIsect.position;
                 c.dir = reflect(c.dir, virtualIsect.normal);
                 // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
-                if (u_secondBounce == 1)
-                    virtualIndirectContribution.rgb += castConeUnified(c, realScene, realIsect).rgb;
-                else
+                if (u_secondBounce == 1) {
+                    // virtualIndirectContribution.rgb += castConeUnified(c, realScene,
+                    // realIsect).rgb; virtualIndirectContribution.rgb +=
+                    // virtualIsect.diffuse *
+                    // castSecondRealDiffuseCones(virtualIsect.position,
+                    // virtualIsect.normal, realMinLevel).rgb *
+                    // u_virtualIndirectDiffuseIntensity; virtualIndirectContribution.rgb
+                    // += packNormal(virtualIsect.normal);
+                    virtualIndirectContribution.rgb = occlusion.rgb;
+                    // virtualIndirectContribution.rgb = virtualIsect.position;
+
+                    // virtualIndirectContribution.rgb += virtualIsect.diffuse
+                    //     * castSecondRealDiffuseCones(virtualIsect.position,
+                    //     virtualIsect.normal, realMinLevel).rgb
+                    //     * u_virtualIndirectDiffuseIntensity;
+
+                    // virtualIndirectContribution.rgb +=
+                    // castSecondVirtualDiffuseCones(virtualIsect.position,
+                    // virtualIsect.normal, virtualMinLevel).rgb
+                    //     * u_virtualIndirectDiffuseIntensity;
+                } else
                     virtualIndirectContribution.rgb += occlusion.rgb;
             }
             else {

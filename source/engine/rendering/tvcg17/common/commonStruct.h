@@ -5,6 +5,8 @@ struct VCTIntersection {
     bool hit;
     vec3 position;
     vec3 normal;
+    vec3 diffuse;
+    vec4 specularA;
     float level;
     float t;
 };
