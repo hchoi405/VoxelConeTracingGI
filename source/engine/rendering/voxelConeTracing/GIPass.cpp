@@ -115,6 +115,8 @@ void GIPass::update()
 
     m_finalLightPassShader->setFloat("u_ambientSecondIntensity", DEBUG_SETTINGS.ambientSecondIntensity);
 
+    m_finalLightPassShader->setInt("u_extraStep", DEBUG_SETTINGS.extraStep);
+
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

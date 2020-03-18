@@ -265,6 +265,9 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
                   << " to camera.txt" << std::endl;
         break;
     }
+    case SDLK_r: 
+        MainCamera->rotateY(math::toRadians(180));
+        break;
     case SDLK_z:
         m_gui->selectEntity(virtualTransform->getOwner(), false);
     break;
@@ -485,9 +488,9 @@ void VoxelConeTracingDemo::createDemoScene()
     // virtualTransform->getOwner().setVirtual(true);
 
     // Virtual Buddha
-    auto vo1 = ResourceManager::getModel("meshes/buddha/cube.ply");
+    auto vo1 = ResourceManager::getModel("meshes/cube.ply");
     vo1->name = "vo1";
-    auto vo2 = ResourceManager::getModel("meshes/buddha/cube.ply");
+    auto vo2 = ResourceManager::getModel("meshes/cube.ply");
     vo2->name = "vo2";
 
     auto virtualObject = ECS::createEntity("virtualObject");
@@ -498,7 +501,7 @@ void VoxelConeTracingDemo::createDemoScene()
     auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(3.5f), true);
     auto buddhaMaterial1 = EntityCreator::createMaterial();
     buddhaMaterial1->setFloat("u_shininess", 255.0);
-    buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
+    buddhaMaterial1->setColor("u_color", glm::vec4(1));
     buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
     voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
@@ -512,7 +515,7 @@ void VoxelConeTracingDemo::createDemoScene()
     auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(3.5f), true);
     auto buddhaMaterial2 = EntityCreator::createMaterial();
     buddhaMaterial2->setFloat("u_shininess", 255.0);
-    buddhaMaterial2->setColor("u_color", glm::vec4(1));
+    buddhaMaterial2->setColor("u_color", glm::vec4(1, 0, 0, 1));
     buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
     buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
     voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
@@ -524,7 +527,7 @@ void VoxelConeTracingDemo::createDemoScene()
 
     
     parentTransform->setPosition(glm::vec3(0, 0.95, 0));
-    // parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
     parentTransform->getOwner().setVirtual(true);
 
     virtualTransform = parentTransform;

@@ -22,6 +22,7 @@ const float MAX_TRACE_DISTANCE = 15.0;
 const float MIN_STEP_FACTOR = 0.2;
 // const float MIN_SPECULAR_APERTURE = 0.1; // 5.73 degrees
 const float MIN_SPECULAR_APERTURE = 0.05;  // 2.86 degrees
+// const float MIN_SPECULAR_APERTURE = 0.025;  // 2.86 degrees
 
 uniform sampler2D u_diffuseTexture;
 uniform sampler2D u_normalMap;
@@ -85,6 +86,7 @@ uniform float u_secondIndirectDiffuseIntensity;
 uniform float u_secondIndirectSpecularIntensity;
 uniform uint u_realReflectance;
 uniform float u_ambientSecondIntensity;
+uniform int u_extraStep;
 
 layout(location = 0) out vec4 out_color;
 
@@ -198,8 +200,13 @@ vec4 sampleUnifiedClipmapLinearly(sampler3D clipmapTexture, vec3 position, float
     return mix(lowSample, highSample, fract(curLevel));
 }
 
-vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection primaryIsect, bool primaryOnly = false) {
-    primaryIsect.hit = false;
+vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection isect, bool primaryOnly = false) {
+    // Initialize the intersection
+    isect.hit = false;
+    isect.normal = vec3(0.0);
+    isect.diffuse = vec3(0.0);
+    isect.specularA = vec4(0.0);
+
     // Initialize accumulated color and opacity
     vec4 dst = vec4(0.0);
     // Coefficient used in the computation of the diameter of a cone
@@ -250,6 +257,9 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection pri
 
     float minRadius = scene.voxelSizeL0 * scene.volumeDimension * 0.5;
 
+    bool startCount = false;
+    int terminateCounter = u_extraStep;
+
     // Ray marching - compute occlusion and radiance in one go
     while (s < maxDistance && occlusion < 1.0) {
         vec3 position = c.p + c.dir * s;
@@ -259,52 +269,66 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection pri
 
         c.curLevel = log2(diameter / scene.voxelSizeL0);
         c.curLevel = min(max(max(startLevel, c.curLevel), minLevel), scene.maxClipmapLevel - 1);
+        voxelSize = scene.voxelSizeL0 * exp2(c.curLevel);
 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
         vec4 radiance =
             sampleUnifiedClipmapLinearly(getRadiance(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
                                          scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
+        vec3 normal = unpackNormal(
+            sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                            scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                .rgb);
+        vec3 diffuse =
+            sampleUnifiedClipmapLinearly(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                            scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                .rgb;
+        vec4 specularA =
+            sampleUnifiedClipmapLinearly(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                            scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
 
-        voxelSize = scene.voxelSizeL0 * exp2(c.curLevel);
-
-        // Radiance correction
+        // Radiance correction (diffuse, specular)
         float correctionQuotient = curSegmentLength / voxelSize;
         radiance.rgb = radiance.rgb * correctionQuotient;
+        normal = normal * correctionQuotient;
+        diffuse = diffuse * correctionQuotient;
+        specularA = specularA * correctionQuotient;
 
         // Opacity correction
         float opacity = clamp(1.0 - pow(1.0 - radiance.a, correctionQuotient), 0.0, 1.0);
 
-        vec4 src = vec4(radiance.rgb, opacity);
-
         // Front-to-back compositing
-        dst += clamp(1.0 - dst.a, 0.0, 1.0) * src;
-        occlusion += (1.0 - occlusion) * opacity / (1.0 + (s + voxelSize) * params.occlusionDecay);
-
         // Primary intersection
-        if (!primaryIsect.hit && opacity > EPSILON) {
-            primaryIsect.position = position;
-            primaryIsect.normal = unpackNormal(
-                sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                             scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
-                    .rgb);
-            primaryIsect.diffuse =
-                sampleUnifiedClipmapLinearly(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                             scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
-                    .rgb;
-            primaryIsect.specularA =
-                sampleUnifiedClipmapLinearly(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                             scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
-            primaryIsect.level = c.curLevel;
-            primaryIsect.hit = true;
-            primaryIsect.t = s;
+        if (!isect.hit && opacity > EPSILON) {
+        // vec4 srcColor = texelFetch(u_srcTexture, pos, 0);
+        // vec3 position = c.p + c.dir * s;
+            // vec3 nextPosition = c.p + c.dir * (s + max(diameter, scene.voxelSizeL0) * stepFactor);
+            // isect.normal = isect.normal * correctionQuotient;
+            // isect.normal /= 2;
+
+            isect.position = position;
+            isect.level = c.curLevel;
+            isect.hit = true;
+            isect.t = s;
+            startCount = true;
             if (primaryOnly) break;
         }
+        isect.normal += clamp(1.0 - dst.a, 0.0, 1.0) * normal;
+        isect.diffuse += clamp(1.0 - dst.a, 0.0, 1.0) * diffuse;
+        isect.specularA += clamp(1.0 - dst.a, 0.0, 1.0) * specularA;
+        vec4 src = vec4(radiance.rgb, opacity);
+        dst += clamp(1.0 - dst.a, 0.0, 1.0) * src;
+        occlusion += (1.0 - occlusion) * opacity / (1.0 + (s + voxelSize) * params.occlusionDecay);
 
         // Step
         float sLast = s;
         s += max(diameter, scene.voxelSizeL0) * stepFactor;
         curSegmentLength = (s - sLast);
         diameter = s * coneCoefficient;
+
+        if (startCount) {
+            // if (terminateCounter-- < 0) break;
+        }
     }
 
     return clamp(vec4(dst.rgb, 1.0 - occlusion), 0.0, 1.0);
@@ -455,6 +479,14 @@ void main() {
 
     float realMinLevel = getRealMinLevel(posW);
     float virtualMinLevel = getVirtualMinLevel(posW);
+    // if (isVirtualFrag) {
+    //     out_color = vec4(vec3(virtualMinLevel), 1);
+    //     return;
+    // }
+    // else {
+    //     out_color = vec4(vec3(realMinLevel), 1);
+    //     return;
+    // }
 
     // Compute indirect contribution
     vec4 indirectContribution = vec4(0.0);
@@ -485,24 +517,40 @@ void main() {
             c.curLevel = realMinLevel;
             vec4 dst = castConeUnified(c, realScene, realIsect);
 
-            c.curLevel = 0;
+            c.curLevel = virtualMinLevel;
             c.p = startPosOffset;
             vec4 occlusion = castConeUnified(c, virtualScene, virtualIsect);
 
+            // virtualIndirectContribution.rgb += virtualIsect.diffuse;
+            // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
+
+            // if (false) {
             if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                c.curLevel = virtualIsect.level;
-                c.p = virtualIsect.position;
-                c.dir = reflect(c.dir, virtualIsect.normal);
+                virtualIndirectContribution.rgb += virtualIsect.diffuse;
                 // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
-                if (u_secondBounce == 1) {
-                    // virtualIndirectContribution.rgb += castConeUnified(c, realScene,
-                    // realIsect).rgb; virtualIndirectContribution.rgb +=
-                    // virtualIsect.diffuse *
-                    // castSecondRealDiffuseCones(virtualIsect.position,
-                    // virtualIsect.normal, realMinLevel).rgb *
-                    // u_virtualIndirectDiffuseIntensity; virtualIndirectContribution.rgb
-                    // += packNormal(virtualIsect.normal);
-                    virtualIndirectContribution.rgb = occlusion.rgb;
+
+                if (false) {
+                // if (u_secondBounce == 1) {
+                    c.curLevel = realMinLevel;
+                    c.p = virtualIsect.position;
+                    c.dir = reflect(c.dir, virtualIsect.normal);
+                    // virtualIndirectContribution.rgb += castConeUnified(c, realScene, realIsect).rgb;
+                    castConeUnified(c, realScene, realIsect);
+                    virtualIndirectContribution.rgb += packNormal(realIsect.normal);
+
+                    // virtualIndirectContribution.rgb +=
+                    //     virtualIsect.diffuse *
+                    //     castSecondRealDiffuseCones(virtualIsect.position, virtualIsect.normal, realMinLevel).rgb *
+                    //     u_virtualIndirectDiffuseIntensity;
+
+                    // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
+
+                    // virtualIndirectContribution.rgb = occlusion.rgb;
+
+                    // virtualIndirectContribution.rgb = vec3(virtualIsect.level);
+
+                    // virtualIndirectContribution.rgb = occlusion.rgb;
+
                     // virtualIndirectContribution.rgb = virtualIsect.position;
 
                     // virtualIndirectContribution.rgb += virtualIsect.diffuse
@@ -514,8 +562,10 @@ void main() {
                     // castSecondVirtualDiffuseCones(virtualIsect.position,
                     // virtualIsect.normal, virtualMinLevel).rgb
                     //     * u_virtualIndirectDiffuseIntensity;
-                } else
-                    virtualIndirectContribution.rgb += occlusion.rgb;
+                } 
+                // else
+                //     virtualIndirectContribution.rgb += occlusion.rgb;
+                virtualIndirectContribution.rgb *= u_virtualIndirectDiffuseIntensity;
             } else {
                 virtualIndirectContribution.rgb += dst.rgb;
             }
@@ -535,10 +585,13 @@ void main() {
                 c.p = startPosOffset;
                 c.curLevel = 0;  // manually set to zero for smoothness
                 vec4 occlusion = castConeUnified(c, virtualScene, virtualIsect);
+                // vec4 occlusion = vec4(0);
 
                 // 1. Occluded by virtual object
                 if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                    vec4 secondIntensity = vec4(u_ambientSecondIntensity);  // ambient light
+                    // vec3 secondIntensity = vec3(u_ambientSecondIntensity);  // ambient light
+                    virtualIndirectContribution.rgb += virtualIsect.diffuse;
+                    continue;
 
                     ivec3 outFaceIndices = computeVoxelFaceIndices(-virtualIsect.normal);
                     vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
@@ -591,10 +644,11 @@ void main() {
                     }
                 }
             }
-        virtualIndirectContribution /= nSumbsample;
 
-        indirectContribution.rgb += virtualIndirectContribution;
+        indirectContribution.rgb += virtualIndirectContribution / nSumbsample;
     } else {
+        out_color.rgb = packNormal(normal);
+        return;
         ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
         vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
         vec3 weight = normal * normal;
