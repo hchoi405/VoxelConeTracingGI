@@ -451,21 +451,21 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("dasan613_ipad/dasan613-2.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("dasan613_ipad/dasan613-2.obj", shader, "cglab/", glm::vec3(1.f, 1, 1), true);
+    ResourceManager::getModel("dasan613_ipad_texture/dasan613-texture-modified.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("dasan613_ipad_texture/dasan613-texture-modified.obj", shader, "dasan613_ipad_texture/", glm::vec3(1.f, 1, 1), true);
     // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "dasan613_ipad/cloud_normal_subsampled.ply";
+    std::string cloudFilename = "dasan613_ipad_texture/dasan613-texture-modified-1M.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
     // whether the model given with the filename is already loaded
     ResourceManager::getModel(cloudFilename)->name = pcEntityName; 
-    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f, 1, 1), false);
+    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "dasan613_ipad_texture/", glm::vec3(1.f, 1, 1), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
     // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));

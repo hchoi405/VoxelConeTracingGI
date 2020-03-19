@@ -663,8 +663,8 @@ void main() {
         }
         indirectContribution.rgb += virtualIndirectContribution / nSumbsample;
     } else {
-        out_color.rgb = packNormal(normal);
-        return;
+        // out_color.rgb = packNormal(normal);
+        // return;
         ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
         vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
         vec3 weight = normal * normal;
@@ -721,10 +721,5 @@ void main() {
             out_color *= minLevelToColor(realMinLevel);
     }
 
-    if (isVirtualFrag) {
-        out_color = clamp(out_color, 0.0, 1.0);
-    } else {
-        // original shading (VCT)
-        out_color = clamp(out_color, 0.0, 1.0);
-    }
+    out_color = clamp(out_color, 0.0, 1.0);
 }
