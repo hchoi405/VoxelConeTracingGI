@@ -80,7 +80,7 @@ struct DebugSettings : VCTSettings
         &indirectVirtualRadius, &opacityCorrection,  */
         &virtualSelfOcclusion, &indirectSpecularShadow,
         &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance,
-        &renderReal, &renderVirtual, &ambientSecondIntensity, &extraStep});
+        &renderReal, &renderVirtual, &ambientSecondIntensity, &extraStep, &glassEta});
     }
 
     SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
@@ -101,6 +101,7 @@ struct DebugSettings : VCTSettings
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};
+    SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
 };
 
 struct DemoSettings : VCTSettings

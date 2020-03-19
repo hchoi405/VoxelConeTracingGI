@@ -12,6 +12,43 @@
 #define INV_PI 0.318309886183791
 #endif
 
+// etaI: commonly the vacuum (1.0)
+// etaT: the glass (1.5-1.6)
+float fresnelDieletric(vec3 view, vec3 normal, float etaI, float etaT)
+{
+    float cosThetaI = dot(view, normal);
+
+    // Normal should be directed to view direction
+    if (cosThetaI < 0) return 0;
+    
+    float sinThetaI = sqrt(max(0, 1 - cosThetaI * cosThetaI));
+    float sinThetaT = etaI / etaT * sinThetaI;
+
+    // Total internal reflection
+    if (sinThetaT >= 1) return 1;
+    float cosThetaT = sqrt(max(0, 1 - sinThetaT * sinThetaT));
+    float Rparl = ((etaT * cosThetaI) - (etaI * cosThetaT)) /
+                  ((etaT * cosThetaI) + (etaI * cosThetaT));
+    float Rperp = ((etaI * cosThetaI) - (etaT * cosThetaT)) /
+                  ((etaI * cosThetaI) + (etaT * cosThetaT));
+    return (Rparl * Rparl + Rperp * Rperp) / 2;
+}
+
+// Calculate the refracted ray over 
+// etaRatio: etaI / etaT
+bool refract(const vec3 view, const vec3 n, float etaRatio, out vec3 wt) {
+    // Compute $\cos \theta_\roman{t}$ using Snell's law
+    float cosThetaI = dot(n, view);
+    float sin2ThetaI = max(0, 1 - cosThetaI * cosThetaI);
+    float sin2ThetaT = etaRatio * etaRatio * sin2ThetaI;
+
+    // Handle total internal reflection for transmission
+    if (sin2ThetaT >= 1) return false;
+    float cosThetaT = sqrt(1 - sin2ThetaT);
+    wt = etaRatio * -view + (etaRatio * cosThetaI - cosThetaT) * n;
+    return true;
+}
+
 float fresnel(vec3 viewVector, vec3 halfway)
 {
     return pow(1.0 - dot(viewVector, halfway), 5);

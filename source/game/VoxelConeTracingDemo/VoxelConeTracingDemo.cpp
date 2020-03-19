@@ -488,9 +488,9 @@ void VoxelConeTracingDemo::createDemoScene()
     // virtualTransform->getOwner().setVirtual(true);
 
     // Virtual Buddha
-    auto vo1 = ResourceManager::getModel("meshes/cube.ply");
+    auto vo1 = ResourceManager::getModel("meshes/plane.ply");
     vo1->name = "vo1";
-    auto vo2 = ResourceManager::getModel("meshes/cube.ply");
+    auto vo2 = ResourceManager::getModel("meshes/plane.ply");
     vo2->name = "vo2";
 
     auto virtualObject = ECS::createEntity("virtualObject");

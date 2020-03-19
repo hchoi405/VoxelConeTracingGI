@@ -87,6 +87,7 @@ uniform float u_secondIndirectSpecularIntensity;
 uniform uint u_realReflectance;
 uniform float u_ambientSecondIntensity;
 uniform int u_extraStep;
+uniform float u_glassEta;
 
 layout(location = 0) out vec4 out_color;
 
@@ -300,12 +301,6 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection ise
         // Front-to-back compositing
         // Primary intersection
         if (!isect.hit && opacity > EPSILON) {
-        // vec4 srcColor = texelFetch(u_srcTexture, pos, 0);
-        // vec3 position = c.p + c.dir * s;
-            // vec3 nextPosition = c.p + c.dir * (s + max(diameter, scene.voxelSizeL0) * stepFactor);
-            // isect.normal = isect.normal * correctionQuotient;
-            // isect.normal /= 2;
-
             isect.position = position;
             isect.level = c.curLevel;
             isect.hit = true;
@@ -508,12 +503,13 @@ void main() {
         c.depth = 0;
         const int nSumbsample = 1;
 
+        const int material = 2;
+
         // Perfect reflection
-        if (true) {
+        if (material == 0) {
             c.dir = reflect(-view, normal);
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
-
             c.curLevel = realMinLevel;
             vec4 dst = castConeUnified(c, realScene, realIsect);
 
@@ -562,7 +558,7 @@ void main() {
                     // castSecondVirtualDiffuseCones(virtualIsect.position,
                     // virtualIsect.normal, virtualMinLevel).rgb
                     //     * u_virtualIndirectDiffuseIntensity;
-                } 
+                }
                 // else
                 //     virtualIndirectContribution.rgb += occlusion.rgb;
                 virtualIndirectContribution.rgb *= u_virtualIndirectDiffuseIntensity;
@@ -571,7 +567,7 @@ void main() {
             }
         }
         // Cook-Torrance BRDF
-        else
+        else if (material == 1) {
             for (int i = 0; i < nSumbsample; ++i) {
                 // sample next direction (for light direction)
                 vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i * 2)));
@@ -645,6 +641,26 @@ void main() {
                 }
             }
 
+        }
+        // Glass
+        else if (material == 2) {
+            virtualIndirectContribution = vec3(dot(normal, view));
+            float etaI = 1.0;                                      // Incident medium (Vacuum)
+            float etaT = u_glassEta;                               // Transmitted medium (Glass, 1.5-1.6)
+            float F = fresnelDieletric(view, normal, etaI, etaT);  // Fresnel Dielectric Term (reflection)
+            vec3 refractedDir;
+            if (refract(view, normal, etaI / etaT, refractedDir)) {
+                c.p = startPos;
+                c.aperture = MIN_SPECULAR_APERTURE;
+                c.curLevel = realMinLevel;
+                c.dir = refractedDir;
+                virtualIndirectContribution = castConeUnified(c, realScene, realIsect).rgb;
+            } else {
+                // total reflrection
+                virtualIndirectContribution = vec3(0, 0, 1);
+            }
+            virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
+        }
         indirectContribution.rgb += virtualIndirectContribution / nSumbsample;
     } else {
         out_color.rgb = packNormal(normal);

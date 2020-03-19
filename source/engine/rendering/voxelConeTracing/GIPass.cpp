@@ -116,6 +116,7 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_ambientSecondIntensity", DEBUG_SETTINGS.ambientSecondIntensity);
 
     m_finalLightPassShader->setInt("u_extraStep", DEBUG_SETTINGS.extraStep);
+    m_finalLightPassShader->setFloat("u_glassEta", DEBUG_SETTINGS.glassEta);
 
 
     int lightingMask = 0;
