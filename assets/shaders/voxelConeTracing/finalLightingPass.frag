@@ -408,7 +408,8 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
         c.aperture = DIFFUSE_CONE_APERTURE;
         // First hit real
         if (traceVirtual) {
-            c.curLevel = virtualMinLevel;
+            // c.curLevel = virtualMinLevel;
+            c.curLevel = 0; // Use zero level to remove sphere artifacts
             vec4 virtualRet = castConeUnified(c, virtualScene, virtualIsect) * cosTheta;
 
             c.curLevel = realMinLevel;
