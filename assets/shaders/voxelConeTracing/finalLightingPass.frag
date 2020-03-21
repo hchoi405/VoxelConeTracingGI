@@ -53,7 +53,6 @@ uniform float u_voxelSizeL0;
 uniform vec3 u_volumeCenterL0;
 uniform float u_stepFactor;
 uniform float u_virtualStepFactor;
-uniform float u_viewAperture;
 uniform int u_lightingMask;
 uniform float u_realIndirectDiffuseIntensity;
 uniform float u_virtualIndirectDiffuseIntensity;
@@ -75,6 +74,8 @@ VCTScene virtualScene, realScene;
 VCTParams params;
 
 // Debug
+uniform uint u_toggleViewCone;
+uniform float u_viewAperture;
 uniform uint u_debugFlag;
 uniform uint u_renderReal;
 uniform uint u_renderVirtual;
@@ -185,23 +186,23 @@ vec4 sampleUnifiedClipmapTexture(sampler3D virtualClipmapTexture, vec3 posW, int
                  0.0, 1.0);
 }
 
-vec4 sampleUnifiedClipmapLinearly(sampler3D clipmapTexture, vec3 position, float curLevel, float voxelSizeL0,
-                                  uint volumeDimension, float maxCliplevelInv, vec3 faceOffsets, vec3 weight) {
+vec4 sampleClipmapLinearly(sampler3D clipmapTexture, vec3 position, float curLevel, float voxelSizeL0,
+                           uint volumeDimension, float maxCliplevelInv, vec3 faceOffsets, vec3 weight) {
     int lowerLevel = int(floor(curLevel));
     int upperLevel = int(ceil(curLevel));
 
-    vec4 lowSample = sampleUnifiedClipmapTexture(clipmapTexture, position, lowerLevel, voxelSizeL0, volumeDimension,
-                                                 maxCliplevelInv, faceOffsets, weight);
+    vec4 lowSample = sampleClipmapTexture(clipmapTexture, position, lowerLevel, voxelSizeL0, volumeDimension,
+                                          maxCliplevelInv, faceOffsets, weight);
 
     if (lowerLevel == upperLevel) return lowSample;
 
-    vec4 highSample = sampleUnifiedClipmapTexture(clipmapTexture, position, upperLevel, voxelSizeL0, volumeDimension,
-                                                  maxCliplevelInv, faceOffsets, weight);
+    vec4 highSample = sampleClipmapTexture(clipmapTexture, position, upperLevel, voxelSizeL0, volumeDimension,
+                                           maxCliplevelInv, faceOffsets, weight);
 
     return mix(lowSample, highSample, fract(curLevel));
 }
 
-vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection isect, bool primaryOnly = false) {
+vec4 castCone(in VCTCone c, const VCTScene scene, out VCTIntersection isect) {
     // Initialize the intersection
     isect.hit = false;
     isect.normal = vec3(0.0);
@@ -273,30 +274,37 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection ise
         voxelSize = scene.voxelSizeL0 * exp2(c.curLevel);
 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
-        vec4 radiance =
-            sampleUnifiedClipmapLinearly(getRadiance(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                         scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
-        vec3 normal = unpackNormal(
-            sampleUnifiedClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                            scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
-                .rgb);
-        vec3 diffuse =
-            sampleUnifiedClipmapLinearly(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                            scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
-                .rgb;
-        vec4 specularA =
-            sampleUnifiedClipmapLinearly(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                            scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
+        vec4 radiance = sampleClipmapLinearly(getRadiance(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                              scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
 
         // Radiance correction (diffuse, specular)
         float correctionQuotient = curSegmentLength / voxelSize;
         radiance.rgb = radiance.rgb * correctionQuotient;
-        normal = normal * correctionQuotient;
-        diffuse = diffuse * correctionQuotient;
-        specularA = specularA * correctionQuotient;
 
         // Opacity correction
         float opacity = clamp(1.0 - pow(1.0 - radiance.a, correctionQuotient), 0.0, 1.0);
+
+        // Sample only opaque voxel
+        if (radiance.a > EPSILON) {
+            vec3 normal =
+                unpackNormal(sampleClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                                   scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                                 .rgb);
+            vec3 diffuse = sampleClipmapLinearly(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                                 scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                               .rgb;
+            vec4 specularA =
+                sampleClipmapLinearly(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                                      scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
+
+            normal = normal * correctionQuotient;
+            diffuse = diffuse * correctionQuotient;
+            specularA = specularA * correctionQuotient;
+
+            isect.normal += clamp(1.0 - dst.a, 0.0, 1.0) * normal;
+            isect.diffuse += clamp(1.0 - dst.a, 0.0, 1.0) * diffuse;
+            isect.specularA += clamp(1.0 - dst.a, 0.0, 1.0) * specularA;
+        }
 
         // Front-to-back compositing
         // Primary intersection
@@ -306,11 +314,7 @@ vec4 castConeUnified(in VCTCone c, const VCTScene scene, out VCTIntersection ise
             isect.hit = true;
             isect.t = s;
             startCount = true;
-            if (primaryOnly) break;
         }
-        isect.normal += clamp(1.0 - dst.a, 0.0, 1.0) * normal;
-        isect.diffuse += clamp(1.0 - dst.a, 0.0, 1.0) * diffuse;
-        isect.specularA += clamp(1.0 - dst.a, 0.0, 1.0) * specularA;
         vec4 src = vec4(radiance.rgb, opacity);
         dst += clamp(1.0 - dst.a, 0.0, 1.0) * src;
         occlusion += (1.0 - occlusion) * opacity / (1.0 + (s + voxelSize) * params.occlusionDecay);
@@ -357,7 +361,7 @@ vec4 minLevelToColor(float minLevel) {
 vec4 castSecondRealDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
-    c.p = startPos;  // offset is present inside castConeUnified
+    c.p = startPos;  // offset is present inside castCone
     c.curLevel = realMinLevel;
     for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i) {
         VCTIntersection realIsect;
@@ -367,7 +371,7 @@ vec4 castSecondRealDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel) 
 
         c.dir = DIFFUSE_CONE_DIRECTIONS[i];
         c.aperture = DIFFUSE_CONE_APERTURE;
-        indirectContribution += castConeUnified(c, realScene, realIsect);
+        indirectContribution += castCone(c, realScene, realIsect);
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
@@ -376,7 +380,7 @@ vec4 castSecondRealDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel) 
 vec4 castSecondVirtualDiffuseCones(vec3 startPos, vec3 normal, float virtualMinLevel) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
-    c.p = startPos;  // offset is present inside castConeUnified
+    c.p = startPos;  // offset is present inside castCone
     c.curLevel = virtualMinLevel;
     for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i) {
         VCTIntersection virtualIsect;
@@ -386,7 +390,7 @@ vec4 castSecondVirtualDiffuseCones(vec3 startPos, vec3 normal, float virtualMinL
 
         c.dir = DIFFUSE_CONE_DIRECTIONS[i];
         c.aperture = DIFFUSE_CONE_APERTURE;
-        indirectContribution += castConeUnified(c, virtualScene, virtualIsect);
+        indirectContribution += castCone(c, virtualScene, virtualIsect);
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
@@ -396,7 +400,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
                       bool delta = false) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
-    c.p = startPos;  // offset is present inside castConeUnified
+    c.p = startPos;  // offset is present inside castCone
     for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i) {
         VCTIntersection virtualIsect, realIsect;
         VCTIntersection tmpIsect;
@@ -409,11 +413,11 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
         // First hit real
         if (traceVirtual) {
             // c.curLevel = virtualMinLevel;
-            c.curLevel = 0; // Use zero level to remove sphere artifacts
-            vec4 virtualRet = castConeUnified(c, virtualScene, virtualIsect) * cosTheta;
+            c.curLevel = 0;  // Use zero level to remove sphere artifacts
+            vec4 virtualRet = castCone(c, virtualScene, virtualIsect) * cosTheta;
 
             c.curLevel = realMinLevel;
-            vec4 realRet = castConeUnified(c, realScene, realIsect) * cosTheta;
+            vec4 realRet = castCone(c, realScene, realIsect) * cosTheta;
 
             // Second hit virtual
             if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
@@ -452,6 +456,15 @@ void main() {
     vec3 view = normalize(u_eyePos - posW);
     vec4 specColor = texture(u_specularMap, In.texCoords);
 
+    // DEBUG: Sample at posW
+    // ivec3 faceIndices = computeVoxelFaceIndices(-normal);
+    // vec3 faceOffsets = vec3(faceIndices) * FACE_COUNT_INV;
+    // // Real weight
+    // vec3 w = normal * normal;
+    // out_color = sampleClipmapLinearly2(getRadiance(false), posW, getRealMinLevel(posW), u_voxelSizeL0,
+    //                                    u_volumeDimension, CLIP_LEVEL_COUNT_INV, faceOffsets, w);
+    // return;
+
     // Scene setup
     virtualScene.voxelSizeL0 = u_virtualVoxelSizeL0;
     virtualScene.volumeDimension = u_virtualVolumeDimension;
@@ -475,6 +488,8 @@ void main() {
 
     float realMinLevel = getRealMinLevel(posW);
     float virtualMinLevel = getVirtualMinLevel(posW);
+
+    // DEBUG: Visualize elvel
     // if (isVirtualFrag) {
     //     out_color = vec4(vec3(virtualMinLevel), 1);
     //     return;
@@ -483,6 +498,20 @@ void main() {
     //     out_color = vec4(vec3(realMinLevel), 1);
     //     return;
     // }
+
+    // DEBUG: Cast cone from u_eyePos
+    if (u_toggleViewCone == 1)
+    {
+        VCTIntersection tmpIsect;
+        VCTCone tmpCone;
+        tmpCone.depth = 0;
+        tmpCone.dir = -view;
+        tmpCone.p = u_eyePos;
+        tmpCone.aperture = u_viewAperture;
+        tmpCone.curLevel = getRealMinLevel(u_eyePos);
+        out_color.rgb = castCone(tmpCone, realScene, tmpIsect).rgb;
+        return;
+    }
 
     // Compute indirect contribution
     vec4 indirectContribution = vec4(0.0);
@@ -512,11 +541,11 @@ void main() {
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
             c.curLevel = realMinLevel;
-            vec4 dst = castConeUnified(c, realScene, realIsect);
+            vec4 dst = castCone(c, realScene, realIsect);
 
             c.curLevel = virtualMinLevel;
             c.p = startPosOffset;
-            vec4 occlusion = castConeUnified(c, virtualScene, virtualIsect);
+            vec4 occlusion = castCone(c, virtualScene, virtualIsect);
 
             // virtualIndirectContribution.rgb += virtualIsect.diffuse;
             // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
@@ -527,12 +556,12 @@ void main() {
                 // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
 
                 if (false) {
-                // if (u_secondBounce == 1) {
+                    // if (u_secondBounce == 1) {
                     c.curLevel = realMinLevel;
                     c.p = virtualIsect.position;
                     c.dir = reflect(c.dir, virtualIsect.normal);
-                    // virtualIndirectContribution.rgb += castConeUnified(c, realScene, realIsect).rgb;
-                    castConeUnified(c, realScene, realIsect);
+                    // virtualIndirectContribution.rgb += castCone(c, realScene, realIsect).rgb;
+                    castCone(c, realScene, realIsect);
                     virtualIndirectContribution.rgb += packNormal(realIsect.normal);
 
                     // virtualIndirectContribution.rgb +=
@@ -577,11 +606,11 @@ void main() {
 
                 c.p = startPos;
                 c.curLevel = realMinLevel;
-                vec4 lightIntensity = castConeUnified(c, realScene, realIsect);
+                vec4 lightIntensity = castCone(c, realScene, realIsect);
 
                 c.p = startPosOffset;
                 c.curLevel = 0;  // manually set to zero for smoothness
-                vec4 occlusion = castConeUnified(c, virtualScene, virtualIsect);
+                vec4 occlusion = castCone(c, virtualScene, virtualIsect);
                 // vec4 occlusion = vec4(0);
 
                 // 1. Occluded by virtual object
@@ -594,11 +623,11 @@ void main() {
                     vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
                     vec3 weight = virtualIsect.normal * virtualIsect.normal;
                     vec3 secondDiffuse =
-                        sampleUnifiedClipmapLinearly(getDiffuse(true), virtualIsect.position, virtualIsect.level,
-                                                     virtualScene.voxelSizeL0, virtualScene.volumeDimension,
-                                                     virtualScene.maxClipmapLevelInv, faceOffsets, weight)
+                        sampleClipmapLinearly(getDiffuse(true), virtualIsect.position, virtualIsect.level,
+                                              virtualScene.voxelSizeL0, virtualScene.volumeDimension,
+                                              virtualScene.maxClipmapLevelInv, faceOffsets, weight)
                             .rgb;
-                    vec4 secondSpecularA = sampleUnifiedClipmapLinearly(
+                    vec4 secondSpecularA = sampleClipmapLinearly(
                         getSpecularA(true), virtualIsect.position, virtualIsect.level, virtualScene.voxelSizeL0,
                         virtualScene.volumeDimension, virtualScene.maxClipmapLevelInv, faceOffsets, weight);
                     float shininess2 = unpackShininess(secondSpecularA.a);
@@ -615,7 +644,7 @@ void main() {
                         vec2 u = vec2(rand2D(In.texCoords + ivec2(i + j)), rand2D(In.texCoords + ivec2((i + j) * 2)));
                         vec3 direction = sampleBeckmann(u, virtualIsect.normal, roughness2);
                         c2.dir = direction;
-                        vec4 secondIntensity = castConeUnified(c2, realScene, realIsect);
+                        vec4 secondIntensity = castCone(c2, realScene, realIsect);
 
                         virtualIndirectContribution.rgb +=
                             secondIntensity.rgb * diffuse * secondDiffuse * u_virtualIndirectDiffuseIntensity;
@@ -653,9 +682,10 @@ void main() {
             if (refract(view, normal, etaI / etaT, refractedDir)) {
                 c.p = startPos;
                 c.aperture = MIN_SPECULAR_APERTURE;
-                c.curLevel = realMinLevel;
+                // c.curLevel = realMinLevel;
+                c.curLevel = getRealMinLevel(u_eyePos); // Use this due to some artifacts
                 c.dir = refractedDir;
-                virtualIndirectContribution = castConeUnified(c, realScene, realIsect).rgb;
+                virtualIndirectContribution = castCone(c, realScene, realIsect).rgb;
             } else {
                 // total reflrection
                 virtualIndirectContribution = vec3(0, 0, 1);
@@ -671,8 +701,8 @@ void main() {
         vec3 weight = normal * normal;
         // TEMPORAL: Use radiance as a reflectance for now
         vec3 reflectance =
-            sampleUnifiedClipmapLinearly(getRadiance(false), startPos, realMinLevel, realScene.voxelSizeL0,
-                                         realScene.volumeDimension, realScene.maxClipmapLevelInv, faceOffsets, weight)
+            sampleClipmapLinearly(getRadiance(false), startPos, realMinLevel, realScene.voxelSizeL0,
+                                  realScene.volumeDimension, realScene.maxClipmapLevelInv, faceOffsets, weight)
                 .rgb;
 
         // Occlusion-based shadow + color bleeding from virtual object

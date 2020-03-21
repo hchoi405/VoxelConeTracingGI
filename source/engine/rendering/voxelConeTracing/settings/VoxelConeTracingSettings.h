@@ -75,19 +75,15 @@ struct DebugSettings : VCTSettings
 {
     DebugSettings()
     {
-        guiElements.insert(guiElements.end(), { &debugFlag,
-            &hitpointOffset, /* &viewAperture, &raymarchingCounter,
-        &indirectVirtualRadius, &opacityCorrection,  */
-        &virtualSelfOcclusion, &indirectSpecularShadow,
+        guiElements.insert(guiElements.end(), { &debugFlag, &toggleViewCone, &viewAperture,
+            &hitpointOffset, &virtualSelfOcclusion, &indirectSpecularShadow,
         &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance,
         &renderReal, &renderVirtual, &ambientSecondIntensity, &extraStep, &glassEta});
     }
 
+    CheckBox toggleViewCone{"Toggle view-based cone tracing", false};
     SliderFloat viewAperture{"Apertuer of View Cone", 0.05f, 0.0f, 1.0f};
     SliderFloat hitpointOffset{"Offset of hitpoint to normal direction", 10.f, 0.0f, 10.0f};
-    SliderFloat raymarchingCounter{"Ray Marching Counter (darker part = small)", 1, 0, 10};
-    SliderFloat indirectVirtualRadius{"indirectVirtualRadius", 1, 1, 256};
-    CheckBox opacityCorrection{"Opacity Correction", true};
     CheckBox virtualSelfOcclusion{"Self occlusion for virtual object", true};
     SliderFloat indirectSpecularShadow{"indirectSpecularShadow", 0.45f, 0.01f, 10.f};
     SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 2.5f, 0.01f, 10.f};

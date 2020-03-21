@@ -281,6 +281,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
 void VoxelConeTracingDemo::init3DVoxelTextures()
 {
     GLint filter = GL_LINEAR;
+    // GLint filter = GL_NEAREST;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
