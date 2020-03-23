@@ -100,9 +100,7 @@ void VoxelConeTracingDemo::initUpdate()
     m_renderPipeline->putPtr("VirtualClipmapUpdatePolicy", m_virtualClipmapUpdatePolicy.get());
 
     updateCameraClipRegions();
-#ifdef VIRTUAL
     updateVirtualClipRegions();
-#endif
 
     // Add render passes to the pipeline
     m_renderPipeline->addRenderPasses(
@@ -141,9 +139,7 @@ void VoxelConeTracingDemo::update()
     glFrontFace(GL_CW);
 
     updateCameraClipRegions();
-#ifdef VIRTUAL
     updateVirtualClipRegions();
-#endif
 
     for (auto c : ECS::getEntitiesWithComponents<CameraComponent>())
     {
@@ -393,16 +389,6 @@ BBox VoxelConeTracingDemo::getBBox(size_t clipmapLevel, glm::vec3 center, float 
     return BBox(center - halfSize, center + halfSize);
 }
 
-glm::quat toGlmQuat(glm::vec4 in)
-{
-    return glm::quat(in.w, in.x, in.y, in.z);
-}
-
-glm::quat toGlmQuat(float x, float y, float z, float w)
-{
-    return glm::quat(w, x, y, z);
-}
-
 void VoxelConeTracingDemo::createDemoScene()
 {
     m_scenePosition = glm::vec3(0.0f);
@@ -413,7 +399,7 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto camComponent = camera.getComponent<CameraComponent>();
     auto camTransform = camera.getComponent<Transform>();
-
+ 
     MainCamera = camComponent;
 
     camComponent->setPerspective(48.44, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
@@ -436,17 +422,6 @@ void VoxelConeTracingDemo::createDemoScene()
             camTransform->setRotation(rotations[0]);
         }
     }
-
-#ifdef VIRTUAL
-    // glm::vec3 cameraPositionOffset(0.646, 0.925, -0.641);
-    // camTransform->setEulerAngles(glm::radians(cameraRotation));
-    // camTransform->setEulerAngles(glm::radians(glm::vec3(46.100, 131.600, 0)));
-    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-#else
-    // glm::vec3 cameraPositionOffset(0.36307024, -0.59094325, -1.10370726);
-    // camTransform->setRotation(toGlmQuat(0.54779906, -0.49456581,  0.4597937 , -0.49387307));
-    // camTransform->setPosition(m_scenePosition + cameraPositionOffset);
-#endif
 
     m_engine->registerCamera(camComponent);
 
@@ -475,7 +450,6 @@ void VoxelConeTracingDemo::createDemoScene()
     auto pcEntity = ECS::getEntityByName(pcEntityName);
     pcEntity.setActive(false);
 
-#ifdef VIRTUAL
     // Virtual sphere
     // m_sphere = EntityCreator::createSphere("virtualObject", glm::vec3(0), glm::vec3(1.f));
     // virtualTransform = m_sphere.getComponent<Transform>();
@@ -532,7 +506,6 @@ void VoxelConeTracingDemo::createDemoScene()
     parentTransform->getOwner().setVirtual(true);
 
     virtualTransform = parentTransform;
-#endif
 
     if (sceneRootEntity)
         sceneRootEntity->setPosition(glm::vec3(m_scenePosition));

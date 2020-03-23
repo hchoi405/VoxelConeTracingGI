@@ -427,7 +427,6 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         "Environment Voxel Radiance",
         "Environment Voxel Normal",
         "Environment Voxel Reflectance",
-#ifdef VIRTUAL
         "Virtual Voxel Opacity",
         "Virtual Voxel Radiance",
         "Virtual Voxel Normal",
@@ -436,14 +435,9 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         "Both Voxel Opacity",
         "Both Voxel Radiance",
         "Both Voxel Normal",
-#endif
     };
 
-#ifdef VIRTUAL
     ImGui::Combo("3D Texture", &curSelection, voxelTextures, 12);
-#else
-    ImGui::Combo("3D Texture", &curSelection, voxelTextures, 3);
-#endif
 
     switch (curSelection)
     {
@@ -467,7 +461,6 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         m_visualizedVoxelTextures[1] = nullptr;
         m_isVirtual[0] = false;
         break;
-#ifdef VIRTUAL
     case 4:
         m_visualizedVoxelTextures[0] = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
         m_visualizedVoxelTextures[1] = nullptr;
@@ -511,7 +504,6 @@ void VoxelConeTracingGUI::showVoxelVisualizationOptions()
         m_isVirtual[0] = false;
         m_isVirtual[1] = true;
         break;
-#endif
     default:
         assert(false);
     }

@@ -58,7 +58,6 @@ void VoxelizationPass::init(float extentWorldLevel0, float virtualExtentWorldLev
         clipRegion.minPos += delta;
     }
 
-#ifdef VIRTUAL
     extent = VIRTUAL_VOXEL_RESOLUTION;
     halfExtent = extent / 2;
     // Init for virtual object
@@ -78,7 +77,6 @@ void VoxelizationPass::init(float extentWorldLevel0, float virtualExtentWorldLev
     
         virtualClipRegion.minPos += virtualDelta;
     }
-#endif
 
     m_forceFullRevoxelization = true;
 }
@@ -168,7 +166,6 @@ void VoxelizationPass::update()
     m_renderPipeline->putPtr("ClipRegions", &m_clipRegions);
 
 
-#ifdef VIRTUAL
     // Voxelization and Downsample of virtual object
     m_virtualVoxelOpacity = m_renderPipeline->fetchPtr<Texture3D>("VirtualVoxelOpacity");
     auto virtualClipRegionBBoxes = m_renderPipeline->fetchPtr<std::vector<BBox>>("VirtualClipRegionBBoxes");
@@ -222,7 +219,6 @@ void VoxelizationPass::update()
     }
 
     m_renderPipeline->putPtr("VirtualClipRegions", &m_virtualClipRegions);
-#endif
 }
 
 void VoxelizationPass::computeRevoxelizationRegionsClipmap(uint32_t clipmapLevel, std::vector<VoxelRegion> &clipRegions,
