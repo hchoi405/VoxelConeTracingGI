@@ -55,9 +55,9 @@ struct GISettings : VCTSettings
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 1.0f};
-    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 10.f, 0.1f, 15.0f};
+    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
     SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
-    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.f, 0.1f, 3.0f };
+    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     SliderFloat traceDirectionOffset{"Trace Direction Offset", 1.5f, 0.0f, 8.0f};
     
@@ -78,7 +78,7 @@ struct DebugSettings : VCTSettings
         guiElements.insert(guiElements.end(), { &debugFlag, &toggleViewCone, &viewAperture,
             &hitpointOffset, &virtualSelfOcclusion, &indirectSpecularShadow,
         &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse, &secondIndirectSpecular, &realReflectance,
-        &renderReal, &renderVirtual, &ambientSecondIntensity, &extraStep, &glassEta});
+        &renderReal, &renderVirtual, &ambientSecondIntensity, &extraStep, &glassEta, &phongShininess});
     }
 
     CheckBox toggleViewCone{"Toggle view-based cone tracing", false};
@@ -98,6 +98,7 @@ struct DebugSettings : VCTSettings
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
+    SliderFloat phongShininess{"Shininess of phong", 27.8974f, 0.f, 255.f};
 };
 
 struct DemoSettings : VCTSettings

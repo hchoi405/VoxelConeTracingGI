@@ -5,12 +5,17 @@
 #define COOK_TORRANCE_MODE_IDX 1
 
 #ifndef PI
-#define PI 3.14159265
+#define PI 3.14159265358979323846
+#define PI_2 1.57079632679489661923   // PI/2
+#define PI_4 0.785398163397448309616  // PI/4
 #endif
 
 #ifndef INV_PI
-#define INV_PI 0.318309886183791
+#define INV_PI 0.318309886183790671538  // 1 / PI
+#define INV_2PI 0.15915494309189533577  // 1 / 2*PI
 #endif
+
+#include "/util/noise.glsl"
 
 // etaI: commonly the vacuum (1.0)
 // etaT: the glass (1.5-1.6)
@@ -97,9 +102,36 @@ vec3 sampleBeckmann(vec2 u, vec3 n, float roughness)
     else
         tangent = vec3(0, n.z, -n.y) / sqrt(n.y * n.y + n.z * n.z);
     bitangent = cross(n, tangent);
-    
+
     /* Make our hemisphere orient around the normal. */
     return tangent * ph.x + bitangent * ph.y + n * ph.z;
+}
+
+// return: sampled point at local coordinate
+vec2 concentricSampleDisk(vec2 u) {
+    // Map uniform random numbers to $[-1,1]^2$
+    vec2 uOffset = 2.f * u - vec2(1, 1);
+
+    // Handle degeneracy at the origin
+    if (uOffset.x == 0 && uOffset.y == 0) return vec2(0, 0);
+
+    // Apply concentric mapping to point
+    float theta, r;
+    if (abs(uOffset.x) > abs(uOffset.y)) {
+        r = uOffset.x;
+        theta = PI_4 * (uOffset.y / uOffset.x);
+    } else {
+        r = uOffset.y;
+        theta = PI_2 - PI_4 * (uOffset.x / uOffset.y);
+    }
+    return r * vec2(cos(theta), sin(theta));
+}
+
+// return: sampled direction at local coordinate
+vec3 sampleCosineHemisphere(vec2 u) {
+    vec2 d = concentricSampleDisk(u);
+    const float z = sqrt(max(0.f, 1 - dot(d, d)));
+    return vec3(d.x, d.y, z);
 }
 
 vec3 sampleUniformHemisphere(vec2 u, vec3 n) {
@@ -162,32 +194,111 @@ vec3 cookTorranceBRDF(vec3 l, vec3 n, vec3 v, vec3 h, float roughness, vec3 F0)
     return max(vec3(0.0), numerator / denominator);
 }
 
+float mean(vec3 v) { return (v.x + v.y + v.z) / 3.f; }
+
+bool isSameHemisphere(const vec3 w1, const vec3 w2) {
+  return w1.z * w2.z > 0;
+}
+
+float absCosTheta(const vec3 w) { return abs(w.z); }
+
+vec3 reflect2(const vec3 w) { return vec3(-w.x, -w.y, w.z); }
+
+// Returns the probability of the transfer of energy between two direction
+// (local)
+float phongPdf(const vec3 w_out, const vec3 w_in, float kappa, float exponent) {
+    if (!isSameHemisphere(w_in, w_out)) return 0;
+
+    // FIXME Diffusive lobe sampling
+    const float pdf_d = absCosTheta(w_out) * INV_PI;
+
+    // Specular lobe sampling
+    const float alpha = dot(w_out, reflect2(w_in));
+    const float pdf_s = alpha > 0 ? pow(alpha, exponent) * (exponent + 1.0f) / (2.0f * PI) : 0;
+
+    return kappa * pdf_s + (1 - kappa) * pdf_d;
+}
+
+// Return sampled incident direction
+vec3 phongSample(const vec3 w_out, uint seed, float kappa, float exponent) {
+    vec2 u = rand2D(seed);
+
+    bool sampleSpecular = false;
+    if (u.x < kappa) {
+        u.x /= kappa;
+    } else {
+        u.x = (u.x - kappa) / (1 - kappa);
+        sampleSpecular = true;
+    }
+
+    if (sampleSpecular) {
+        float sinAlpha = sqrt(1.0f - pow(u.y, 2.0f / (exponent + 1)));
+        float cosAlpha = pow(u.y, 1.0f / (exponent + 1));
+        float phi = 2.0f * PI * u.x;
+        return vec3(sinAlpha * cos(phi), sinAlpha * sin(phi), cosAlpha);
+    }
+
+    return sampleCosineHemisphere(u);
+}
+
+// Evaluate brdf
+vec3 phongEval(const vec3 w_out, const vec3 w_in, vec3 Kd, vec3 Ks, float exponent) {
+    if (!isSameHemisphere(w_in, w_out)) return vec3(0.f);
+
+    vec3 result = vec3(0.f);
+
+    // Diffusive part
+    result += Kd * INV_PI;
+
+    // Specular part
+    float alpha = dot(w_out, reflect2(w_in));
+    if (alpha > 0) result += Ks * ((exponent + 2) * INV_2PI * pow(alpha, exponent));
+
+    return result * absCosTheta(w_out);
+}
+
+// PBRT-v3 like sample_f
+// return in local coordinate
+vec3 phongSample_f(vec3 w_out, out vec3 w_in, uint seed, out float p, 
+                    vec3 Kd, vec3 Ks, float exponent) {    
+    vec2 u = rand2D(seed);
+    const float avg_diffuse = mean(Kd);
+    const float avg_specular = mean(Ks);
+    const float kappa = avg_specular / (avg_diffuse + avg_specular);
+
+    w_in = phongSample(w_out, seed, kappa, exponent);
+    if (w_out.z < 0) w_in.z *= -1;
+    p = phongPdf(w_out, w_in, kappa, exponent);
+    if (p == 0) return vec3(0.f);
+    return phongEval(w_out, w_in, Kd, Ks, exponent);
+}
+
 /**
  * Generate a cosine-weighted random point on the unit hemisphere oriented around 'n'.
- * 
+ *
  * @param rand a vector containing pseudo-random values
  * @param n    the normal to orient the hemisphere around
  * @returns    the cosine-weighted point on the oriented hemisphere
  */
 vec3 randomCosineWeightedHemispherePoint(vec3 rand, vec3 n, out float pdf) {
-    float r = rand.x * 0.5 + 0.5;      // [-1..1) -> [0..1)
-    float angle = (rand.y + 1.0) * PI; // [-1..1] -> [0..2*PI)
+    float r = rand.x * 0.5 + 0.5;       // [-1..1) -> [0..1)
+    float angle = (rand.y + 1.0) * PI;  // [-1..1] -> [0..2*PI)
     float sr = sqrt(r);
     vec2 p = vec2(sr * cos(angle), sr * sin(angle));
     /*
-    * Unproject disk point up onto hemisphere:
-    * 1.0 == sqrt(x*x + y*y + z*z) -> z = sqrt(1.0 - x*x - y*y)
-    */
+     * Unproject disk point up onto hemisphere:
+     * 1.0 == sqrt(x*x + y*y + z*z) -> z = sqrt(1.0 - x*x - y*y)
+     */
     vec3 ph = vec3(p.xy, sqrt(1.0 - p * p));
 
     // PDF
     pdf = ph.z * INV_PI;
 
     /*
-    * Compute some arbitrary tangent space for orienting
-    * our hemisphere 'ph' around the normal. We use the camera's up vector
-    * to have some fix reference vector over the whole screen.
-    */
+     * Compute some arbitrary tangent space for orienting
+     * our hemisphere 'ph' around the normal. We use the camera's up vector
+     * to have some fix reference vector over the whole screen.
+     */
     vec3 tangent = normalize(rand);
     vec3 bitangent = cross(tangent, n);
     tangent = cross(bitangent, n);

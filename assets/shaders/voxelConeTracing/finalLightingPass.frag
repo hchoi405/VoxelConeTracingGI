@@ -89,6 +89,7 @@ uniform uint u_realReflectance;
 uniform float u_ambientSecondIntensity;
 uniform int u_extraStep;
 uniform float u_glassEta;
+uniform float u_phongShininess;
 
 layout(location = 0) out vec4 out_color;
 
@@ -449,12 +450,22 @@ void main() {
     if (u_renderReal == 0 && !isVirtualFrag) discard;
     if (u_renderVirtual == 0 && isVirtualFrag) discard;
     vec3 diffuse = texture(u_diffuseTexture, In.texCoords).rgb;
-    vec3 normal = unpackNormal(texture(u_normalMap, In.texCoords).rgb);
+    const vec3 normal = unpackNormal(texture(u_normalMap, In.texCoords).rgb);
     vec3 emission = texture(u_emissionMap, In.texCoords).rgb;
     bool hasEmission = any(greaterThan(emission, vec3(0.0)));
     vec3 posW = worldPosFromDepth(depth);
-    vec3 view = normalize(u_eyePos - posW);
+    vec3 view = normalize(posW - u_eyePos);
     vec4 specColor = texture(u_specularMap, In.texCoords);
+
+    ShadingFrame frame;
+    frame.n = normal;
+    coordinateSystem(frame.n, frame.b, frame.t);
+    vec3 w_out = frame.to_local(-view);
+
+    // DIFFERENTIAL RENDERING (mask)
+    // if (isVirtualFrag) out_color = vec4(1);
+    // else out_color = vec4(0);
+    // return;
 
     // DEBUG: Sample at posW
     // ivec3 faceIndices = computeVoxelFaceIndices(-normal);
@@ -598,9 +609,10 @@ void main() {
         }
         // Cook-Torrance BRDF
         else if (material == 1) {
-            for (int i = 0; i < nSumbsample; ++i) {
+            for (int i = 0; i < nSubsample; ++i) {
                 // sample next direction (for light direction)
-                vec2 u = vec2(rand2D(In.texCoords + ivec2(i)), rand2D(In.texCoords + ivec2(i * 2)));
+                uint see = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
+                vec2 u = rand2D(see);
                 vec3 direction = sampleBeckmann(u, normal, roughness);
                 c.dir = direction;
 
@@ -641,7 +653,9 @@ void main() {
                     c2.depth = 0;
 
                     for (int j = 0; j < 1; ++j) {
-                        vec2 u = vec2(rand2D(In.texCoords + ivec2(i + j)), rand2D(In.texCoords + ivec2((i + j) * 2)));
+                        vec2 u = rand2D(uvec2(In.texCoords.x + i + j, In.texCoords.y + (i + j) * 2));
+                        // vec2 u = vec2(rand2D(In.texCoords + ivec2(i + j)), rand2D(In.texCoords + ivec2((i + j) *
+                        // 2)));
                         vec3 direction = sampleBeckmann(u, virtualIsect.normal, roughness2);
                         c2.dir = direction;
                         vec4 secondIntensity = castCone(c2, realScene, realIsect);
@@ -652,21 +666,24 @@ void main() {
                 }
                 // 2. Shading using light from real object
                 else {
-                    vec3 lightDir = -direction;
-                    vec3 halfway = normalize(view - lightDir);
-                    float nDotL = max(0.0, dot(normal, -lightDir));
+                    vec3 lightDir = direction;
+                    vec3 halfway = normalize(-view + lightDir);
+                    // virtualIndirectContribution = packNormal(halfway);
+                    // continue;
+                    float nDotL = max(0.0, dot(normal, lightDir));
 
                     // Diffuse
-                    vec3 F = fresnelSchlick(vec3(0.04), -lightDir, halfway);
+                    vec3 F = fresnelSchlick(vec3(0.04), lightDir, halfway);
                     virtualIndirectContribution += (vec3(1) - F) * nDotL * diffuse * lightIntensity.rgb;
 
                     // Specular
                     // for the last term F0, use 0.04 if it's plastic, use albeo if it's metal
-                    vec3 cook = cookTorranceBRDF(-lightDir, normal, view, halfway, roughness, vec3(0.04));
+                    vec3 cook = cookTorranceBRDF(lightDir, normal, -view, halfway, roughness, vec3(0.04));
                     if (any(greaterThan(specColor, vec4(EPSILON))) && any(greaterThan(cook, vec3(EPSILON)))) {
                         // specular
-                        virtualIndirectContribution +=
-                            cook * specColor.rgb * lightIntensity.rgb * u_indirectSpecularIntensity;
+                        virtualIndirectContribution += occlusion.a  // occlusiuon
+                                                       * cook * specColor.rgb * lightIntensity.rgb *
+                                                       u_indirectSpecularIntensity;
                     }
                 }
             }
@@ -674,16 +691,16 @@ void main() {
         }
         // Glass
         else if (material == 2) {
-            virtualIndirectContribution = vec3(dot(normal, view));
-            float etaI = 1.0;                                      // Incident medium (Vacuum)
-            float etaT = u_glassEta;                               // Transmitted medium (Glass, 1.5-1.6)
-            float F = fresnelDieletric(view, normal, etaI, etaT);  // Fresnel Dielectric Term (reflection)
+            virtualIndirectContribution = vec3(dot(normal, -view));
+            float etaI = 1.0;                                       // Incident medium (Vacuum)
+            float etaT = u_glassEta;                                // Transmitted medium (Glass, 1.5-1.6)
+            float F = fresnelDieletric(-view, normal, etaI, etaT);  // Fresnel Dielectric Term (reflection)
             vec3 refractedDir;
-            if (refract(view, normal, etaI / etaT, refractedDir)) {
+            if (refract(-view, normal, etaI / etaT, refractedDir)) {
                 c.p = startPos;
                 c.aperture = MIN_SPECULAR_APERTURE;
                 // c.curLevel = realMinLevel;
-                c.curLevel = getRealMinLevel(u_eyePos); // Use this due to some artifacts
+                c.curLevel = getRealMinLevel(u_eyePos);  // Use this due to some artifacts
                 c.dir = refractedDir;
                 virtualIndirectContribution = castCone(c, realScene, realIsect).rgb;
             } else {
@@ -692,7 +709,65 @@ void main() {
             }
             virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
         }
-        indirectContribution.rgb += virtualIndirectContribution / nSumbsample;
+        // Phong
+        else if (material == 3) {
+            for (int i = 0; i < nSubsample; ++i) {
+                // sample next direction (for light direction)
+                uint see = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
+                vec3 Kd = vec3(0.780392f, 0.568627f, 0.113725f);
+                vec3 Ks = vec3(0.992157f, 0.941176f, 0.807843f);
+                vec3 sumK = Kd + Ks;
+                float maxFactor = max(max(sumK[0], sumK[1]), sumK[2]);
+                if (maxFactor > 1.f) {
+                  Kd = 0.99f * Kd / maxFactor;
+                  Ks = 0.99f * Ks / maxFactor;
+                }
+                float exponent = u_phongShininess;
+                float pdf;
+                vec3 direction;
+  
+                vec3 phongBRDF = phongSample_f(w_out, direction, see, pdf, Kd, Ks, exponent);
+                direction = frame.to_world(direction);
+                // virtualIndirectContribution += phongBRDF;
+                // continue;
+
+                c.dir = direction;
+
+                c.p = startPos;
+                c.curLevel = realMinLevel;
+                vec3 lightIntensity = castCone(c, realScene, realIsect).rgb;
+                // vec3 lightIntensity = vec3(1.f);
+
+                c.p = startPosOffset;
+                c.curLevel = 0;  // manually set to zero for smoothness
+                vec4 occlusion = castCone(c, virtualScene, virtualIsect);
+
+                // // 1. Occluded by virtual object
+                // if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                //     // virtualIndirectContribution += vec3(0,0,0);
+                // }
+                // // 2. Shading using light from real object
+                // else
+                {
+                    vec3 lightDir = -c.dir;
+                    vec3 halfway = normalize(-view - lightDir);
+                    vec3 ret = phongBRDF * lightIntensity.rgb * u_indirectSpecularIntensity;
+
+                    // vec3 blinnPhong = blinnPhongBRDF(lightColor, diffuseColor, lightColor, specColor, normal,
+                    // -lightDir, halfway, u_shininess);
+
+                    // Diffuse, Specular
+                    // vec3 ret = occlusion.a           // Occlusion for virtual
+                    //            * lightIntensity.rgb  // Light intensity from real
+                    //            * blinnPhongBRDF(lightIntensity, Kd, lightIntensity, Ks, normal, -lightDir, halfway,
+                    //                             shininess)     // Material
+                    //            * u_indirectSpecularIntensity;  // Scaling
+
+                    virtualIndirectContribution += ret / pdf;
+                }
+            }
+        }
+        indirectContribution.rgb += virtualIndirectContribution / nSubsample;
     } else {
         // out_color.rgb = packNormal(normal);
         // return;
