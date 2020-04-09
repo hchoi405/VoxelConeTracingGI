@@ -20,8 +20,8 @@ SphericalImagePass::SphericalImagePass()
     GLfloat *posData = nullptr, *normalData = nullptr;
     posData = new GLfloat[m_height * m_width * 3];
     normalData = new GLfloat[m_height * m_width * 3];
-    readData("../assets/cglab/matterport_pos_dasan613.txt", posData);
-    readData("../assets/cglab/matterport_normal_dasan613.txt", normalData);
+    readData("../assets/dasan613_matterpak_final/pos.txt", posData);
+    readData("../assets/dasan613_matterpak_final/normal.txt", normalData);
 
     m_positionMap = std::make_shared<Texture2D>();
     m_positionMap->create(m_width, m_height, GL_RGB32F, GL_RGB, GL_FLOAT, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR, posData);

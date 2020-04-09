@@ -363,21 +363,21 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("cglab/dasan106_normal.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("cglab/dasan106_normal.obj", shader, "cglab/", glm::vec3(1.f), true);
+    ResourceManager::getModel("dasan613_matterpak_final/dasan613_normal.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("dasan613_matterpak_final/dasan613_normal.obj", shader, "dasan613_matterpak_final/", glm::vec3(1.f), true);
     sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "cglab/cloud_binary_dasan106.ply";
+    std::string cloudFilename = "dasan613_matterpak_final/cloud.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
     // whether the model given with the filename is already loaded
     ResourceManager::getModel(cloudFilename)->name = pcEntityName; 
-    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "cglab/", glm::vec3(1.f), false);
+    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "dasan613_matterpak_final/", glm::vec3(1.f), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
     pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
