@@ -69,4 +69,6 @@ private:
 
     std::vector<glm::vec3> translations;
     std::vector<glm::quat> rotations;
+
+    const std::string cameraFilename = "../camera.txt";
 };

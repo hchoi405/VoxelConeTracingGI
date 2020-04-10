@@ -250,7 +250,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
     }
     case SDLK_f: {
         auto camTransform = MainCamera->getComponent<Transform>();
-        std::ofstream cameraFile("camera.txt");
+        std::ofstream cameraFile(cameraFilename);
         auto euler = glm::degrees(camTransform->getEulerAngles());
         cameraFile << camTransform->getPosition()[0] << " " << camTransform->getPosition()[1] << " " << camTransform->getPosition()[2]
                    << std::endl
@@ -258,7 +258,7 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode)
         cameraFile.close();
         std::cout << "Saved camera position " << camTransform->getPosition()
                   << " and rotation " << euler
-                  << " to camera.txt" << std::endl;
+                  << " to " << cameraFilename << std::endl;
         break;
     }
     case SDLK_r: 
@@ -402,9 +402,9 @@ void VoxelConeTracingDemo::createDemoScene()
  
     MainCamera = camComponent;
 
-    camComponent->setPerspective(48.44, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
+    camComponent->setPerspective(53.8, float(Screen::getWidth()), float(Screen::getHeight()), 0.3f, 30.0f);
 
-    std::ifstream cameraFile("camera.txt");
+    std::ifstream cameraFile(cameraFilename);
     glm::vec3 cameraPositionOffset;
     glm::vec3 cameraRotation;
     if (!cameraFile.is_open()) {
@@ -412,10 +412,13 @@ void VoxelConeTracingDemo::createDemoScene()
     }
     else {
         if (rotations.empty()) {
+            std::cout << "Load camera.txt" << std::endl;
             cameraFile >> cameraPositionOffset[0] >> cameraPositionOffset[1] >> cameraPositionOffset[2];
             cameraFile >> cameraRotation[0] >> cameraRotation[1] >> cameraRotation[2];
             camTransform->setEulerAngles(glm::radians(cameraRotation));
             camTransform->setPosition(m_scenePosition + cameraPositionOffset);
+            // Set rotation manually
+            camTransform->lookAt(vec3(0.85f, 0.5f, -0.5f));
         } else {
             std::cout << "Set camera's parameter using the first element of sequence" << std::endl;
             camTransform->setPosition(translations[0]);
@@ -427,24 +430,24 @@ void VoxelConeTracingDemo::createDemoScene()
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag", {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("dasan613_ipad_texture/dasan613-texture-modified.obj")->name = "dasan613.obj";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("dasan613_ipad_texture/dasan613-texture-modified.obj", shader, "dasan613_ipad_texture/", glm::vec3(1.f, 1, 1), true);
-    // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    ResourceManager::getModel("dasan613_matterpak_final/dasan613_normal.obj")->name = "dasan613.obj";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("dasan613_matterpak_final/dasan613_normal.obj", shader, "dasan613_matterpak_final/", glm::vec3(1.f, 1, 1), true);
+    sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " <<  sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "dasan613_ipad_texture/dasan613-texture-modified-1M.ply";
+    std::string cloudFilename = "dasan613_matterpak_final/cloud.ply";
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
     // whether the model given with the filename is already loaded
     ResourceManager::getModel(cloudFilename)->name = pcEntityName; 
-    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "dasan613_ipad_texture/", glm::vec3(1.f, 1, 1), false);
+    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, "dasan613_matterpak_final/", glm::vec3(1.f, 1, 1), false);
     
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
-    // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
+    pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));
 
     auto pcEntity = ECS::getEntityByName(pcEntityName);
@@ -483,8 +486,6 @@ void VoxelConeTracingDemo::createDemoScene()
     voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
     voTransform1->getOwner().setVirtual(true);
     voTransform1->getOwner().setActive(true);
-    voTransform1->setLocalPosition(glm::vec3(-1, -0.5, 0));
-    voTransform1->setLocalEulerAngles(glm::radians(glm::vec3(180.f, 0.f, 0.f)));
     voTransform1->setParent(parentTransform);
 
     // buddha 2
@@ -502,8 +503,7 @@ void VoxelConeTracingDemo::createDemoScene()
     // voTransform2->setParent(parentTransform);
 
     
-    parentTransform->setPosition(glm::vec3(0, 1.3f, 0));
-    parentTransform->setEulerAngles(glm::radians(glm::vec3(0.f, 90.f, 0.f)));
+    parentTransform->setPosition(glm::vec3(0.85f, 0.5f, -0.5f));
     parentTransform->getOwner().setVirtual(true);
 
     virtualTransform = parentTransform;
