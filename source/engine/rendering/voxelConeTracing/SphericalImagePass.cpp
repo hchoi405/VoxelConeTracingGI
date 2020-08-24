@@ -20,8 +20,8 @@ SphericalImagePass::SphericalImagePass()
     GLfloat *posData = nullptr, *normalData = nullptr;
     posData = new GLfloat[m_height * m_width * 3];
     normalData = new GLfloat[m_height * m_width * 3];
-    readData("../assets/dasan613_matterpak_final/pos.txt", posData);
-    readData("../assets/dasan613_matterpak_final/normal.txt", normalData);
+    readData("../assets/matterpak_200704-dasan613-2/pos.txt", posData);
+    readData("../assets/matterpak_200704-dasan613-2/normal.txt", normalData);
 
     m_positionMap = std::make_shared<Texture2D>();
     m_positionMap->create(m_width, m_height, GL_RGB32F, GL_RGB, GL_FLOAT, Texture2DSettings::S_T_REPEAT_MIN_MAG_LINEAR, posData);
@@ -102,8 +102,8 @@ void SphericalImagePass::render() const
     m_shader->setFloat("u_traceStartOffset", GI_SETTINGS.traceStartOffset);
 
     // Spherical image
-    // dasan106
-    m_shader->setVector("u_sphericalCenter", glm::vec3(3.0145813524723053, 1.2589090168476105, 1.3377391546964645));
+    // Dasan613
+    m_shader->setVector("u_sphericalCenter", glm::vec3(0.0010766348568722606, 1.356596827507019, 0.030440879985690117));
     m_shader->setFloat("u_viewAperture", DEBUG_SETTINGS.viewAperture);
     m_shader->setFloat("u_hitpointOffset", DEBUG_SETTINGS.hitpointOffset);
 
@@ -137,8 +137,8 @@ void SphericalImagePass::update()
         }
 
         if (!SOIL_save_image(
-                "test.bmp",
-                SOIL_SAVE_TYPE_BMP,
+                "vct.png",
+                SOIL_SAVE_TYPE_PNG,
                 m_width, m_height, channels,
                 data))
         {
