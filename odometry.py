@@ -6,8 +6,9 @@ from scipy.spatial.transform import Rotation as R
 def cmp(a):
     return int(a.split('_')[-1].split('.')[0])
 
-filelist = sorted(glob.glob("./assets/dasan613_ipad_original/odometry/*.txt"), key=cmp)
+filelist = sorted(glob.glob("../neon/asset/dasan613_rendering5-2/odometry_raw/raw/*.txt"), key=cmp)
 print('number of files: ', len(filelist))
+relocalization = np.loadtxt("../neon/asset/dasan613_rendering5-2/pose_relocalization.txt")
 
 
 #%%
@@ -79,7 +80,7 @@ print(zflip)
 
 def mat2TQ(a):
     # c = a@yrot180@zrot180
-    c = a@xrot180
+    c = relocalization@a@xrot180
     tmp = R.from_matrix(c[0:3, 0:3]).as_quat()
 
     # flip quaternion
@@ -93,9 +94,9 @@ def mat2TQ(a):
     T = c@[0, 0, 0, 1]
     T = T[0:3]
     
-    T[0] += -5.5
-    T[1] += -5.2
-    T[2] += -5.29
+    # T[0] += -5.5
+    # T[1] += -5.2
+    # T[2] += -5.29
     T[2] = -T[2]
     return [T, Q]
 

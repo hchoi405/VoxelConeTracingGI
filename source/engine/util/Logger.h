@@ -9,6 +9,8 @@
 #include <GL/glew.h>
 #include <GL/glu.h>
 
+#include <engine/geometry/BBox.h>
+
 class Logger
 {
 public:
@@ -21,12 +23,19 @@ public:
     static std::ostream& errorStream() noexcept { return std::cerr; }
 };
 
+inline std::ostream& operator <<(std::ostream& os, const glm::mat3& m)
+{
+    return os << "\n\t" << m[0][0] << ", " << m[1][0] << ", " << m[2][0] << std::endl
+              << "\t" << m[0][1] << ", " << m[1][1] << ", " << m[2][1] << std::endl
+              << "\t" << m[0][2] << ", " << m[1][2] << ", " << m[2][2];
+}
+
 inline std::ostream& operator <<(std::ostream& os, const glm::mat4& m)
 {
-    return os << m[0][0] << ", " << m[1][0] << ", " << m[2][0] << ", " << m[3][0] << std::endl
-        << m[0][1] << ", " << m[1][1] << ", " << m[2][1] << ", " << m[3][1] << std::endl
-        << m[0][2] << ", " << m[1][2] << ", " << m[2][2] << ", " << m[3][2] << std::endl
-        << m[0][3] << ", " << m[1][3] << ", " << m[2][3] << ", " << m[3][3];
+    return os << "\n\t" << m[0][0] << ", " << m[1][0] << ", " << m[2][0] << ", " << m[3][0] << std::endl
+              << "\t" << m[0][1] << ", " << m[1][1] << ", " << m[2][1] << ", " << m[3][1] << std::endl
+              << "\t" << m[0][2] << ", " << m[1][2] << ", " << m[2][2] << ", " << m[3][2] << std::endl
+              << "\t" << m[0][3] << ", " << m[1][3] << ", " << m[2][3] << ", " << m[3][3];
 }
 
 inline std::ostream& operator <<(std::ostream& os, const glm::vec2& v) { return os << "(" << v.x << ", " << v.y << ")"; }
@@ -36,6 +45,11 @@ inline std::ostream& operator <<(std::ostream& os, const glm::vec3& v) { return 
 inline std::ostream& operator <<(std::ostream& os, const glm::vec4& v) { return os << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")"; }
 
 inline std::ostream& operator <<(std::ostream& os, const glm::quat& q) { return os << "(" << q.w << ", " << q.x << ", " << q.y << ", " << q.z << ")"; }
+
+inline std::ostream& operator <<(std::ostream& os, const BBox& m)
+{
+    return os << "\n\tmin: " << m.min() << std::endl << "\tmax: " << m.max();
+}
 
 #define LOG_INFO_ATTACHMENT ":\nFUNCTION: " << __func__ << "\nFILE: " << __FILE__ << "\nLINE: " << __LINE__
 #define LOG_ERROR(M) do {Logger::errorStream() << M << LOG_INFO_ATTACHMENT << "\n\n";} while(0)

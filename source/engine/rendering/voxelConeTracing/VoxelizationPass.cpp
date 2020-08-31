@@ -128,7 +128,7 @@ void VoxelizationPass::update()
     desc.target = VoxelizationTarget::ENTITIES;
     desc.voxelResolution = VOXEL_RESOLUTION;
 
-    Entity ent = ECS::getEntityByName("dasan613.obj");
+    Entity ent = ECS::getEntityByName("name_scene");
     desc.entities.push_back(ent);
 
     desc.clipRegions = m_clipRegions;
