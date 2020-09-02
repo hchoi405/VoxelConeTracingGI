@@ -119,7 +119,7 @@ void GIPass::update()
     m_finalLightPassShader->setInt("u_extraStep", DEBUG_SETTINGS.extraStep);
     m_finalLightPassShader->setFloat("u_glassEta", DEBUG_SETTINGS.glassEta);
     m_finalLightPassShader->setFloat("u_phongShininess", DEBUG_SETTINGS.phongShininess);
-
+    m_finalLightPassShader->setInt("u_rotateCone", DEBUG_SETTINGS.rotateCone ? 1 : 0);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

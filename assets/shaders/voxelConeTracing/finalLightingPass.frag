@@ -91,6 +91,7 @@ uniform float u_ambientSecondIntensity;
 uniform int u_extraStep;
 uniform float u_glassEta;
 uniform float u_phongShininess;
+uniform int u_rotateCone;
 
 layout(location = 0) out vec4 out_color;
 
@@ -565,19 +566,45 @@ vec4 castSecondVirtualDiffuseCones(vec3 startPos, vec3 normal, float virtualMinL
 }
 
 // Cast diffuse cones at primary intersection point on both real/virtual object
-vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual,
-                      bool delta = false) {
+vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
     c.p = startPos;  // offset is present inside castCone
+
+    // Random rotaiton on sphere (from Fast Random Rotation Matrices [Arvo 91])
+    mat3 M = mat3(1.f);
+
+    if (u_rotateCone == 1) {
+    uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), 0);
+        float x1 = rand(seed), x2 = rand(seed), x3 = rand(seed);
+        float sqrt3 = sqrt(x3);
+        vec3 v = vec3(cos(PI2 * x2) * sqrt3, sin(PI2 * x2), sqrt(1 - x3));
+        float PI2x1 = PI2 * x1;
+
+        // Column major (first 3 elements for first column)
+        mat3 R = mat3(
+            cos(PI2x1),-sin(PI2x1), 0,
+            sin(PI2x1), cos(PI2x1), 0,
+            0, 0, 1
+        );
+        mat3 v2 = mat3(
+            v[0] * v[0], v[0] * v[1], v[0] * v[2],
+            v[1] * v[0], v[1] * v[1], v[1] * v[2],
+            v[2] * v[0], v[2] * v[1], v[2] * v[2]
+        );
+        mat3 H = mat3(1.f) - 2 * v2;
+        M = - H * R;
+    }
+
     for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i) {
         VCTIntersection virtualIsect, realIsect;
         VCTIntersection tmpIsect;
-        float cosTheta = dot(normal, DIFFUSE_CONE_DIRECTIONS[i]);
+        vec3 newDir = M * DIFFUSE_CONE_DIRECTIONS[i];
+        float cosTheta = dot(normal, newDir);
 
-        if (cosTheta < 0.0) continue;
+        if (cosTheta < 0.0f) continue;
 
-        c.dir = DIFFUSE_CONE_DIRECTIONS[i];
+        c.dir = newDir;
         c.aperture = DIFFUSE_CONE_APERTURE;
         // First hit real
         if (traceVirtual) {
@@ -589,7 +616,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
             vec4 realRet = castCone(c, realScene, realIsect) * cosTheta;
 
             // Second hit virtual
-            if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
+            if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 // For ambient occlusion (used for DEBUGGING)
                 indirectContribution.a += virtualRet.a;
 
@@ -598,8 +625,10 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
 
                 // Virtual object at second bounce (e.g. real->virtual) is assumed to be diffuse
                 // So cast diffuse cones
-                vec4 secondIntensity =
-                    castSecondRealDiffuseCones(virtualIsect.position, virtualIsect.normal, realMinLevel);
+                vec4 secondIntensity = vec4(1);
+                if (u_secondBounce == 1)
+                    secondIntensity =
+                        castSecondRealDiffuseCones(virtualIsect.position, virtualIsect.normal, realMinLevel);
 
                 // Radiance from virtual object
                 indirectContribution.rgb += secondIntensity.rgb * virtualDiffuse * u_secondIndirectDiffuseIntensity;
@@ -675,7 +704,6 @@ void main() {
         out_color = vec4(background, 1);
         return;
     } else if (!isVirtualFrag) {
-        directContribution = background;
     }
 
     // Parameter setup
@@ -959,21 +987,16 @@ void main() {
         ivec3 outFaceIndices = computeVoxelFaceIndices(-normal);
         vec3 faceOffsets = vec3(outFaceIndices) * FACE_COUNT_INV;
         vec3 weight = normal * normal;
-        // TEMPORAL: Use radiance as a reflectance for now
-        vec3 reflectance =
-            sampleClipmapLinearly(getRadiance(false), startPos, realMinLevel, realScene.voxelSizeL0,
-                                  realScene.volumeDimension, realScene.maxClipmapLevelInv, faceOffsets, weight)
-                .rgb;
+        vec3 reflectance = vec3(0.263517f, 0.23897f, 0.22877);  // From reflectance estimation (neon)
 
         // Occlusion-based shadow + color bleeding from virtual object
-        indirectContribution = castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, true);
-
-        // if (any(lessThan(indirectContribution.rgb, vec3(0.f))))
-        //     indirectContribution.rgb = vec3(1, 0, 0);
+        indirectContribution = castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true);
 
         if (u_realReflectance == 1) indirectContribution.rgb *= reflectance;
 
         indirectContribution.rgb *= u_realIndirectDiffuseIntensity;
+
+        indirectContribution.rgb += background;
     }
 
     // DIFFUSE_CONE_COUNT includes cones to integrate over a sphere - on the hemisphere there are on average ~half of
@@ -991,7 +1014,7 @@ void main() {
 
     out_color = vec4(0.0, 0.0, 0.0, 1.0);
 
-    if ((u_lightingMask & AMBIENT_OCCLUSION_BIT) != 0) directContribution *= indirectContribution.a;
+    // if ((u_lightingMask & AMBIENT_OCCLUSION_BIT) != 0) directContribution *= (1.f - indirectContribution.a);
 
     if ((u_lightingMask & DIRECT_LIGHTING_BIT) != 0) out_color.rgb += directContribution;
 

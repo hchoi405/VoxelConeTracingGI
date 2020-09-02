@@ -18,7 +18,7 @@ uint tea(uint val0, uint val1) {
 uint seed(uint pixel_index, uint frame_index) { return tea(pixel_index, frame_index); }
 
 // Generate random uint in [0, 2^24)
-uint lcg(uint prev) {
+uint lcg(inout uint prev) {
     const uint LCG_A = 1664525u;
     const uint LCG_C = 1013904223u;
     prev = (LCG_A * prev + LCG_C);
@@ -26,10 +26,10 @@ uint lcg(uint prev) {
 }
 
 // Generate random float in [0, 1)
-float rand(uint prev) { return float(lcg(prev)) / float(0x01000000); }
+float rand(inout uint prev) { return float(lcg(prev)) / float(0x01000000); }
 
 // Generate two random float in [0, 1)
-vec2 rand2D(uint prev) { return vec2(rand(prev), rand(prev * prev)); }
+vec2 rand2D(inout uint prev) { return vec2(rand(prev), rand(prev)); }
 vec2 rand2D(uvec2 prev) { return vec2(rand(prev.x), rand(prev.y)); }
 
 #endif

@@ -32,6 +32,7 @@ const vec3[] MAIN_AXES = {
 
 const float EPSILON = 0.000001;
 const float PI = 3.14159265;
+const float PI2 = 2 * PI;
 
 void coordinateSystem(vec3 n, out vec3 b, out vec3 t) {
 	n = normalize(n);
