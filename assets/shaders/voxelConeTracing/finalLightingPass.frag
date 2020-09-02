@@ -444,7 +444,7 @@ vec4 castCone(in VCTCone c, const VCTScene scene, out VCTIntersection isect) {
 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
         vec4 radiance = sampleClipmapLinearly2(getRadiance(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                              scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
+                                               scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
 
         // Radiance correction (diffuse, specular)
         float correctionQuotient = curSegmentLength / voxelSize;
@@ -455,16 +455,16 @@ vec4 castCone(in VCTCone c, const VCTScene scene, out VCTIntersection isect) {
 
         // Sample only opaque voxel
         if (radiance.a > EPSILON) {
-            vec3 normal =
-                unpackNormal(sampleClipmapLinearly2(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                                   scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
-                                 .rgb);
+            vec3 normal = unpackNormal(sampleClipmapLinearly2(getNormal(scene.isVirtual), position, c.curLevel,
+                                                              scene.voxelSizeL0, scene.volumeDimension,
+                                                              scene.maxClipmapLevelInv, faceOffsets, weight)
+                                           .rgb);
             vec3 diffuse = sampleClipmapLinearly2(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                                 scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
+                                                  scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
                                .rgb;
             vec4 specularA =
                 sampleClipmapLinearly2(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
-                                      scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
+                                       scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
 
             normal = normal * correctionQuotient;
             diffuse = diffuse * correctionQuotient;
@@ -696,8 +696,7 @@ void main() {
     // }
 
     // DEBUG: Cast cone from u_eyePos
-    if (u_toggleViewCone == 1)
-    {
+    if (u_toggleViewCone == 1) {
         VCTIntersection tmpIsect;
         VCTCone tmpCone;
         tmpCone.depth = 0;
@@ -905,13 +904,13 @@ void main() {
                 vec3 sumK = Kd + Ks;
                 float maxFactor = max(max(sumK[0], sumK[1]), sumK[2]);
                 if (maxFactor > 1.f) {
-                  Kd = 0.99f * Kd / maxFactor;
-                  Ks = 0.99f * Ks / maxFactor;
+                    Kd = 0.99f * Kd / maxFactor;
+                    Ks = 0.99f * Ks / maxFactor;
                 }
                 float exponent = u_phongShininess;
                 float pdf;
                 vec3 direction;
-  
+
                 vec3 phongBRDF = phongSample_f(w_out, direction, see, pdf, Kd, Ks, exponent);
                 direction = frame.to_world(direction);
                 // virtualIndirectContribution += phongBRDF;
