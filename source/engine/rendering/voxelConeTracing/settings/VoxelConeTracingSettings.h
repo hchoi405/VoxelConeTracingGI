@@ -53,9 +53,10 @@ struct GISettings : VCTSettings
 
     SliderFloat occlusionDecay{"Occlusion Decay", 5.0f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
-    SliderFloat stepFactor{"Step Factor", 0.2f, 0.2f, 2.0f};
+    // 1.0: Dasan613
+    SliderFloat stepFactor{"Step Factor", 1.0f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 1.0f};
-    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
+    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 12.f, 0.1f, 15.0f};
     SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
@@ -80,7 +81,7 @@ struct DebugSettings : VCTSettings
             {&debugFlag, &toggleViewCone, &viewAperture, &hitpointOffset, &virtualSelfOcclusion,
              &indirectSpecularShadow, &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse,
              &secondIndirectSpecular, &realReflectance, &renderReal, &renderVirtual, &ambientSecondIntensity,
-             &extraStep, &glassEta, &phongShininess, &rotateCone});
+             &extraStep, &glassEta, &phongShininess, &rotateCone, &localRatio, &exclueEmptyFace});
     }
 
     CheckBox toggleViewCone{"Toggle view-based cone tracing", false};
@@ -95,13 +96,15 @@ struct DebugSettings : VCTSettings
     CheckBox secondBounce{"Trace second bounce", false};
     CheckBox realReflectance{"Apply relfectance of real object", true};
     CheckBox debugFlag{"Flag for Debug", false};
-    CheckBox renderReal{"Toggle whether render real fragment", false};
+    CheckBox renderReal{"Toggle whether render real fragment", true};
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
     SliderFloat phongShininess{"Shininess of phong", 27.8974f, 0.f, 255.f};
     CheckBox rotateCone{"Rotate cone randomly", false};
+    SliderFloat localRatio{"Ratio of local real", 0.7f, 0.f, 1.f};
+    CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
 };
 
 struct DemoSettings : VCTSettings

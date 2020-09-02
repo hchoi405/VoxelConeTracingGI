@@ -461,12 +461,31 @@ void VoxelConeTracingDemo::createDemoScene() {
     // Virtual sphere
     // m_sphere = EntityCreator::createSphere("virtualObject", glm::vec3(0), glm::vec3(1.f));
     std::string virtualObjectDir = "../../neon/asset/mesh/";
-    std::string virtualObjectFilename = "sphere.obj";
     std::string virtualEntityName = "virtualObject";
+
+    // Sphere
+    std::string virtualObjectFilename = "sphere.obj";
     ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
     virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
                                                  glm::vec3(5.f), false);
-    virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f));
+    virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f)); 
+
+    // // Cube
+    // std::string virtualObjectFilename = "cube.obj";
+    // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+    // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+    //                                              glm::vec3(1.f), true);
+    // virtualTransform->setPosition(glm::vec3(5.4f, 6.1f, -4.57f));
+    // virtualTransform->setLocalScale(glm::vec3(0.5f));
+
+    // // Plate
+    // std::string virtualObjectFilename = "plate2.obj";
+    // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+    // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+    //                                              glm::vec3(1.f), true);
+    // virtualTransform->setPosition(glm::vec3(3.950f, 4.55f, -4.570));
+    // auto rot = glm::rotate(glm::radians(-45.f), glm::vec3(0, 1, 0));
+    // virtualTransform->setRotation(glm::toQuat(rot));
 
     auto sphereMaterial = EntityCreator::createMaterial();
     sphereMaterial->setFloat("u_shininess", 255.0f);
@@ -483,7 +502,7 @@ void VoxelConeTracingDemo::createDemoScene() {
     m_sphere.setActive(true);
 
     // // Virtual Buddha
-    // auto vo1 = ResourceManager::getModel("meshes/sphere.ply");
+    // auto vo1 = ResourceManager::getModel("meshes/buddha.ply");
     // vo1->name = "vo1";
     // auto vo2 = ResourceManager::getModel("meshes/buddha2.ply");
     // vo2->name = "vo2";
@@ -506,21 +525,22 @@ void VoxelConeTracingDemo::createDemoScene() {
     // voTransform1->getOwner().setActive(true);
     // voTransform1->setParent(parentTransform);
 
-    // buddha 2
-    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(7.5f), true);
-    // auto buddhaMaterial2 = EntityCreator::createMaterial();
-    // buddhaMaterial2->setFloat("u_shininess", 255.0);
-    // buddhaMaterial2->setColor("u_color", glm::vec4(1, 0, 0, 1));
-    // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
-    // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
-    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
-    // voTransform2->getOwner().setVirtual(true);
-    // voTransform2->getOwner().setActive(true);
-    // voTransform2->setLocalPosition(glm::vec3(1, -0.5, 0));
-    // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(180.f, 0.f, 0.f)));
-    // voTransform2->setParent(parentTransform);
+    // // // buddha 2
+    // // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(7.5f), true);
+    // // auto buddhaMaterial2 = EntityCreator::createMaterial();
+    // // buddhaMaterial2->setFloat("u_shininess", 255.0);
+    // // buddhaMaterial2->setColor("u_color", glm::vec4(1, 0, 0, 1));
+    // // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
+    // // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
+    // // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
+    // // voTransform2->getOwner().setVirtual(true);
+    // // voTransform2->getOwner().setActive(true);
+    // // voTransform2->setLocalPosition(glm::vec3(1, -0.5, 0));
+    // // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(180.f, 0.f, 0.f)));
+    // // voTransform2->setParent(parentTransform);
 
-    // parentTransform->setPosition(glm::vec3(0.85f, 0.5f, -0.5f));
+    // parentTransform->setPosition(glm::vec3(5.4f, 7.05f, -4.57f));
+    // parentTransform->setEulerAngles(glm::radians(vec3(0, 0, 180.f)));
     // parentTransform->getOwner().setVirtual(true);
 
     // virtualTransform = parentTransform;
