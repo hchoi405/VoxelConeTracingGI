@@ -79,7 +79,7 @@ void VoxelConeTracingDemo::initUpdate() {
     int numSequence = translations.size();
     std::cout << "numSequence: " << numSequence << std::endl;
     backgroundImages.resize(numSequence);
-    for (int i = 340; i < 341 /* numSequence */; ++i) {
+    for (int i = 335; i < 346 /* numSequence */; ++i) {
         std::stringstream ss;
         ss << renderingSceneDir << "color/";
         ss<< std::setfill('0') << std::setw(5) << i;
@@ -146,7 +146,11 @@ void VoxelConeTracingDemo::update() {
     static bool once = true;
 
     // m_gui->selectEntity(virtualTransform->getOwner(), false);
-    m_renderPipeline->put<GLuint>("BackgroundTexture", backgroundImages[340]);
+    m_renderPipeline->put<GLuint>("BackgroundTexture", backgroundImages[DEMO_SETTINGS.animateFrame]);
+    static Entity camera = ECS::getEntityByName("Camera");
+    static auto camTransform = camera.getComponent<Transform>();
+    camTransform->setPosition(translations[DEMO_SETTINGS.animateFrame]);
+    camTransform->setRotation(rotations[DEMO_SETTINGS.animateFrame]);
 
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
     m_clipmapUpdatePolicy->update();
@@ -426,8 +430,6 @@ void VoxelConeTracingDemo::createDemoScene() {
         }
     }
 
-    camTransform->setPosition(translations[340]);
-    camTransform->setRotation(rotations[340]);
     m_engine->registerCamera(camComponent);
 
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag",

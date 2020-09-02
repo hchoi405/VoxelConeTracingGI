@@ -105,11 +105,12 @@ struct DemoSettings : VCTSettings
 {
     DemoSettings()
     {
-        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &animateCamera, &cameraSpeed });
+        guiElements.insert(guiElements.end(), {&animateLight, &animateSphere, &animateCamera, &cameraSpeed, &animateFrame });
     }
 
     CheckBox animateLight{ "Animate Light", false };
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
     CheckBox animateCamera{ "Animate Camera Transform", false };
     SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
+    SliderInt animateFrame{ "Frame", 340, 335, 345 };
 };
