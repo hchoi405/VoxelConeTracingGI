@@ -163,9 +163,16 @@ float getVirtualMinLevel(vec3 posW) {
     return getMinLevel(posW, u_virtualVolumeCenterL0, u_virtualVoxelSizeL0, u_virtualVolumeDimension);
 }
 
+bool inBox(vec3 p, vec3 bmin, vec3 bmax) { return all(greaterThan(p, bmin)) && all(lessThan(p, bmax)); }
+
 bool inBox(vec3 p, AABBox3D box) { return all(greaterThan(p, box.minPos)) && all(lessThan(p, box.maxPos)); }
 
 bool inSphere(vec3 p, vec3 center, float radius) { return length(p - center) < radius; }
+
+bool inLocal(vec3 p, vec3 min, vec3 max, float ratio) {
+    vec3 extent = max - min;
+    return inBox(p, min - ratio * extent, max + ratio * extent);
+}
 
 float dx[8] = {0, 0, 0, 0, 1, 1, 1, 1};
 float dy[8] = {0, 0, 1, 1, 0, 0, 1, 1};
@@ -619,6 +626,12 @@ void main() {
     vec3 view = normalize(posW - u_eyePos);
     vec4 specColor = texture(u_specularMap, In.texCoords);
 
+    // Check whether it's local
+    const float localRatio = 0.7f;
+    vec3 aabbExtent = vec3(u_virtualVoxelSizeL0 * u_virtualVolumeDimension);
+    bool isLocal = inLocal(posW, u_virtualVolumeCenterL0 - aabbExtent * 0.5f,
+                           u_virtualVolumeCenterL0 + aabbExtent * 0.5f, localRatio);
+
     ShadingFrame frame;
     frame.n = normal;
     coordinateSystem(frame.n, frame.b, frame.t);
@@ -654,6 +667,16 @@ void main() {
     realScene.maxClipmapLevelInv = CLIP_LEVEL_COUNT_INV;
     realScene.stepFactor = u_stepFactor;
     realScene.isVirtual = false;
+
+    vec3 directContribution = vec3(0.0);
+
+    // Non-local region
+    if (!isLocal) {
+        out_color = vec4(background, 1);
+        return;
+    } else if (!isVirtualFrag) {
+        directContribution = background;
+    }
 
     // Parameter setup
     params.occlusionDecay = u_occlusionDecay;
@@ -960,8 +983,6 @@ void main() {
 
     // Do not clamp for the anti-radiance
     // indirectContribution = clamp(indirectContribution, 0.0, 1.0);
-
-    vec3 directContribution = vec3(0.0);
 
     if (hasEmission) {
         directContribution += emission;
