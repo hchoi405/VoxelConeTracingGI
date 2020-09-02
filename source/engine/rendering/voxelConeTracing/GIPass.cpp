@@ -40,6 +40,7 @@ void GIPass::update()
     GLuint specularMap = m_renderPipeline->fetch<GLuint>("SpecularMap");
     GLuint emissionMap = m_renderPipeline->fetch<GLuint>("EmissionMap");
     GLuint depthTexture = m_renderPipeline->fetch<GLuint>("DepthTexture");
+    GLuint backgroundTexture = m_renderPipeline->fetch<GLuint>("BackgroundTexture");
 
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -53,6 +54,7 @@ void GIPass::update()
     m_finalLightPassShader->bindTexture2D(specularMap, "u_specularMap", textureUnit++);
     m_finalLightPassShader->bindTexture2D(depthTexture, "u_depthTexture", textureUnit++);
     m_finalLightPassShader->bindTexture2D(emissionMap, "u_emissionMap", textureUnit++);
+    m_finalLightPassShader->bindTexture2D(backgroundTexture, "u_backgroundTexture", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelRadiance, "u_voxelRadiance", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelOpacity, "u_voxelOpacity", textureUnit++);
     m_finalLightPassShader->bindTexture3D(*voxelReflectance, "u_voxelReflectance", textureUnit++);

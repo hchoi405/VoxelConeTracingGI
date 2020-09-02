@@ -8,6 +8,8 @@
 #include <engine/util/util.h>
 #include <engine/resource/ResourceManager.h>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <engine/rendering/architecture/RenderPipeline.h>
 #include <engine/ecs/ECS.h>
 #include <engine/rendering/lights/DirectionalLight.h>
@@ -38,12 +40,14 @@ VoxelConeTracingDemo::VoxelConeTracingDemo() {
 
     Random::randomize();
 
+    std::cout << "reading seuquence started... ";
+
+    // Load pose
     std::ifstream in("../output.txt");
     if (!in.is_open()) {
         std::cout << "Failed to open output.txt" << std::endl;
         exit(-1);
     }
-    std::cout << "reading started... ";
     while (!in.eof()) {
         glm::vec3 pos;
         glm::quat rot;
@@ -70,6 +74,19 @@ void VoxelConeTracingDemo::initUpdate() {
     DebugRenderer::init();
 
     init3DVoxelTextures();
+
+    // Load background
+    int numSequence = translations.size();
+    std::cout << "numSequence: " << numSequence << std::endl;
+    backgroundImages.resize(numSequence);
+    for (int i = 340; i < 341 /* numSequence */; ++i) {
+        std::stringstream ss;
+        ss << renderingSceneDir << "color/";
+        ss<< std::setfill('0') << std::setw(5) << i;
+        ss << ".png";
+        std::cout << "load: " << ss.str() << std::endl;
+        backgroundImages[i].load(ss.str());
+    }
 
     m_renderPipeline = std::make_unique<RenderPipeline>(MainCamera);
     m_gui = std::make_unique<VoxelConeTracingGUI>(m_renderPipeline.get());
@@ -105,14 +122,15 @@ void VoxelConeTracingDemo::initUpdate() {
 
     // Add render passes to the pipeline
     m_renderPipeline->addRenderPasses(
-        std::make_shared<SceneGeometryPass>(),
-        std::make_shared<VoxelizationPass>(),
-        // std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution), // Don't use the shadow map
-        std::make_shared<RadianceInjectionPass>(),
-        std::make_shared<WrapBorderPass>(),
-        std::make_shared<GIPass>(),
-        // std::make_shared<SphericalImagePass>(),
-        std::make_shared<ForwardScenePass>());
+        std::make_shared<SceneGeometryPass>() 
+        ,std::make_shared<VoxelizationPass>()
+        // ,std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution) // Don't use the shadow map
+        ,std::make_shared<RadianceInjectionPass>() 
+        ,std::make_shared<WrapBorderPass>() 
+        ,std::make_shared<GIPass>()
+        // ,std::make_shared<SphericalImagePass>()
+        //,std::make_shared<ForwardScenePass>()
+        );
 
     // RenderPass initializations
     m_renderPipeline->getRenderPass<VoxelizationPass>()->init(m_clipRegionBBoxExtentL0,
@@ -128,6 +146,7 @@ void VoxelConeTracingDemo::update() {
     static bool once = true;
 
     // m_gui->selectEntity(virtualTransform->getOwner(), false);
+    m_renderPipeline->put<GLuint>("BackgroundTexture", backgroundImages[340]);
 
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
     m_clipmapUpdatePolicy->update();
@@ -149,7 +168,7 @@ void VoxelConeTracingDemo::update() {
     bool forwardPipeline = RENDERING_SETTINGS.pipeline.asString() == "Forward";
 
     if (giPipeline) {
-        m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
+        // m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(true);
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(once);
         // Use injection pass only once because one update is enough for point cloud
@@ -159,7 +178,7 @@ void VoxelConeTracingDemo::update() {
     }
 
     if (forwardPipeline) {
-        m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(true);
+        // m_renderPipeline->getRenderPass<ForwardScenePass>()->setEnabled(true);
         m_renderPipeline->getRenderPass<GIPass>()->setEnabled(false);
         m_renderPipeline->getRenderPass<VoxelizationPass>()->setEnabled(true);
         m_renderPipeline->getRenderPass<RadianceInjectionPass>()->setEnabled(false);
@@ -414,23 +433,22 @@ void VoxelConeTracingDemo::createDemoScene() {
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag",
                                              {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("../../neon/asset/dasan613_learning1/dasan613_tsdf3.obj")->name = "name_scene";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("../../neon/asset/dasan613_learning1/dasan613_tsdf3.obj", shader,
-                                                     "../../neon/asset/dasan613_learning1/", glm::vec3(1.f), false);
+    ResourceManager::getModel(learningSceneDir + sceneObjectFilename)->name = "name_scene";
+    auto sceneRootEntity =
+        ECSUtil::loadMeshEntities(learningSceneDir + sceneObjectFilename, shader, learningSceneDir, glm::vec3(1.f), false);
     // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " << sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
 
     // Point Clout Entity
     std::string pcEntityName = "PointCloud";
-    std::string cloudFilename = "../../neon/asset/dasan613_learning1/cloud_learning1_4M_normals.ply";
+    std::string cloudFilename = learningSceneDir + scenePCFilename;
 
     // Load point cloud before loadMeshEntities to give a name
     // This is ok because loadMeshEntities() first tries to find
     // whether the model given with the filename is already loaded
     ResourceManager::getModel(cloudFilename)->name = pcEntityName;
-    auto pcEntityTransform =
-        ECSUtil::loadMeshEntities(cloudFilename, shader, "../../neon/asset/dasan613_learning1/", glm::vec3(1.f), false);
+    auto pcEntityTransform = ECSUtil::loadMeshEntities(cloudFilename, shader, learningSceneDir, glm::vec3(1.f), false);
     pcEntityTransform->getComponent<MeshRenderer>()->getMesh()->setRenderMode(GL_POINTS, 0);
     // pcEntityTransform->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     pcEntityTransform->setPosition(glm::vec3(m_scenePosition));

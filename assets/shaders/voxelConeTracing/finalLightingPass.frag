@@ -30,6 +30,7 @@ uniform sampler2D u_specularMap;
 uniform sampler2D u_emissionMap;
 uniform sampler2D u_depthTexture;
 uniform sampler2D u_virtualMap;
+uniform sampler2D u_backgroundTexture;
 
 uniform sampler3D u_voxelRadiance;
 uniform sampler3D u_voxelOpacity;
@@ -612,6 +613,7 @@ void main() {
     vec3 diffuse = texture(u_diffuseTexture, In.texCoords).rgb;
     const vec3 normal = unpackNormal(texture(u_normalMap, In.texCoords).rgb);
     vec3 emission = texture(u_emissionMap, In.texCoords).rgb;
+    vec3 background = texture(u_backgroundTexture, In.texCoords).rgb;
     bool hasEmission = any(greaterThan(emission, vec3(0.0)));
     vec3 posW = worldPosFromDepth(depth);
     vec3 view = normalize(posW - u_eyePos);

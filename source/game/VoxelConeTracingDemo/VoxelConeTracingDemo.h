@@ -69,6 +69,11 @@ private:
 
     std::vector<glm::vec3> translations;
     std::vector<glm::quat> rotations;
+    std::vector<Texture2D> backgroundImages;
 
     const std::string cameraFilename = "../camera.txt";
+    const std::string learningSceneDir = "../../neon/asset/dasan613_learning1/";
+    const std::string renderingSceneDir = "../../neon/asset/dasan613_rendering5-2/";
+    const std::string sceneObjectFilename = "dasan613_tsdf3.obj";
+    const std::string scenePCFilename = "cloud_learning1_4M_normals.ply";
 };

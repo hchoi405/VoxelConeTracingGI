@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/hchoi/.conda/envs/rfwr/bin/python",
+    "python.pythonPath": "/home/hchoi/anaconda3/envs/rfwr/bin/python",
     "files.associations": {
         "array": "cpp",
         "atomic": "cpp",
@@ -53,6 +53,13 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeindex": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "unordered_set": "cpp",
+        "condition_variable": "cpp",
+        "set": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp"
     }
 }
