@@ -259,8 +259,8 @@ void VoxelConeTracingDemo::onKeyDown(SDL_Keycode keyCode) {
 }
 
 void VoxelConeTracingDemo::init3DVoxelTextures() {
-    GLint filter = GL_LINEAR;
-    // GLint filter = GL_NEAREST;
+    // GLint filter = GL_LINEAR;
+    GLint filter = GL_NEAREST;
     GLint wrapS = GL_CLAMP_TO_BORDER;
     GLint wrapT = GL_CLAMP_TO_BORDER;
     GLint wrapR = GL_CLAMP_TO_BORDER;
@@ -414,8 +414,8 @@ void VoxelConeTracingDemo::createDemoScene() {
     auto shader = ResourceManager::getShader("shaders/forwardShadingPass.vert", "shaders/forwardShadingPass.frag",
                                              {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
-    ResourceManager::getModel("../../neon/asset/dasan613_learning1/dasan613_tsdf2.obj")->name = "name_scene";
-    auto sceneRootEntity = ECSUtil::loadMeshEntities("../../neon/asset/dasan613_learning1/dasan613_tsdf2.obj", shader,
+    ResourceManager::getModel("../../neon/asset/dasan613_learning1/dasan613_tsdf3.obj")->name = "name_scene";
+    auto sceneRootEntity = ECSUtil::loadMeshEntities("../../neon/asset/dasan613_learning1/dasan613_tsdf3.obj", shader,
                                                      "../../neon/asset/dasan613_learning1/", glm::vec3(1.f), false);
     // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " << sceneRootEntity->getBBox().min() << std::endl;

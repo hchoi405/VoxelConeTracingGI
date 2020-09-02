@@ -90,10 +90,10 @@ struct DebugSettings : VCTSettings
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     SliderFloat secondIndirectDiffuse{"Second bounce diffuse intensity", 0.3f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
-    CheckBox secondBounce{"Trace second bounce", true};
+    CheckBox secondBounce{"Trace second bounce", false};
     CheckBox realReflectance{"Apply relfectance of real object", true};
     CheckBox debugFlag{"Flag for Debug", false};
-    CheckBox renderReal{"Toggle whether render real fragment", true};
+    CheckBox renderReal{"Toggle whether render real fragment", false};
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};

@@ -166,8 +166,168 @@ bool inBox(vec3 p, AABBox3D box) { return all(greaterThan(p, box.minPos)) && all
 
 bool inSphere(vec3 p, vec3 center, float radius) { return length(p - center) < radius; }
 
-vec4 sampleUnifiedClipmapTexture(sampler3D virtualClipmapTexture, vec3 posW, int clipmapLevel, float voxelSizeL0,
-                                 uint volumeDimension, float maxCliplevelInv, vec3 faceOffsets, vec3 weight) {
+float dx[8] = {0, 0, 0, 0, 1, 1, 1, 1};
+float dy[8] = {0, 0, 1, 1, 0, 0, 1, 1};
+float dz[8] = {0, 1, 0, 1, 0, 1, 0, 1};
+
+vec4 interpolateTrilinearly(bool neighborExist[8], vec4 neighborColor[8], vec3 frac, out bool exist) {
+    bool bv01, bv23, bv0123, bv45, bv67, bv4567, bv01234567;
+    vec4 v01, v23, v0123, v45, v67, v4567, v01234567;
+
+    bv01 = true;
+    if (neighborExist[0] && neighborExist[1]) {
+        v01 = mix(neighborColor[0], neighborColor[1], frac.z);
+    } else if (neighborExist[0]) {
+        v01 = neighborColor[0];
+    } else if (neighborExist[1]) {
+        v01 = neighborColor[1];
+    } else {
+        bv01 = false;
+    }
+
+    bv23 = true;
+    if (neighborExist[2] && neighborExist[3]) {
+        v23 = mix(neighborColor[2], neighborColor[3], frac.z);
+    } else if (neighborExist[2]) {
+        v23 = neighborColor[2];
+    } else if (neighborExist[3]) {
+        v23 = neighborColor[3];
+    } else {
+        bv23 = false;
+    }
+
+    bv0123 = true;
+    if (bv01 && bv23) {
+        v0123 = mix(v01, v23, frac.y);
+    } else if (bv01) {
+        v0123 = v01;
+    } else if (bv23) {
+        v0123 = v23;
+    } else {
+        bv0123 = false;
+    }
+
+    bv45 = true;
+    if (neighborExist[4] && neighborExist[5]) {
+        v45 = mix(neighborColor[4], neighborColor[5], frac.z);
+    } else if (neighborExist[4]) {
+        v45 = neighborColor[4];
+    } else if (neighborExist[5]) {
+        v45 = neighborColor[5];
+    } else {
+        bv45 = false;
+    }
+
+    bv67 = true;
+    if (neighborExist[6] && neighborExist[7]) {
+        v67 = mix(neighborColor[6], neighborColor[7], frac.z);
+    } else if (neighborExist[6]) {
+        v67 = neighborColor[6];
+    } else if (neighborExist[7]) {
+        v67 = neighborColor[7];
+    } else {
+        bv67 = false;
+    }
+
+    bv4567 = true;
+    if (bv45 && bv67) {
+        v4567 = mix(v45, v67, frac.y);
+    } else if (bv45) {
+        v4567 = v45;
+    } else if (bv67) {
+        v4567 = v67;
+    } else {
+        bv4567 = false;
+    }
+
+    bv01234567 = true;
+    if (bv0123 && bv4567) {
+        v01234567 = mix(v0123, v4567, frac.x);
+    } else if (bv0123) {
+        v01234567 = v0123;
+    } else if (bv4567) {
+        v01234567 = v4567;
+    } else {
+        v01234567 = vec4(0.0);
+    }
+
+    exist = bv01234567;
+    if (bv01234567)
+        return v01234567;
+    else
+        return vec4(0);
+}
+
+// All input texture should have GL_NEAREST filter to properly work
+vec4 sampleClipmapTexture2(sampler3D clipmapTexture, vec3 posW, int clipmapLevel, float voxelSizeL0,
+                           uint volumeDimension, float maxCliplevelInv, vec3 faceOffsets, vec3 weight) {
+    float voxelSize = voxelSizeL0 * exp2(clipmapLevel);
+    float extent = voxelSize * volumeDimension;
+
+    vec3 neighborPos[8];
+    bool neighborExist[3][8];
+    vec4 neighborColor[3][8];
+
+    vec3 frac = fract(posW / voxelSize);
+
+    for (uint i = 0; i < 8; ++i) {
+        neighborPos[i] = posW + vec3(dx[i], dy[i], dz[i]) * voxelSize;
+
+#ifdef VOXEL_TEXTURE_WITH_BORDER
+        neighborPos[i] = (fract(neighborPos[i] / extent) * volumeDimension + vec3(BORDER_WIDTH)) /
+                         (float(volumeDimension) + 2.0 * BORDER_WIDTH);
+#else
+        neighborPos[i] = fract(neighborPos[i] / extent);
+#endif
+        neighborPos[i].y += clipmapLevel;
+        neighborPos[i].y *= maxCliplevelInv;
+        neighborPos[i].x *= FACE_COUNT_INV;
+
+        for (uint j = 0; j < 3; ++j) {
+            neighborExist[j][i] = false;
+            vec4 rgba = texture(clipmapTexture, neighborPos[i] + vec3(faceOffsets[j], 0.0, 0.0));
+            if (rgba.a > EPSILON) {
+                neighborExist[j][i] = true;
+                neighborColor[j][i] = rgba;
+            }
+        }
+    }
+
+    vec4 sum = vec4(0);
+    vec4 dirSum[3];
+    bool dirExist[3] = {false, false, false};
+    float weightSum = 0.0;
+    for (int i = 0; i < 3; ++i) {
+        dirSum[i] = interpolateTrilinearly(neighborExist[i], neighborColor[i], frac, dirExist[i]);
+        if (dirExist[i]) {
+            weightSum += weight[i];
+            sum += dirSum[i] * weight[i];
+            // return clamp(vec4(vec3(weight[i]), 1), 0.0, 1.0);
+        }
+    }
+    if (weightSum > 0.0) sum /= weightSum;
+
+    return clamp(sum, 0.0, 1.0);
+}
+
+vec4 sampleClipmapLinearly2(sampler3D clipmapTexture, vec3 position, float curLevel, float voxelSizeL0,
+                            uint volumeDimension, float maxCliplevelInv, vec3 faceOffsets, vec3 weight) {
+    int lowerLevel = int(floor(curLevel));
+    int upperLevel = int(ceil(curLevel));
+
+    vec4 lowSample = sampleClipmapTexture2(clipmapTexture, position, lowerLevel, voxelSizeL0, volumeDimension,
+                                           maxCliplevelInv, faceOffsets, weight);
+
+    if (lowerLevel == upperLevel) return lowSample;
+
+    vec4 highSample = sampleClipmapTexture2(clipmapTexture, position, upperLevel, voxelSizeL0, volumeDimension,
+                                            maxCliplevelInv, faceOffsets, weight);
+
+    return mix(lowSample, highSample, fract(curLevel));
+}
+
+vec4 sampleClipmapTexture(sampler3D virtualClipmapTexture, vec3 posW, int clipmapLevel, float voxelSizeL0,
+                          uint volumeDimension, float maxCliplevelInv, vec3 faceOffsets, vec3 weight) {
     float voxelSize = voxelSizeL0 * exp2(clipmapLevel);
     float extent = voxelSize * volumeDimension;
 
@@ -275,7 +435,7 @@ vec4 castCone(in VCTCone c, const VCTScene scene, out VCTIntersection isect) {
         voxelSize = scene.voxelSizeL0 * exp2(c.curLevel);
 
         // Retrieve radiance by accessing the 3D clipmap (voxel radiance and opacity)
-        vec4 radiance = sampleClipmapLinearly(getRadiance(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+        vec4 radiance = sampleClipmapLinearly2(getRadiance(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
                                               scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
 
         // Radiance correction (diffuse, specular)
@@ -288,14 +448,14 @@ vec4 castCone(in VCTCone c, const VCTScene scene, out VCTIntersection isect) {
         // Sample only opaque voxel
         if (radiance.a > EPSILON) {
             vec3 normal =
-                unpackNormal(sampleClipmapLinearly(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                unpackNormal(sampleClipmapLinearly2(getNormal(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
                                                    scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
                                  .rgb);
-            vec3 diffuse = sampleClipmapLinearly(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+            vec3 diffuse = sampleClipmapLinearly2(getDiffuse(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
                                                  scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight)
                                .rgb;
             vec4 specularA =
-                sampleClipmapLinearly(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
+                sampleClipmapLinearly2(getSpecularA(scene.isVirtual), position, c.curLevel, scene.voxelSizeL0,
                                       scene.volumeDimension, scene.maxClipmapLevelInv, faceOffsets, weight);
 
             normal = normal * correctionQuotient;
@@ -542,70 +702,71 @@ void main() {
         VCTCone c;
         c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
         c.depth = 0;
-        const int nSumbsample = 1;
+        const int nSubsample = 1;
 
-        const int material = 2;
+        const int material = 0;
 
-        // Perfect reflection
+        // Perfect reflection (Mirror)
         if (material == 0) {
-            c.dir = reflect(-view, normal);
+            c.dir = reflect(view, normal);
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
             c.curLevel = realMinLevel;
             vec4 dst = castCone(c, realScene, realIsect);
+            virtualIndirectContribution.rgb += dst.rgb;
 
-            c.curLevel = virtualMinLevel;
-            c.p = startPosOffset;
-            vec4 occlusion = castCone(c, virtualScene, virtualIsect);
+            // c.curLevel = virtualMinLevel;
+            // c.p = startPosOffset;
+            // vec4 occlusion = castCone(c, virtualScene, virtualIsect);
 
-            // virtualIndirectContribution.rgb += virtualIsect.diffuse;
-            // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
+            // // virtualIndirectContribution.rgb += virtualIsect.diffuse;
+            // // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
 
-            // if (false) {
-            if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                virtualIndirectContribution.rgb += virtualIsect.diffuse;
-                // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
+            // // if (false) {
+            // if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+            //     virtualIndirectContribution.rgb += virtualIsect.diffuse;
+            //     // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
 
-                if (false) {
-                    // if (u_secondBounce == 1) {
-                    c.curLevel = realMinLevel;
-                    c.p = virtualIsect.position;
-                    c.dir = reflect(c.dir, virtualIsect.normal);
-                    // virtualIndirectContribution.rgb += castCone(c, realScene, realIsect).rgb;
-                    castCone(c, realScene, realIsect);
-                    virtualIndirectContribution.rgb += packNormal(realIsect.normal);
+            //     if (false) {
+            //         // if (u_secondBounce == 1) {
+            //         c.curLevel = realMinLevel;
+            //         c.p = virtualIsect.position;
+            //         c.dir = reflect(c.dir, virtualIsect.normal);
+            //         // virtualIndirectContribution.rgb += castCone(c, realScene, realIsect).rgb;
+            //         castCone(c, realScene, realIsect);
+            //         virtualIndirectContribution.rgb += packNormal(realIsect.normal);
 
-                    // virtualIndirectContribution.rgb +=
-                    //     virtualIsect.diffuse *
-                    //     castSecondRealDiffuseCones(virtualIsect.position, virtualIsect.normal, realMinLevel).rgb *
-                    //     u_virtualIndirectDiffuseIntensity;
+            //         // virtualIndirectContribution.rgb +=
+            //         //     virtualIsect.diffuse *
+            //         //     castSecondRealDiffuseCones(virtualIsect.position, virtualIsect.normal, realMinLevel).rgb *
+            //         //     u_virtualIndirectDiffuseIntensity;
 
-                    // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
+            //         // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
 
-                    // virtualIndirectContribution.rgb = occlusion.rgb;
+            //         // virtualIndirectContribution.rgb = occlusion.rgb;
 
-                    // virtualIndirectContribution.rgb = vec3(virtualIsect.level);
+            //         // virtualIndirectContribution.rgb = vec3(virtualIsect.level);
 
-                    // virtualIndirectContribution.rgb = occlusion.rgb;
+            //         // virtualIndirectContribution.rgb = occlusion.rgb;
 
-                    // virtualIndirectContribution.rgb = virtualIsect.position;
+            //         // virtualIndirectContribution.rgb = virtualIsect.position;
 
-                    // virtualIndirectContribution.rgb += virtualIsect.diffuse
-                    //     * castSecondRealDiffuseCones(virtualIsect.position,
-                    //     virtualIsect.normal, realMinLevel).rgb
-                    //     * u_virtualIndirectDiffuseIntensity;
+            //         // virtualIndirectContribution.rgb += virtualIsect.diffuse
+            //         //     * castSecondRealDiffuseCones(virtualIsect.position,
+            //         //     virtualIsect.normal, realMinLevel).rgb
+            //         //     * u_virtualIndirectDiffuseIntensity;
 
-                    // virtualIndirectContribution.rgb +=
-                    // castSecondVirtualDiffuseCones(virtualIsect.position,
-                    // virtualIsect.normal, virtualMinLevel).rgb
-                    //     * u_virtualIndirectDiffuseIntensity;
-                }
-                // else
-                //     virtualIndirectContribution.rgb += occlusion.rgb;
-                virtualIndirectContribution.rgb *= u_virtualIndirectDiffuseIntensity;
-            } else {
-                virtualIndirectContribution.rgb += dst.rgb;
-            }
+            //         // virtualIndirectContribution.rgb +=
+            //         // castSecondVirtualDiffuseCones(virtualIsect.position,
+            //         // virtualIsect.normal, virtualMinLevel).rgb
+            //         //     * u_virtualIndirectDiffuseIntensity;
+            //     }
+            //     // else
+            //     //     virtualIndirectContribution.rgb += occlusion.rgb;
+            //     virtualIndirectContribution.rgb *= u_virtualIndirectDiffuseIntensity;
+            // } else {
+            //     virtualIndirectContribution.rgb += dst.rgb;
+            // }
         }
         // Cook-Torrance BRDF
         else if (material == 1) {
