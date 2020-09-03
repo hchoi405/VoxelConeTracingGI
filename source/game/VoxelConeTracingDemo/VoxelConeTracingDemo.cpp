@@ -479,7 +479,7 @@ void VoxelConeTracingDemo::createDemoScene() {
     ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
     virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
                                                  glm::vec3(1.f), true);
-    virtualTransform->setPosition(glm::vec3(5.4f, 6.1f, -4.57f));
+    virtualTransform->setPosition(glm::vec3(5.4f, 6.24f, -4.57f));
     virtualTransform->setLocalScale(glm::vec3(0.5f));
 
     // // Plate
