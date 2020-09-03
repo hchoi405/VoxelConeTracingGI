@@ -765,7 +765,7 @@ void main() {
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
             c.curLevel = realMinLevel;
-            vec4 dst = dot(-view, normal) * castCone(c, realScene, realIsect);
+            vec4 dst = castCone(c, realScene, realIsect);
 
             c.curLevel = virtualMinLevel;
             c.p = startPosOffset;
