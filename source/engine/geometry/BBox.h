@@ -49,6 +49,6 @@ public:
 
     const auto& max() const noexcept { return m_max; }
 
-private:
     glm::vec3 m_min, m_max;
+private:
 };

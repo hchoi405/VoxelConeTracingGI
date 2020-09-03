@@ -77,6 +77,8 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_virtualVoxelSizeL0", virtualClipRegions->at(0).voxelSize);
     m_finalLightPassShader->setVector("u_virtualVolumeCenterL0", virtualClipRegions->at(0).getCenterPosWorld());
     m_finalLightPassShader->setUnsignedInt("u_virtualVolumeDimension", VIRTUAL_VOXEL_RESOLUTION);
+    m_finalLightPassShader->setVector("u_virtualMin", *m_renderPipeline->fetchPtr<glm::vec3>("virtualMin"));
+    m_finalLightPassShader->setVector("u_virtualMax", *m_renderPipeline->fetchPtr<glm::vec3>("virtualMax"));
 
     m_finalLightPassShader->setInt("u_BRDFMode", RENDERING_SETTINGS.brdfMode);
     m_finalLightPassShader->setMatrix("u_viewProjInv", camera->viewProjInv());
@@ -122,6 +124,7 @@ void GIPass::update()
     m_finalLightPassShader->setInt("u_rotateCone", DEBUG_SETTINGS.rotateCone ? 1 : 0);
     m_finalLightPassShader->setFloat("u_localRatio", DEBUG_SETTINGS.localRatio);
     m_finalLightPassShader->setInt("u_excludeEmptyFace", DEBUG_SETTINGS.exclueEmptyFace ? 1 : 0);
+    m_finalLightPassShader->setInt("u_material", DEBUG_SETTINGS.materialMode);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

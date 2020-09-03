@@ -78,10 +78,10 @@ struct DebugSettings : VCTSettings
     {
         guiElements.insert(
             guiElements.end(),
-            {&debugFlag, &toggleViewCone, &viewAperture, &hitpointOffset, &virtualSelfOcclusion,
-             &indirectSpecularShadow, &indirectDiffuseShadow, &irradianceOnly, &secondBounce, &secondIndirectDiffuse,
-             &secondIndirectSpecular, &realReflectance, &renderReal, &renderVirtual, &ambientSecondIntensity,
-             &extraStep, &glassEta, &phongShininess, &rotateCone, &localRatio, &exclueEmptyFace});
+            {&debugFlag, /* &toggleViewCone, */ &viewAperture, /*  &hitpointOffset, &virtualSelfOcclusion,
+             &indirectSpecularShadow, &indirectDiffuseShadow, &irradianceOnly, */ &secondBounce, &secondIndirectDiffuse,
+             &secondIndirectSpecular, &realReflectance, &renderReal, &renderVirtual, /* &ambientSecondIntensity,
+             &extraStep, */ &glassEta,/*  &phongShininess, */ &rotateCone, &localRatio, &exclueEmptyFace, &materialMode});
     }
 
     CheckBox toggleViewCone{"Toggle view-based cone tracing", false};
@@ -103,8 +103,9 @@ struct DebugSettings : VCTSettings
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
     SliderFloat phongShininess{"Shininess of phong", 27.8974f, 0.f, 255.f};
     CheckBox rotateCone{"Rotate cone randomly", false};
-    SliderFloat localRatio{"Ratio of local real", 0.7f, 0.f, 1.f};
+    SliderFloat localRatio{"Ratio of local real", 2.0f, 0.f, 2.f};
     CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
+    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse"}, 0);
 };
 
 struct DemoSettings : VCTSettings
@@ -118,5 +119,5 @@ struct DemoSettings : VCTSettings
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
     CheckBox animateCamera{ "Animate Camera Transform", false };
     SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
-    SliderInt animateFrame{ "Frame", 340, 335, 345 };
+    SliderInt animateFrame{ "Frame", 340, 340, 341 };
 };

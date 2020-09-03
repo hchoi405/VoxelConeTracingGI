@@ -79,7 +79,7 @@ void VoxelConeTracingDemo::initUpdate() {
     int numSequence = translations.size();
     std::cout << "numSequence: " << numSequence << std::endl;
     backgroundImages.resize(numSequence);
-    for (int i = 335; i < 346 /* numSequence */; ++i) {
+    for (int i = DEMO_SETTINGS.animateFrame.min; i <= DEMO_SETTINGS.animateFrame.max /* numSequence */; ++i) {
         std::stringstream ss;
         ss << renderingSceneDir << "color/";
         ss<< std::setfill('0') << std::setw(5) << i;
@@ -98,8 +98,12 @@ void VoxelConeTracingDemo::initUpdate() {
     m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 3;
     std::cout << "Scene bbox: " << sceneEntity.getComponent<Transform>()->getBBox() << std::endl;
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
-    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.5;
+    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 3;
     std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
+    virtualMin = virtualTransform->getBBox().min();
+    virtualMax = virtualTransform->getBBox().max();
+    m_renderPipeline->putPtr("virtualMin", &virtualMin);
+    m_renderPipeline->putPtr("virtualMax", &virtualMax);
 
     // Set render pipeline input
     m_renderPipeline->putPtr("VoxelOpacity", &m_voxelOpacity);
@@ -463,20 +467,20 @@ void VoxelConeTracingDemo::createDemoScene() {
     std::string virtualObjectDir = "../../neon/asset/mesh/";
     std::string virtualEntityName = "virtualObject";
 
-    // Sphere
-    std::string virtualObjectFilename = "sphere.obj";
-    ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
-    virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-                                                 glm::vec3(5.f), false);
-    virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f)); 
-
-    // // Cube
-    // std::string virtualObjectFilename = "cube.obj";
+    // // Sphere
+    // std::string virtualObjectFilename = "sphere.obj";
     // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
     // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-    //                                              glm::vec3(1.f), true);
-    // virtualTransform->setPosition(glm::vec3(5.4f, 6.1f, -4.57f));
-    // virtualTransform->setLocalScale(glm::vec3(0.5f));
+    //                                              glm::vec3(5.f), false);
+    // virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f)); 
+
+    // Cube
+    std::string virtualObjectFilename = "cube.obj";
+    ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+    virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+                                                 glm::vec3(1.f), true);
+    virtualTransform->setPosition(glm::vec3(5.4f, 6.1f, -4.57f));
+    virtualTransform->setLocalScale(glm::vec3(0.5f));
 
     // // Plate
     // std::string virtualObjectFilename = "plate2.obj";
@@ -492,10 +496,8 @@ void VoxelConeTracingDemo::createDemoScene() {
     sphereMaterial->setColor("u_color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
     sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
-
     auto childTransform = virtualTransform->getChildren()[0];
     childTransform->getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
-
     // Virtual should be set at the root entity
     m_sphere = ECS::getEntityByName(virtualEntityName);
     m_sphere.setVirtual(true);

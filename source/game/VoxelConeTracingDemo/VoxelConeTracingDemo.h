@@ -58,9 +58,10 @@ private:
     Texture3D m_virtualVoxelNormal;
     Texture3D m_virtualVoxelDiffuse;
     Texture3D m_virtualVoxelSpecularA;
+    glm::vec3 virtualMin, virtualMax;
 
     std::unique_ptr<VoxelConeTracingGUI> m_gui;
-    bool m_guiEnabled{true};
+    bool m_guiEnabled{false};
 
     glm::vec3 m_scenePosition;
     Entity m_directionalLight;
