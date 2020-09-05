@@ -51,14 +51,20 @@ struct GISettings : VCTSettings
                           &visualizeMinLevelSelection, &downsampleTransitionRegionSize, &updateOneClipLevelPerFrame });
     }
 
-    SliderFloat occlusionDecay{"Occlusion Decay", 5.0f, 0.001f, 80.0f};
+    // Dasan613, mirror sphere: 0.001
+    // Dasan106, cube diffuse: 5
+    SliderFloat occlusionDecay{"Occlusion Decay",5.f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     // 1.0: Dasan613
-    SliderFloat stepFactor{"Step Factor", 1.0f, 0.2f, 2.0f};
+    // Dasan613, mirror sphere: 0.785
+    SliderFloat stepFactor{"Step Factor", 0.785f, 0.2f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 1.0f};
-    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 12.f, 0.1f, 15.0f};
-    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.f, 0.1f, 15.0f};
-    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.f, 0.1f, 3.0f };
+    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
+    // Dasan106, diffuse cube (nodirect): 4.f
+    // Dasan106, diffuse cube (direct): 6.782f
+    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 6.782f, 0.1f, 15.0f};
+    // Dasan613, mirror lucy: 1.34
+    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.34f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     SliderFloat traceDirectionOffset{"Trace Direction Offset", 1.5f, 0.0f, 8.0f};
     
@@ -93,7 +99,7 @@ struct DebugSettings : VCTSettings
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     SliderFloat secondIndirectDiffuse{"Second bounce diffuse intensity", 0.3f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
-    CheckBox secondBounce{"Trace second bounce", false};
+    CheckBox secondBounce{"Trace second bounce", true};
     CheckBox realReflectance{"Apply relfectance of real object", true};
     CheckBox debugFlag{"Flag for Debug", false};
     CheckBox renderReal{"Toggle whether render real fragment", true};
@@ -103,9 +109,9 @@ struct DebugSettings : VCTSettings
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
     SliderFloat phongShininess{"Shininess of phong", 27.8974f, 0.f, 255.f};
     CheckBox rotateCone{"Rotate cone randomly", false};
-    SliderFloat localRatio{"Ratio of local real", 2.0f, 0.f, 2.f};
+    SliderFloat localRatio{"Ratio of local real", 0.9f, 0.f, 2.f};
     CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
-    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse"}, 0);
+    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse"}, 2);
 };
 
 struct DemoSettings : VCTSettings

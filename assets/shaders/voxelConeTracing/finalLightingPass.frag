@@ -642,6 +642,12 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
                 indirectContribution.rgb -= (1 - virtualRet.a) * realRet.rgb;
             }
         }
+        // First hit virtual
+        else {
+            c.curLevel = realMinLevel;
+            vec4 realRet = castCone(c, realScene, realIsect) * cosTheta;
+            indirectContribution.rgb += realRet.a * realRet.rgb;
+        }
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
@@ -770,54 +776,25 @@ void main() {
             c.p = startPosOffset;
             vec4 occlusion = castCone(c, virtualScene, virtualIsect);
 
-            // virtualIndirectContribution.rgb += virtualIsect.diffuse;
-            // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
-
             // Virtual-Virtual occlusion
             if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                virtualIndirectContribution.rgb += virtualIsect.diffuse;
-                // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
-
-                if (false) {
-                    // if (u_secondBounce == 1) {
-                    c.curLevel = realMinLevel;
-                    c.p = virtualIsect.position;
+                if (u_secondBounce == 1) {
+                    c.curLevel = virtualIsect.level;
+                    c.p = virtualIsect.position + virtualIsect.normal * u_virtualVoxelSizeL0 * u_traceStartOffset;
                     c.dir = reflect(c.dir, virtualIsect.normal);
-                    // virtualIndirectContribution.rgb += castCone(c, realScene, realIsect).rgb;
-                    castCone(c, realScene, realIsect);
-                    virtualIndirectContribution.rgb += packNormal(realIsect.normal);
 
-                    // virtualIndirectContribution.rgb +=
-                    //     virtualIsect.diffuse *
-                    //     castSecondDiffuseConesToReal(virtualIsect.position, virtualIsect.normal, realMinLevel).rgb *
-                    //     u_virtualIndirectDiffuseIntensity;
+                    vec4 real = castCone(c, realScene, realIsect);
+                    vec4 virtual2 = castCone(c, virtualScene, virtualIsect);
 
-                    // virtualIndirectContribution.rgb += packNormal(virtualIsect.normal);
-
-                    // virtualIndirectContribution.rgb = occlusion.rgb;
-
-                    // virtualIndirectContribution.rgb = vec3(virtualIsect.level);
-
-                    // virtualIndirectContribution.rgb = occlusion.rgb;
-
-                    // virtualIndirectContribution.rgb = virtualIsect.position;
-
-                    // virtualIndirectContribution.rgb += virtualIsect.diffuse
-                    //     * castSecondDiffuseConesToReal(virtualIsect.position,
-                    //     virtualIsect.normal, realMinLevel).rgb
-                    //     * u_virtualIndirectDiffuseIntensity;
-
-                    // virtualIndirectContribution.rgb +=
-                    // castSecondDiffuseConesToVirtual(virtualIsect.position,
-                    // virtualIsect.normal, virtualMinLevel).rgb
-                    //     * u_virtualIndirectDiffuseIntensity;
+                    if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                    } else {
+                        virtualIndirectContribution.rgb += real.rgb;
+                    }
                 }
-                // else
-                //     virtualIndirectContribution.rgb += occlusion.rgb;
-                virtualIndirectContribution.rgb *= u_virtualIndirectDiffuseIntensity;
             } else {
-                virtualIndirectContribution.rgb += dst.rgb * u_indirectSpecularIntensity;
+                virtualIndirectContribution.rgb += dst.rgb;
             }
+            virtualIndirectContribution.rgb *= u_indirectSpecularIntensity;
         }
         // Glass
         else if (u_material == 1) {
@@ -837,16 +814,15 @@ void main() {
                 // total reflrection
                 virtualIndirectContribution = vec3(0, 0, 1);
             }
-            virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
+            virtualIndirectContribution *= u_indirectSpecularIntensity;
         }
         // Diffuse
         else if (u_material == 2) {
             vec3 reflectance = vec3(0.780392f, 0.568627f, 0.113725f);
             virtualIndirectContribution =
-                castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true).rgb;
-            // virtualIndirectContribution *= reflectance;
-            out_color = vec4(virtualIndirectContribution, 1);
-            return;
+                castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false).rgb;
+            virtualIndirectContribution *= reflectance;
+            virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
         }
         indirectContribution.rgb += virtualIndirectContribution / nSubsample;
     } else {
