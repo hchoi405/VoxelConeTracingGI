@@ -97,6 +97,7 @@ uniform int u_rotateCone;
 uniform float u_localRatio;
 uniform int u_excludeEmptyFace;
 uniform int u_material;
+uniform int u_subsample;
 
 layout(location = 0) out vec4 out_color;
 
@@ -571,7 +572,7 @@ vec4 castSecondDiffuseConesToVirtual(vec3 startPos, vec3 normal, float virtualMi
 }
 
 // Cast diffuse cones at primary intersection point on both real/virtual object
-vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual) {
+vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual, uint seed = 0) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
     c.p = startPos;  // offset is present inside castCone
@@ -580,7 +581,6 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
     mat3 M = mat3(1.f);
 
     if (u_rotateCone == 1) {
-        uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), 0);
         float x1 = rand(seed), x2 = rand(seed), x3 = rand(seed);
         float sqrt3 = sqrt(x3);
         vec3 v = vec3(cos(PI2 * x2) * sqrt3, sin(PI2 * x2), sqrt(1 - x3));
@@ -633,7 +633,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
                 vec4 secondIntensity = vec4(1);
                 if (u_secondBounce == 1)
                     secondIntensity =
-                        castSecondDiffuseConesToReal(virtualIsect.position, virtualIsect.normal, realMinLevel);
+                        castSecondDiffuseConesToReal(virtualIsect.position, normalize(virtualIsect.normal), realMinLevel);
 
                 // Radiance from virtual object
                 indirectContribution.rgb += secondIntensity.rgb * virtualDiffuse * u_secondIndirectDiffuseIntensity;
@@ -646,7 +646,30 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
         else {
             c.curLevel = realMinLevel;
             vec4 realRet = castCone(c, realScene, realIsect) * cosTheta;
-            indirectContribution.rgb += realRet.a * realRet.rgb;
+
+            c.curLevel = 0;
+            vec4 virtualRet = castCone(c, virtualScene, virtualIsect) * cosTheta;
+
+            if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                vec3 secondNormal = normalize(virtualIsect.normal);
+                // vec3 secondDiffuse =
+                //     vec3(0.880392f, 0.768627f, 0.323725f);  // For self-intersection in rise103 diffuse Buddha
+                vec3 secondDiffuse = virtualIsect.diffuse;
+
+                vec4 secondIntensity = castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
+
+                // Radiance from virtual object (second bounce)
+                indirectContribution.rgb +=
+                    // Virtual-virtual occlusion
+                    virtualRet.a
+                    // Second bounce contribution (assume diffuse)
+                    * secondDiffuse * secondIntensity.a * secondIntensity.rgb * u_secondIndirectDiffuseIntensity;
+
+                // Radiance from real object (first bounce)
+                indirectContribution.rgb += (1 - virtualRet.a) * realRet.rgb;
+            } else {
+                indirectContribution.rgb += realRet.rgb;
+            }
         }
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
@@ -762,10 +785,11 @@ void main() {
         VCTCone c;
         c.aperture = max(roughness, MIN_SPECULAR_APERTURE);
         c.depth = 0;
-        const int nSubsample = 1;
 
         // Perfect reflection (Mirror)
         if (u_material == 0) {
+        // if (diffuse[0] > 0.45f && diffuse[0] < 0.55f) {
+            
             c.dir = reflect(view, normal);
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
@@ -777,19 +801,26 @@ void main() {
             vec4 occlusion = castCone(c, virtualScene, virtualIsect);
 
             // Virtual-Virtual occlusion
-            if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                if (u_secondBounce == 1) {
-                    c.curLevel = virtualIsect.level;
-                    c.p = virtualIsect.position + virtualIsect.normal * u_virtualVoxelSizeL0 * u_traceStartOffset;
-                    c.dir = reflect(c.dir, virtualIsect.normal);
+            if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                c.curLevel = virtualIsect.level;
+                c.p =
+                    virtualIsect.position + normalize(virtualIsect.normal) * u_virtualVoxelSizeL0 * u_traceStartOffset;
+                c.dir = reflect(c.dir, normalize(virtualIsect.normal));
 
-                    vec4 real = castCone(c, realScene, realIsect);
-                    vec4 virtual2 = castCone(c, virtualScene, virtualIsect);
+                vec4 real = castCone(c, realScene, realIsect);
+                vec4 virtual2 = castCone(c, virtualScene, virtualIsect);
 
-                    if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                    } else {
-                        virtualIndirectContribution.rgb += real.rgb;
-                    }
+                if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                    vec3 secondNormal = normalize(virtualIsect.normal);
+                    vec3 secondDiffuse = virtualIsect.diffuse;
+                    vec4 secondIntensity =
+                        castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
+
+                    // Radiance from virtual object
+                    virtualIndirectContribution.rgb +=
+                        secondIntensity.rgb * secondDiffuse * u_secondIndirectDiffuseIntensity;
+                } else {
+                    virtualIndirectContribution.rgb += real.rgb;
                 }
             } else {
                 virtualIndirectContribution.rgb += dst.rgb;
@@ -798,33 +829,121 @@ void main() {
         }
         // Glass
         else if (u_material == 1) {
-            virtualIndirectContribution = vec3(dot(normal, -view));
             float etaI = 1.0;                                       // Incident medium (Vacuum)
             float etaT = u_glassEta;                                // Transmitted medium (Glass, 1.5-1.6)
-            float F = fresnelDieletric(-view, normal, etaI, etaT);  // Fresnel Dielectric Term (reflection)
             vec3 refractedDir;
-            if (refract(-view, normal, etaI / etaT, refractedDir)) {
-                c.p = startPos;
+            if (refract(view, normal, etaI / etaT, refractedDir)) {
+                // Go further to prevent self occlusion
+                c.p = startPos - normal * voxelSize * u_traceStartOffset;
                 c.aperture = MIN_SPECULAR_APERTURE;
-                // c.curLevel = realMinLevel;
-                c.curLevel = getRealMinLevel(u_eyePos);  // Use this due to some artifacts
+                c.curLevel = virtualMinLevel;
                 c.dir = refractedDir;
-                virtualIndirectContribution = dot(-view, normal) * castCone(c, realScene, realIsect).rgb;
+
+                castCone(c, virtualScene, virtualIsect);
+                // Inside glass object
+                if (virtualIsect.hit) {
+                    // // DEBUG: visualize the normal of inside
+                    // virtualIndirectContribution = packNormal(normalize(virtualIsect.normal));
+
+                    // Switched eta
+                    if (refract(c.dir, normalize(virtualIsect.normal), etaI / etaT, refractedDir)) {
+                        // Outside glass object
+                        c.curLevel = realMinLevel;
+                        c.p = virtualIsect.position;
+                        c.curLevel = getRealMinLevel(u_eyePos);  // Use this due to some artifacts
+                        c.dir = refractedDir;
+                        virtualIndirectContribution = castCone(c, realScene, realIsect).rgb;
+                        // virtualIndirectContribution = vec3(0, 1, 0);
+                    } else {
+                        // total reflrection (false color)
+                        virtualIndirectContribution = vec3(0, 0, 1);
+                    }
+                }
+                // Wrong hit check or thin glass
+                else {
+                    virtualIndirectContribution = vec3(1, 0, 0);
+                }
             } else {
-                // total reflrection
+                // total reflrection (false color)
                 virtualIndirectContribution = vec3(0, 0, 1);
             }
             virtualIndirectContribution *= u_indirectSpecularIntensity;
         }
         // Diffuse
+        // else if (diffuse[0] != 0.5f) {
         else if (u_material == 2) {
-            vec3 reflectance = vec3(0.780392f, 0.568627f, 0.113725f);
-            virtualIndirectContribution =
-                castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false).rgb;
-            virtualIndirectContribution *= reflectance;
+            for (int i = 0; i < u_subsample; ++i) {
+                uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
+                virtualIndirectContribution +=
+                    castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false, seed).rgb;
+            }
+            virtualIndirectContribution /= u_subsample;
+            virtualIndirectContribution *= diffuse;
+
             virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
         }
-        indirectContribution.rgb += virtualIndirectContribution / nSubsample;
+        // Phong
+        else if (u_material == 3) {
+            for (int i = 0; i < u_subsample; ++i) {
+                // sample next direction (for light direction)
+                uint see = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
+                vec3 Kd = vec3(0.780392f, 0.568627f, 0.113725f);
+                // vec3 Ks = vec3(0.992157f, 0.941176f, 0.807843f);
+                vec3 Ks = vec3(1.f);
+                vec3 sumK = Kd + Ks;
+                float maxFactor = max(max(sumK[0], sumK[1]), sumK[2]);
+                if (maxFactor > 1.f) {
+                    Kd = 0.99f * Kd / maxFactor;
+                    Ks = 0.99f * Ks / maxFactor;
+                }
+                float exponent = u_phongShininess;
+                float pdf;
+                vec3 direction;
+
+                vec3 phongBRDF = phongSample_f(w_out, direction, see, pdf, Kd, Ks, exponent);
+                direction = frame.to_world(direction);
+                // virtualIndirectContribution += phongBRDF;
+                // continue;
+
+                c.dir = direction;
+
+                c.p = startPos;
+                c.curLevel = realMinLevel;
+                vec3 lightIntensity = castCone(c, realScene, realIsect).rgb;
+                // vec3 lightIntensity = vec3(1.f);
+
+                c.p = startPosOffset;
+                c.curLevel = 0;  // manually set to zero for smoothness
+                vec4 occlusion = castCone(c, virtualScene, virtualIsect);
+
+                // // 1. Occluded by virtual object
+                // if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                //     // virtualIndirectContribution += vec3(0,0,0);
+                // }
+                // // 2. Shading using light from real object
+                // else
+                {
+                    vec3 lightDir = -c.dir;
+                    vec3 halfway = normalize(-view - lightDir);
+                    vec3 ret = phongBRDF * lightIntensity.rgb * u_indirectSpecularIntensity;
+
+                    // vec3 blinnPhong = blinnPhongBRDF(lightColor, diffuseColor, lightColor, specColor, normal,
+                    // -lightDir, halfway, u_shininess);
+
+                    // Diffuse, Specular
+                    // vec3 ret = occlusion.a           // Occlusion for virtual
+                    //            * lightIntensity.rgb  // Light intensity from real
+                    //            * blinnPhongBRDF(lightIntensity, Kd, lightIntensity, Ks, normal, -lightDir, halfway,
+                    //                             shininess)     // Material
+                    //            * u_indirectSpecularIntensity;  // Scaling
+
+                    virtualIndirectContribution += ret / pdf;
+                }
+            }
+            virtualIndirectContribution /= u_subsample;
+        }
+
+        indirectContribution.rgb += virtualIndirectContribution;
     } else {
         // out_color.rgb = packNormal(normal);
         // return;
@@ -833,8 +952,12 @@ void main() {
         vec3 weight = normal * normal;
         vec3 reflectance = vec3(0.263517f, 0.23897f, 0.22877);  // From reflectance estimation (neon)
 
-        // Occlusion-based shadow + color bleeding from virtual object
-        indirectContribution = castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true);
+        for (int i = 0; i < u_subsample; ++i) {
+            uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
+            // Occlusion-based shadow + color bleeding from virtual object
+            indirectContribution += castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, seed);
+        }
+        indirectContribution /= u_subsample;
 
         if (u_realReflectance == 1) indirectContribution.rgb *= reflectance;
 

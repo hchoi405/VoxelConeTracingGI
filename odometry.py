@@ -6,9 +6,9 @@ from scipy.spatial.transform import Rotation as R
 def cmp(a):
     return int(a.split('_')[-1].split('.')[0])
 
-filelist = sorted(glob.glob("../neon/asset/dasan613_rendering5-2/odometry_raw/raw/*.txt"), key=cmp)
+filelist = sorted(glob.glob("../neon/asset/dasan613_rendering5-4/odometry_raw/raw/*.txt"), key=cmp)
 print('number of files: ', len(filelist))
-relocalization = np.loadtxt("../neon/asset/dasan613_rendering5-2/pose_relocalization.txt")
+relocalization = np.loadtxt("../neon/asset/dasan613_rendering5-4/pose_relocalization.txt")
 
 
 #%%
@@ -94,9 +94,20 @@ def mat2TQ(a):
     T = c@[0, 0, 0, 1]
     T = T[0:3]
     
-    # T[0] += -5.5
-    # T[1] += -5.2
-    # T[2] += -5.29
+    # Centering
+    # # Dasan106
+    # T[0] += -4.407966
+    # T[1] += -5.205061
+    # T[2] += -4.503145
+    # Dasan613
+    T[0] += -5.438848
+    T[1] += -5.420742
+    T[2] += -5.403515
+    # # Rise103
+    # T[0] += -5.015924
+    # T[1] += -4.872949
+    # T[2] += -5.523078
+    
     T[2] = -T[2]
     return [T, Q]
 

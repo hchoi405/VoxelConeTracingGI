@@ -125,6 +125,7 @@ void GIPass::update()
     m_finalLightPassShader->setFloat("u_localRatio", DEBUG_SETTINGS.localRatio);
     m_finalLightPassShader->setInt("u_excludeEmptyFace", DEBUG_SETTINGS.exclueEmptyFace ? 1 : 0);
     m_finalLightPassShader->setInt("u_material", DEBUG_SETTINGS.materialMode);
+    m_finalLightPassShader->setInt("u_subsample", DEBUG_SETTINGS.subsample);
 
     int lightingMask = 0;
     lightingMask |= GI_SETTINGS.directLighting ? DIRECT_LIGHTING_BIT : 0;

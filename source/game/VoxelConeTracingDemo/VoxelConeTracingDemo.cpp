@@ -43,9 +43,9 @@ VoxelConeTracingDemo::VoxelConeTracingDemo() {
     std::cout << "reading seuquence started... ";
 
     // Load pose
-    std::ifstream in("../output.txt");
+    std::ifstream in(poseFilename);
     if (!in.is_open()) {
-        std::cout << "Failed to open output.txt" << std::endl;
+        std::cout << "Failed to open " << poseFilename << std::endl;
         exit(-1);
     }
     while (!in.eof()) {
@@ -78,15 +78,22 @@ void VoxelConeTracingDemo::initUpdate() {
     // Load background
     int numSequence = translations.size();
     std::cout << "numSequence: " << numSequence << std::endl;
-    backgroundImages.resize(numSequence);
-    for (int i = DEMO_SETTINGS.animateFrame.min; i <= DEMO_SETTINGS.animateFrame.max /* numSequence */; ++i) {
-        std::stringstream ss;
-        ss << renderingSceneDir << "color/";
-        ss<< std::setfill('0') << std::setw(5) << i;
-        ss << ".png";
-        std::cout << "load: " << ss.str() << std::endl;
-        backgroundImages[i].load(ss.str());
+    if (numSequence > 0) {
+        backgroundImages.resize(numSequence);
+        for (int i = DEMO_SETTINGS.animateFrame.min; i <= DEMO_SETTINGS.animateFrame.max /* numSequence */; ++i) {
+            std::stringstream ss;
+            ss << renderingSceneDir << "color/";
+            ss << std::setfill('0') << std::setw(5) << i;
+            ss << ".png";
+            std::cout << "load: " << ss.str() << std::endl;
+            backgroundImages[i].load(ss.str());
+        }
     }
+
+    static Entity camera = ECS::getEntityByName("Camera");
+    static auto camTransform = camera.getComponent<Transform>();
+    camTransform->setPosition(translations[DEMO_SETTINGS.animateFrame]);
+    camTransform->setRotation(rotations[DEMO_SETTINGS.animateFrame]);
 
     m_renderPipeline = std::make_unique<RenderPipeline>(MainCamera);
     m_gui = std::make_unique<VoxelConeTracingGUI>(m_renderPipeline.get());
@@ -95,10 +102,10 @@ void VoxelConeTracingDemo::initUpdate() {
     m_virtualClipmapUpdatePolicy = std::make_unique<ClipmapUpdatePolicy>(
         ClipmapUpdatePolicy::Type::ONE_PER_FRAME_PRIORITY, VIRTUAL_CLIP_REGION_COUNT);
     auto sceneEntity = ECS::getEntityByName("name_scene");
-    m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent() * 3;
+    m_clipRegionBBoxExtentL0 = sceneEntity.getComponent<Transform>()->getBBox().maxExtent();
     std::cout << "Scene bbox: " << sceneEntity.getComponent<Transform>()->getBBox() << std::endl;
     std::cout << "m_clipRegionBBoxExtentL0: " << m_clipRegionBBoxExtentL0 << std::endl;
-    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 3;
+    m_virtualClipRegionBBoxExtentL0 = virtualTransform->getBBox().maxExtent() * 1.1f;
     std::cout << "m_virtualClipRegionBBoxExtentL0: " << m_virtualClipRegionBBoxExtentL0 << std::endl;
     virtualMin = virtualTransform->getBBox().min();
     virtualMax = virtualTransform->getBBox().max();
@@ -126,15 +133,14 @@ void VoxelConeTracingDemo::initUpdate() {
 
     // Add render passes to the pipeline
     m_renderPipeline->addRenderPasses(
-        std::make_shared<SceneGeometryPass>() 
-        ,std::make_shared<VoxelizationPass>()
+        std::make_shared<SceneGeometryPass>(),
+        std::make_shared<VoxelizationPass>()
         // ,std::make_shared<ShadowMapPass>(SHADOW_SETTINGS.shadowMapResolution) // Don't use the shadow map
-        ,std::make_shared<RadianceInjectionPass>() 
-        ,std::make_shared<WrapBorderPass>() 
-        ,std::make_shared<GIPass>()
+        ,
+        std::make_shared<RadianceInjectionPass>(), std::make_shared<WrapBorderPass>(), std::make_shared<GIPass>()
         // ,std::make_shared<SphericalImagePass>()
         //,std::make_shared<ForwardScenePass>()
-        );
+    );
 
     // RenderPass initializations
     m_renderPipeline->getRenderPass<VoxelizationPass>()->init(m_clipRegionBBoxExtentL0,
@@ -153,8 +159,10 @@ void VoxelConeTracingDemo::update() {
     m_renderPipeline->put<GLuint>("BackgroundTexture", backgroundImages[DEMO_SETTINGS.animateFrame]);
     static Entity camera = ECS::getEntityByName("Camera");
     static auto camTransform = camera.getComponent<Transform>();
-    camTransform->setPosition(translations[DEMO_SETTINGS.animateFrame]);
-    camTransform->setRotation(rotations[DEMO_SETTINGS.animateFrame]);
+    if (DEMO_SETTINGS.animateCamera) {
+        camTransform->setPosition(translations[DEMO_SETTINGS.animateFrame]);
+        camTransform->setRotation(rotations[DEMO_SETTINGS.animateFrame]);
+    }
 
     m_clipmapUpdatePolicy->setType(getSelectedClipmapUpdatePolicyType());
     m_clipmapUpdatePolicy->update();
@@ -440,8 +448,8 @@ void VoxelConeTracingDemo::createDemoScene() {
                                              {"in_pos", "in_normal", "in_tangent", "in_bitangent", "in_uv"});
 
     ResourceManager::getModel(learningSceneDir + sceneObjectFilename)->name = "name_scene";
-    auto sceneRootEntity =
-        ECSUtil::loadMeshEntities(learningSceneDir + sceneObjectFilename, shader, learningSceneDir, glm::vec3(1.f), false);
+    auto sceneRootEntity = ECSUtil::loadMeshEntities(learningSceneDir + sceneObjectFilename, shader, learningSceneDir,
+                                                     glm::vec3(1.f), false);
     // sceneRootEntity->setEulerAngles(glm::vec3(math::toRadians(90.f), math::toRadians(0.f), math::toRadians(0.f)));
     std::cout << "min: " << sceneRootEntity->getBBox().min() << std::endl;
     std::cout << "max: " << sceneRootEntity->getBBox().max() << std::endl;
@@ -467,33 +475,51 @@ void VoxelConeTracingDemo::createDemoScene() {
     std::string virtualObjectDir = "../../neon/asset/mesh/";
     std::string virtualEntityName = "virtualObject";
 
-    // // Sphere
-    // std::string virtualObjectFilename = "sphere.obj";
-    // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
-    // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-    //                                              glm::vec3(5.f), false);
-    // virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f)); 
-
-    // Cube
-    std::string virtualObjectFilename = "cube.obj";
+    // Sphere
+    std::string virtualObjectFilename = "sphere_high_centered.obj";
     ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
     virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-                                                 glm::vec3(1.f), true);
-    virtualTransform->setPosition(glm::vec3(5.4f, 6.24f, -4.57f));
-    virtualTransform->setLocalScale(glm::vec3(0.5f));
+                                                 glm::vec3(5.f), false);
+                                                 // Dasan613
+    // virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f) - centeringDasan613);
+#ifdef DASAN106
+    virtualTransform->setPosition(glm::vec3(6.2384f, 6.16864f, -5.33125f) - centeringDasan106 +
+                                  glm::vec3(0, 0.0125, 0));
+#endif
 
-    // // Plate
-    // std::string virtualObjectFilename = "plate2.obj";
+    // // Cube
+    // std::string virtualObjectFilename = "cube_centered.obj";
     // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
     // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
     //                                              glm::vec3(1.f), true);
-    // virtualTransform->setPosition(glm::vec3(3.950f, 4.55f, -4.570));
+    // // virtualTransform->setPosition(glm::vec3(5.4f, 6.24f, -4.57f)); // Dasan613
+    // virtualTransform->setPosition(glm::vec3(6.2384f, 6.04f, -5.33125f) - centeringDasan106 + glm::vec3(0, 0.25, 0));
+    // virtualTransform->setLocalScale(glm::vec3(0.5f));
+
+    // // Plate
+    // std::string virtualObjectFilename = "plate_centered.obj";
+    // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+    // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+    //                                              glm::vec3(1.f), true);
+    // virtualTransform->setPosition(glm::vec3(3.950f, 4.55f, -4.570) - centeringDasan106 +
+    //                               glm::vec3(0, 0.5, 0));
     // auto rot = glm::rotate(glm::radians(-45.f), glm::vec3(0, 1, 0));
     // virtualTransform->setRotation(glm::toQuat(rot));
 
+//     // Buddha
+//     std::string virtualObjectFilename = "buddha_centered.obj";
+//     ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+//     virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+//                                                  glm::vec3(1.f), false);
+// #ifdef RISE103
+//     auto calcPos = glm::vec3(5.56768, 5.55787, -3.98624) - centeringRise103;
+//     virtualTransform->setPosition(calcPos);  // Rise103
+//     std::cout << "calcPos: " << calcPos << std::endl;
+// #endif
+
     auto sphereMaterial = EntityCreator::createMaterial();
     sphereMaterial->setFloat("u_shininess", 255.0f);
-    sphereMaterial->setColor("u_color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+    sphereMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1.0f));
     sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
     sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
     auto childTransform = virtualTransform->getChildren()[0];
@@ -503,10 +529,57 @@ void VoxelConeTracingDemo::createDemoScene() {
     m_sphere.setVirtual(true);
     m_sphere.setActive(true);
 
-    // // Virtual Buddha
-    // auto vo1 = ResourceManager::getModel("meshes/buddha.ply");
+    // // sphere, bunny, lucy
+    // auto vo1 = ResourceManager::getModel(virtualObjectDir + "seq4_sphere_glass_centered.ply");
     // vo1->name = "vo1";
-    // auto vo2 = ResourceManager::getModel("meshes/buddha2.ply");
+    // auto vo2 = ResourceManager::getModel(virtualObjectDir + "seq4_bunny_diffuse_centered.ply");
+    // vo2->name = "vo2";
+    // auto vo3 = ResourceManager::getModel(virtualObjectDir + "seq4_lucy_glossy_centered.ply");
+    // vo3->name = "vo3";
+
+    // auto virtualObject = ECS::createEntity("virtualObject");
+    // virtualObject.addComponent<Transform>();
+    // auto parentTransform = virtualObject.getComponent<Transform>();
+
+    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
+    // auto sphereMaterial = EntityCreator::createMaterial();
+    // sphereMaterial->setColor("u_color", glm::vec4(0.5f)); // Material flag
+    // voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+    // voTransform1->getOwner().setVirtual(true);
+    // voTransform1->getOwner().setActive(true);
+    // voTransform1->setParent(parentTransform);
+    
+    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
+    // auto bunnyMaterial = EntityCreator::createMaterial();
+    // bunnyMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1)); // Material flag
+    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(bunnyMaterial, 0);
+    // voTransform2->getOwner().setVirtual(true);
+    // voTransform2->getOwner().setActive(true);
+    // voTransform2->setParent(parentTransform);
+
+    // auto voTransform3 = ECSUtil::loadMeshEntities(vo3.get(), shader, "", glm::vec3(1.f), true);
+    // auto lucyMaterial = EntityCreator::createMaterial();
+    // lucyMaterial->setColor("u_color", glm::vec4(0.5f)); // Material flag
+    // voTransform3->getOwner().getComponent<MeshRenderer>()->setMaterial(lucyMaterial, 0);
+    // voTransform3->getOwner().setVirtual(true);
+    // voTransform3->getOwner().setActive(true);
+    // voTransform3->setParent(parentTransform);
+
+    // BBox parentBBox = voTransform1->getBBox();
+    // parentBBox.unite(voTransform2->getBBox());
+    // parentBBox.unite(voTransform3->getBBox());
+    // parentTransform->setBBox(parentBBox);
+
+    // auto calcPos = glm::vec3(5.37086533, 6.20498467, -4.756995) - centeringDasan613;
+    // parentTransform->setPosition(calcPos);
+    // std::cout << "calculated pos: " << calcPos << std::endl;
+    // std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
+    // virtualTransform = parentTransform;
+
+    // // Virtual Buddha
+    // auto vo1 = ResourceManager::getModel(virtualObjectDir + "buddha1_dasan106_simplified.ply");
+    // vo1->name = "vo1";
+    // auto vo2 = ResourceManager::getModel(virtualObjectDir + "buddha2_dasan106_simplified.ply");
     // vo2->name = "vo2";
 
     // auto virtualObject = ECS::createEntity("virtualObject");
@@ -514,12 +587,13 @@ void VoxelConeTracingDemo::createDemoScene() {
     // auto parentTransform = virtualObject.getComponent<Transform>();
 
     // // buddha 1
-    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(7.5f), true);
+    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
+    // std::cout << "1 bbox: " << voTransform1->getBBox() << std::endl;
     // // auto voTransform1 = EntityCreator::createSphere("virtualObject", glm::vec3(0),
     // // glm::vec3(1.f)).getComponent<Transform>();
     // auto buddhaMaterial1 = EntityCreator::createMaterial();
     // buddhaMaterial1->setFloat("u_shininess", 255.0);
-    // buddhaMaterial1->setColor("u_color", glm::vec4(1));
+    // buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
     // buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
     // buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
     // voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
@@ -527,23 +601,36 @@ void VoxelConeTracingDemo::createDemoScene() {
     // voTransform1->getOwner().setActive(true);
     // voTransform1->setParent(parentTransform);
 
-    // // // buddha 2
-    // // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(7.5f), true);
-    // // auto buddhaMaterial2 = EntityCreator::createMaterial();
-    // // buddhaMaterial2->setFloat("u_shininess", 255.0);
-    // // buddhaMaterial2->setColor("u_color", glm::vec4(1, 0, 0, 1));
-    // // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
-    // // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
-    // // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
-    // // voTransform2->getOwner().setVirtual(true);
-    // // voTransform2->getOwner().setActive(true);
+    // // buddha 2
+    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
+    // std::cout << "2 bbox: " << voTransform2->getBBox() << std::endl;
+    // auto buddhaMaterial2 = EntityCreator::createMaterial();
+    // buddhaMaterial2->setFloat("u_shininess", 255.0);
+    // buddhaMaterial2->setColor("u_color", glm::vec4(1));
+    // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
+    // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
+    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
+    // voTransform2->getOwner().setVirtual(true);
+    // voTransform2->getOwner().setActive(true);
     // // voTransform2->setLocalPosition(glm::vec3(1, -0.5, 0));
     // // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(180.f, 0.f, 0.f)));
-    // // voTransform2->setParent(parentTransform);
+    // voTransform2->setParent(parentTransform);
 
-    // parentTransform->setPosition(glm::vec3(5.4f, 7.05f, -4.57f));
-    // parentTransform->setEulerAngles(glm::radians(vec3(0, 0, 180.f)));
+    // // parentTransform->setPosition(glm::vec3(5.4f, 7.05f, -4.57f));
+    // // parentTransform->setPosition();
+    // // parentTransform->setEulerAngles(glm::radians(vec3(0, 0, 180.f)));
     // parentTransform->getOwner().setVirtual(true);
+
+    // BBox parentBBox = voTransform1->getBBox();
+    // parentBBox.unite(voTransform2->getBBox());
+    // parentTransform->setBBox(parentBBox);
+
+    // auto calcPos = glm::vec3(6.130078, 5.9573895, -5.05876) - centeringDasan106;
+    // // parentTransform->setPosition(glm::vec3(1.8f, 0.7f, -0.75f));
+    // parentTransform->setPosition(calcPos);
+    // std::cout << "calculated pos: " << calcPos << std::endl;
+
+    // std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
 
     // virtualTransform = parentTransform;
 
@@ -590,24 +677,24 @@ void VoxelConeTracingDemo::animateSphereRoughness() {
 }
 
 void VoxelConeTracingDemo::animateCameraTransform() {
-    static size_t frame = 0;
+    // static size_t frame = 0;
     if (DEMO_SETTINGS.animateCamera) {
         auto cameraTransform = MainCamera.getOwner().getComponent<Transform>();
         static glm::vec3 initialPos = cameraTransform->getPosition();
         static glm::quat initialRot = cameraTransform->getRotation();
 
         static std::shared_ptr<TransformCommand> tCommand = std::make_shared<TransformCommand>(
-            cameraTransform, translations[frame], translations[frame + 1], rotations[frame], rotations[frame + 1],
+            cameraTransform, translations[DEMO_SETTINGS.animateFrame], translations[DEMO_SETTINGS.animateFrame + 1], rotations[DEMO_SETTINGS.animateFrame], rotations[DEMO_SETTINGS.animateFrame + 1],
             0.0333f / DEMO_SETTINGS.cameraSpeed);
         static CommandChain commandChain({tCommand}, false);
         if (commandChain.done()) {
-            if (frame < rotations.size() - 1) {
+            if (size_t(DEMO_SETTINGS.animateFrame.value) < rotations.size() - 1) {
                 m_engine->requestScreenshot();
                 m_guiEnabled = false;
-                frame++;
+                DEMO_SETTINGS.animateFrame.value++;
                 tCommand = std::make_shared<TransformCommand>(
-                    cameraTransform, translations[frame], translations[frame + 1], rotations[frame],
-                    rotations[frame + 1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
+                    cameraTransform, translations[DEMO_SETTINGS.animateFrame], translations[DEMO_SETTINGS.animateFrame + 1], rotations[DEMO_SETTINGS.animateFrame],
+                    rotations[DEMO_SETTINGS.animateFrame + 1], 0.0333f / DEMO_SETTINGS.cameraSpeed);
                 commandChain = CommandChain({tCommand}, false);
             } else {
                 std::cout << "Go to initial" << std::endl;
@@ -615,12 +702,13 @@ void VoxelConeTracingDemo::animateCameraTransform() {
                 cameraTransform->setPosition(initialPos);
                 cameraTransform->setRotation(initialRot);
                 DEMO_SETTINGS.animateCamera.value = false;
+                exit(0);
             }
         }
 
         commandChain(Time::deltaTime());
     } else {
-        frame = 0;
+        // DEMO_SETTINGS.animateFrame.value = 0;
     }
 }
 
@@ -628,10 +716,10 @@ void VoxelConeTracingDemo::updateCameraClipRegions() {
     m_clipRegionBBoxes.clear();
     auto sceneEntity = ECS::getEntityByName("name_scene");
     // glm::vec3 center = MainCamera->getPosition();
-    // glm::vec3 center = sceneEntity.getComponent<Transform>()->getPosition();
+    glm::vec3 center = sceneEntity.getComponent<Transform>()->getPosition();
 
     // Align with virtual object's clip region
-    glm::vec3 center = virtualTransform->getPosition();
+    // glm::vec3 center = virtualTransform->getPosition();
 
     for (size_t i = 0; i < CLIP_REGION_COUNT; ++i)
         m_clipRegionBBoxes.push_back(getBBox(i, center, m_clipRegionBBoxExtentL0));
@@ -640,9 +728,11 @@ void VoxelConeTracingDemo::updateCameraClipRegions() {
 void VoxelConeTracingDemo::updateVirtualClipRegions() {
     // add bbox for each clip level i around the virtual object
     m_virtualClipRegionBBoxes.clear();
+
+    glm::vec3 center = virtualTransform->getPosition();
+
     for (size_t i = 0; i < VIRTUAL_CLIP_REGION_COUNT; ++i) {
-        m_virtualClipRegionBBoxes.push_back(
-            getBBox(i, virtualTransform->getPosition(), m_virtualClipRegionBBoxExtentL0 / exp2f(i)));
+        m_virtualClipRegionBBoxes.push_back(getBBox(i, center, m_virtualClipRegionBBoxExtentL0));
     }
 }
 

@@ -62,7 +62,9 @@ struct GISettings : VCTSettings
     SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
     // Dasan106, diffuse cube (nodirect): 4.f
     // Dasan106, diffuse cube (direct): 6.782f
-    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 6.782f, 0.1f, 15.0f};
+    // Dasan106, diffuse cube (direct, rotate): 4.4f
+    // Rise106, diffuse buddha (direct, norotate): 1.9f
+    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.9f, 0.1f, 15.0f};
     // Dasan613, mirror lucy: 1.34
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.34f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
@@ -87,7 +89,8 @@ struct DebugSettings : VCTSettings
             {&debugFlag, /* &toggleViewCone, */ &viewAperture, /*  &hitpointOffset, &virtualSelfOcclusion,
              &indirectSpecularShadow, &indirectDiffuseShadow, &irradianceOnly, */ &secondBounce, &secondIndirectDiffuse,
              &secondIndirectSpecular, &realReflectance, &renderReal, &renderVirtual, /* &ambientSecondIntensity,
-             &extraStep, */ &glassEta,/*  &phongShininess, */ &rotateCone, &localRatio, &exclueEmptyFace, &materialMode});
+             &extraStep, */ &glassEta, &phongShininess, &rotateCone, &localRatio, &exclueEmptyFace, &materialMode,
+             &subsample});
     }
 
     CheckBox toggleViewCone{"Toggle view-based cone tracing", false};
@@ -97,7 +100,9 @@ struct DebugSettings : VCTSettings
     SliderFloat indirectSpecularShadow{"indirectSpecularShadow", 0.45f, 0.01f, 10.f};
     SliderFloat indirectDiffuseShadow{"indirectDiffuseShadow", 2.5f, 0.01f, 10.f};
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
-    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intensity", 0.3f, 0.01f, 3.f};
+    // Dasan106, diffuse buddha: 2..f
+    // Rise103, diffuse buddha: 1.f
+    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 1.f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
     CheckBox secondBounce{"Trace second bounce", true};
     CheckBox realReflectance{"Apply relfectance of real object", true};
@@ -106,12 +111,13 @@ struct DebugSettings : VCTSettings
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};
+    SliderInt subsample{"Number of subsample from primary", 1, 1, 128};
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
     SliderFloat phongShininess{"Shininess of phong", 27.8974f, 0.f, 255.f};
     CheckBox rotateCone{"Rotate cone randomly", false};
-    SliderFloat localRatio{"Ratio of local real", 0.9f, 0.f, 2.f};
+    SliderFloat localRatio{"Ratio of local real", 0.5f, 0.f, 2.f};
     CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
-    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse"}, 2);
+    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse", "Phong"}, 0);
 };
 
 struct DemoSettings : VCTSettings
@@ -125,5 +131,6 @@ struct DemoSettings : VCTSettings
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
     CheckBox animateCamera{ "Animate Camera Transform", false };
     SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
-    SliderInt animateFrame{ "Frame", 340, 340, 341 };
+    // SliderInt animateFrame{ "Frame", 0, 0, 450 };
+    SliderInt animateFrame{"Frame", 120, 120, 120};
 };

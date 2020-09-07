@@ -103,7 +103,10 @@ void main()
         
         // Normal
         storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, in_cvFrag.posW, vec4(packNormal(normal), 1.0), faceIndices, abs(normal));
-        
+        // Fill inside of object for glass
+        ivec3 faceIndices2 = computeVoxelFaceIndices(normal);
+        storeVoxelColorAtomicRGBA8Avg(u_voxelNormal, in_cvFrag.posW, vec4(packNormal(-normal), 1.0), faceIndices2, abs(-normal));
+
         // Diffuse (only for virtual object)
         // For real object, materialEstimation.comp should be used
         storeVoxelColorAtomicRGBA8Avg(u_voxelDiffuse, in_cvFrag.posW, u_color, faceIndices, abs(normal));
