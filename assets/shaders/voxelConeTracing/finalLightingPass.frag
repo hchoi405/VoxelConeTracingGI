@@ -19,7 +19,7 @@ In;
 #define AMBIENT_OCCLUSION_BIT 8
 
 const float MAX_TRACE_DISTANCE = 15.0;
-const float MIN_STEP_FACTOR = 0.2;
+const float MIN_STEP_FACTOR = 0.01;
 // const float MIN_SPECULAR_APERTURE = 0.1; // 5.73 degrees
 float MIN_SPECULAR_APERTURE = 0.05;  // 2.86 degrees
 // const float MIN_SPECULAR_APERTURE = 0.025;  // 2.86 degrees
@@ -128,10 +128,13 @@ const vec3 DIFFUSE_CONE_DIRECTIONS[32] = {vec3(0.898904, 0.435512, 0.0479745),  
                                           vec3(0.57735, -0.57735, 0.57735),      vec3(0.57735, -0.57735, -0.57735),
                                           vec3(-0.57735, 0.57735, 0.57735),      vec3(-0.57735, 0.57735, -0.57735),
                                           vec3(-0.57735, -0.57735, 0.57735),     vec3(-0.57735, -0.57735, -0.57735)};
-#else  // 16 cones for lower quality (8 on average per hemisphere)
-const int DIFFUSE_CONE_COUNT = 16;
-const float DIFFUSE_CONE_APERTURE = 0.872665;  // 50 degree
+#else  
 
+// 16 cones for lower quality (8 on average per hemisphere)
+const vec3 DIFFUSE_CONE_NORMAL = vec3(0, 1, 0);
+
+const int DIFFUSE_CONE_COUNT = 16;
+const float DIFFUSE_CONE_APERTURE = 0.931517;  // 50 degree
 const vec3 DIFFUSE_CONE_DIRECTIONS[16] = {
     vec3(0.57735, 0.57735, 0.57735),       vec3(0.57735, -0.57735, -0.57735),     vec3(-0.57735, 0.57735, -0.57735),
     vec3(-0.57735, -0.57735, 0.57735),     vec3(-0.903007, -0.182696, -0.388844), vec3(-0.903007, 0.182696, 0.388844),
@@ -139,6 +142,21 @@ const vec3 DIFFUSE_CONE_DIRECTIONS[16] = {
     vec3(0.388844, -0.903007, 0.182696),   vec3(0.388844, 0.903007, -0.182696),   vec3(-0.388844, 0.903007, 0.182696),
     vec3(-0.182696, -0.388844, -0.903007), vec3(0.182696, 0.388844, -0.903007),   vec3(-0.182696, 0.388844, 0.903007),
     vec3(0.182696, -0.388844, 0.903007)};
+
+// // For hemisphere sampling
+// const int DIFFUSE_CONE_COUNT = 8;
+// const float DIFFUSE_CONE_APERTURE = 0.931517;
+// const vec3 DIFFUSE_CONE_DIRECTIONS[8] = {
+//     vec3(0.57735, 0.57735, 0.57735),
+//     vec3(-0.57735, 0.57735, -0.57735),
+//     vec3(-0.903007, 0.182696, 0.388844),
+//     vec3(0.903007, 0.182696, -0.388844),
+//     vec3(0.388844, 0.903007, -0.182696),
+//     vec3(-0.388844, 0.903007, 0.182696),
+//     vec3(0.182696, 0.388844, -0.903007),
+//     vec3(-0.182696, 0.388844, 0.903007)
+// };
+
 #endif
 
 vec3 worldPosFromDepth(float depth) {
@@ -547,7 +565,7 @@ vec4 castSecondDiffuseConesToReal(vec3 startPos, vec3 normal, float realMinLevel
 
         c.dir = DIFFUSE_CONE_DIRECTIONS[i];
         c.aperture = DIFFUSE_CONE_APERTURE;
-        indirectContribution += castCone(c, realScene, realIsect);
+        indirectContribution += castCone(c, realScene, realIsect) * cosTheta;
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
@@ -569,6 +587,10 @@ vec4 castSecondDiffuseConesToVirtual(vec3 startPos, vec3 normal, float virtualMi
         indirectContribution += castCone(c, virtualScene, virtualIsect);
     }
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
+}
+
+mat3 skewMatrix(vec3 v) {
+    return mat3(0, v[2], -v[1], -v[2], 0, v[0], v[1], -v[0], 0);
 }
 
 // Cast diffuse cones at primary intersection point on both real/virtual object
@@ -601,13 +623,27 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
         M = -H * R;
     }
 
+    // // Alignment of cones to normal
+    // mat3 R = mat3(1.f);
+    // if (u_debugFlag == 1) {
+    //     vec3 v = cross(DIFFUSE_CONE_NORMAL, normal);
+    //     float s = length(v);
+    //     float cc = dot(DIFFUSE_CONE_NORMAL, normal);
+    //     mat3 vs = skewMatrix(v);
+    //     R = mat3(1.f) + vs + vs * vs * (1 - cc) / (s * s);
+    // }
+
     for (int i = 0; i < DIFFUSE_CONE_COUNT; ++i) {
         VCTIntersection virtualIsect, realIsect;
         VCTIntersection tmpIsect;
         vec3 newDir = M * DIFFUSE_CONE_DIRECTIONS[i];
+        // vec3 newDir = R * DIFFUSE_CONE_DIRECTIONS[i];
         float cosTheta = dot(normal, newDir);
 
         if (cosTheta < 0.0f) continue;
+        // if (cosTheta < 0.0f) {
+        //     return vec4(1, 0, 0, 1);
+        // }
 
         c.dir = newDir;
         c.aperture = DIFFUSE_CONE_APERTURE;
@@ -652,23 +688,24 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
 
             if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 vec3 secondNormal = normalize(virtualIsect.normal);
-                // vec3 secondDiffuse =
+                vec3 secondDiffuse = virtualIsect.diffuse;  // intersected color (artifacts)
                 //     vec3(0.880392f, 0.768627f, 0.323725f);  // For self-intersection in rise103 diffuse Buddha
-                vec3 secondDiffuse = virtualIsect.diffuse;
+                // vec3(1, 0, 0);  // For inter-intersection in dasan106 two buddha
 
-                vec4 secondIntensity = castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
+                vec4 secondIntensity =
+                    castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel) * cosTheta;
 
                 // Radiance from virtual object (second bounce)
                 indirectContribution.rgb +=
                     // Virtual-virtual occlusion
-                    virtualRet.a
+                    (1 - virtualRet.a)
                     // Second bounce contribution (assume diffuse)
-                    * secondDiffuse * secondIntensity.a * secondIntensity.rgb * u_secondIndirectDiffuseIntensity;
+                    * secondDiffuse * secondIntensity.rgb * u_secondIndirectDiffuseIntensity;
 
                 // Radiance from real object (first bounce)
-                indirectContribution.rgb += (1 - virtualRet.a) * realRet.rgb;
+                indirectContribution.rgb += virtualRet.a * realRet.rgb;
             } else {
-                indirectContribution.rgb += realRet.rgb;
+                indirectContribution.rgb += realRet.rgb * cosTheta;
             }
         }
     }
@@ -813,7 +850,8 @@ void main() {
                 if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
                     vec3 secondNormal = normalize(virtualIsect.normal);
                     vec3 secondDiffuse = virtualIsect.diffuse;
-                    vec4 secondIntensity =
+                    // vec3 secondDiffuse = vec3(0.880392f, 0.768627f, 0.323725f); // Yellow diffuse bunny dasan613
+                    vec4 secondIntensity = 
                         castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
 
                     // Radiance from virtual object
@@ -870,14 +908,15 @@ void main() {
             virtualIndirectContribution *= u_indirectSpecularIntensity;
         }
         // Diffuse
-        // else if (diffuse[0] != 0.5f) {
         else if (u_material == 2) {
+        // else if (diffuse[0] != 0.5f) {
             for (int i = 0; i < u_subsample; ++i) {
                 uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
                 virtualIndirectContribution +=
                     castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false, seed).rgb;
+                if (u_rotateCone == 0) break; // No need for subsample without rotating the cone
             }
-            virtualIndirectContribution /= u_subsample;
+            if (u_rotateCone == 1) virtualIndirectContribution /= u_subsample;
             virtualIndirectContribution *= diffuse;
 
             virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
@@ -939,8 +978,10 @@ void main() {
 
                     virtualIndirectContribution += ret / pdf;
                 }
+
+                if (u_rotateCone == 0) break; // No need for subsample without rotating the cone
             }
-            virtualIndirectContribution /= u_subsample;
+            if (u_rotateCone == 1) virtualIndirectContribution /= u_subsample;
         }
 
         indirectContribution.rgb += virtualIndirectContribution;

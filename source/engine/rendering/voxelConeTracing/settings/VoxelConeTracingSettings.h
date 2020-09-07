@@ -56,15 +56,15 @@ struct GISettings : VCTSettings
     SliderFloat occlusionDecay{"Occlusion Decay",5.f, 0.001f, 80.0f};
     SliderFloat ambientOcclusionFactor{ "Ambient Occlusion Factor", 2.0f, 0.1f, 4.0f };
     // 1.0: Dasan613
-    // Dasan613, mirror sphere: 0.785
-    SliderFloat stepFactor{"Step Factor", 0.785f, 0.2f, 2.0f};
+    // Dasan106, mirror sphere: 0.574
+    // Dasan106, twobuddha: 0.082
+    SliderFloat stepFactor{"Step Factor", 0.082f, 0.01f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 1.0f};
     SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
-    // Dasan106, diffuse cube (nodirect): 4.f
-    // Dasan106, diffuse cube (direct): 6.782f
-    // Dasan106, diffuse cube (direct, rotate): 4.4f
-    // Rise106, diffuse buddha (direct, norotate): 1.9f
-    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 1.9f, 0.1f, 15.0f};
+    // Rise103, diffuse buddha (direct, norotate): 1.9f
+    // Rise103, diffuse buddha test: 5.476f
+    // Dasan106, twobuddha: 6.398f
+    SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 6.398f, 0.1f, 15.0f};
     // Dasan613, mirror lucy: 1.34
     SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.34f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
@@ -102,7 +102,8 @@ struct DebugSettings : VCTSettings
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     // Dasan106, diffuse buddha: 2..f
     // Rise103, diffuse buddha: 1.f
-    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 1.f, 0.01f, 3.f};
+    // Dasan613, various, diffuse bunny: 1.5f
+    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 1.5f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
     CheckBox secondBounce{"Trace second bounce", true};
     CheckBox realReflectance{"Apply relfectance of real object", true};
@@ -117,7 +118,7 @@ struct DebugSettings : VCTSettings
     CheckBox rotateCone{"Rotate cone randomly", false};
     SliderFloat localRatio{"Ratio of local real", 0.5f, 0.f, 2.f};
     CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
-    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse", "Phong"}, 0);
+    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse", "Phong"}, 2);
 };
 
 struct DemoSettings : VCTSettings
@@ -131,6 +132,19 @@ struct DemoSettings : VCTSettings
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
     CheckBox animateCamera{ "Animate Camera Transform", false };
     SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
-    // SliderInt animateFrame{ "Frame", 0, 0, 450 };
-    SliderInt animateFrame{"Frame", 120, 120, 120};
+
+    // Rise103
+    // SliderInt animateFrame{ "Frame", 0, 0, 558 }; // rendering1
+    // SliderInt animateFrame{"Frame", 180, 180, 180}; // rendering1
+
+    // Dasan106
+    // SliderInt animateFrame{ "Frame", 0, 0, 450 }; // rendering1
+    // SliderInt animateFrame{"Frame", 120, 120, 120}; // rendering1
+    // SliderInt animateFrame{"Frame", 575, 575, 575}; // learning3
+
+    // Dasan613
+    // SliderInt animateFrame{ "Frame", 0, 0, 499 }; // rendering5-4
+    // SliderInt animateFrame{"Frame", 295, 295, 295}; // rendering5-4
+    // SliderInt animateFrame{"Frame", 1745, 1745, 1745}; // learning (voxelization)
+    SliderInt animateFrame{"Frame", 1300, 1300, 1300}; // learning (limitation)
 };

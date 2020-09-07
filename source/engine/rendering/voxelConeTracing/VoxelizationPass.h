@@ -51,7 +51,7 @@ private:
     std::vector<VoxelRegion> m_clipRegions;
 
     // A portion consisting of a multiple of voxel size is revoxelized
-    int m_minChange[CLIP_REGION_COUNT] = {1, 1, 1, 1, 1, 1};
+    int m_minChange[6] = {1, 1, 1, 1, 1, 1};
 
     Texture3D* m_voxelOpacity{nullptr};
 

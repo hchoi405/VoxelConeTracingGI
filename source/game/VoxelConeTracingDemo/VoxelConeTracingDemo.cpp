@@ -475,164 +475,192 @@ void VoxelConeTracingDemo::createDemoScene() {
     std::string virtualObjectDir = "../../neon/asset/mesh/";
     std::string virtualEntityName = "virtualObject";
 
-    // Sphere
-    std::string virtualObjectFilename = "sphere_high_centered.obj";
-    ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
-    virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-                                                 glm::vec3(5.f), false);
-                                                 // Dasan613
-    // virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f) - centeringDasan613);
+    {
+        /*   // Cube
+          std::string virtualObjectFilename = "cube_centered.obj";
+          ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+          virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader,
+          virtualObjectDir,
+                                                       glm::vec3(1.f), true);
+          // virtualTransform->setPosition(glm::vec3(5.4f, 6.24f, -4.57f)); // Dasan613
+          virtualTransform->setPosition(glm::vec3(6.2384f, 6.04f, -5.33125f) - centeringDasan106 + glm::vec3(0, 0.25,
+          0)); virtualTransform->setLocalScale(glm::vec3(0.5f));
+
+          // Plate
+          std::string virtualObjectFilename = "plate_centered.obj";
+          ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+          virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader,
+          virtualObjectDir,
+                                                       glm::vec3(1.f), true);
+          virtualTransform->setPosition(glm::vec3(3.950f, 4.55f, -4.570) - centeringDasan106 +
+                                        glm::vec3(0, 0.5, 0));
+          auto rot = glm::rotate(glm::radians(-45.f), glm::vec3(0, 1, 0));
+          virtualTransform->setRotation(glm::toQuat(rot));
+   */
+    }
+
+    {
+       /*  // Sphere
+        std::string virtualObjectFilename = "sphere_high_centered.obj";
+        ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+        virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+                                                     glm::vec3(5.f), false);
 #ifdef DASAN106
-    virtualTransform->setPosition(glm::vec3(6.2384f, 6.16864f, -5.33125f) - centeringDasan106 +
-                                  glm::vec3(0, 0.0125, 0));
+        virtualTransform->setPosition(glm::vec3(6.2384f, 6.16864f, -5.33125f) - centeringDasan106 +
+                                      glm::vec3(0, 0.0125, 0));
+#elif defined(DASAN613)
+        virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f) - centeringDasan613);
 #endif
 
-    // // Cube
-    // std::string virtualObjectFilename = "cube_centered.obj";
-    // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
-    // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-    //                                              glm::vec3(1.f), true);
-    // // virtualTransform->setPosition(glm::vec3(5.4f, 6.24f, -4.57f)); // Dasan613
-    // virtualTransform->setPosition(glm::vec3(6.2384f, 6.04f, -5.33125f) - centeringDasan106 + glm::vec3(0, 0.25, 0));
-    // virtualTransform->setLocalScale(glm::vec3(0.5f));
+        auto sphereMaterial = EntityCreator::createMaterial();
+        sphereMaterial->setFloat("u_shininess", 255.0f);
+        sphereMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1.0f));
+        sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
+        sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
+        auto childTransform = virtualTransform->getChildren()[0];
+        childTransform->getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+        // Virtual should be set at the root entity
+        m_sphere = ECS::getEntityByName(virtualEntityName);
+        m_sphere.setVirtual(true);
+        m_sphere.setActive(true); */
+    }
 
-    // // Plate
-    // std::string virtualObjectFilename = "plate_centered.obj";
-    // ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
-    // virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-    //                                              glm::vec3(1.f), true);
-    // virtualTransform->setPosition(glm::vec3(3.950f, 4.55f, -4.570) - centeringDasan106 +
-    //                               glm::vec3(0, 0.5, 0));
-    // auto rot = glm::rotate(glm::radians(-45.f), glm::vec3(0, 1, 0));
-    // virtualTransform->setRotation(glm::toQuat(rot));
+    {
+        /* // Signle Buddha
+        std::string virtualObjectFilename = "buddha_centered.obj";
+        ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+        virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+                                                     glm::vec3(1.f), false);
+#ifdef RISE103
+        auto calcPos = glm::vec3(5.56768, 5.55787, -3.98624) - centeringRise103;
+        // - glm::vec3(1.38286, 1.32292, 2.10885);
+        virtualTransform->setPosition(calcPos);  // Rise103
+        std::cout << "calcPos: " << calcPos << std::endl;
+#endif
 
-//     // Buddha
-//     std::string virtualObjectFilename = "buddha_centered.obj";
-//     ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
-//     virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
-//                                                  glm::vec3(1.f), false);
-// #ifdef RISE103
-//     auto calcPos = glm::vec3(5.56768, 5.55787, -3.98624) - centeringRise103;
-//     virtualTransform->setPosition(calcPos);  // Rise103
-//     std::cout << "calcPos: " << calcPos << std::endl;
-// #endif
+        auto sphereMaterial = EntityCreator::createMaterial();
+        sphereMaterial->setFloat("u_shininess", 255.0f);
+        sphereMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1.0f));
+        sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
+        sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
+        auto childTransform = virtualTransform->getChildren()[0];
+        childTransform->getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+        // Virtual should be set at the root entity
+        m_sphere = ECS::getEntityByName(virtualEntityName);
+        m_sphere.setVirtual(true);
+        m_sphere.setActive(true); */
+    }
 
-    auto sphereMaterial = EntityCreator::createMaterial();
-    sphereMaterial->setFloat("u_shininess", 255.0f);
-    sphereMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1.0f));
-    sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-    sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
-    auto childTransform = virtualTransform->getChildren()[0];
-    childTransform->getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
-    // Virtual should be set at the root entity
-    m_sphere = ECS::getEntityByName(virtualEntityName);
-    m_sphere.setVirtual(true);
-    m_sphere.setActive(true);
+    {
+        // sphere, bunny, lucy
+        auto vo1 = ResourceManager::getModel(virtualObjectDir + "seq4_sphere_glass_normal_centered.ply");
+        vo1->name = "vo1";
+        auto vo2 = ResourceManager::getModel(virtualObjectDir + "seq4_bunny_diffuse_normal_centered.ply");
+        vo2->name = "vo2";
+        auto vo3 = ResourceManager::getModel(virtualObjectDir + "seq4_lucy_glossy_normal_centered.ply");
+        vo3->name = "vo3";
 
-    // // sphere, bunny, lucy
-    // auto vo1 = ResourceManager::getModel(virtualObjectDir + "seq4_sphere_glass_centered.ply");
-    // vo1->name = "vo1";
-    // auto vo2 = ResourceManager::getModel(virtualObjectDir + "seq4_bunny_diffuse_centered.ply");
-    // vo2->name = "vo2";
-    // auto vo3 = ResourceManager::getModel(virtualObjectDir + "seq4_lucy_glossy_centered.ply");
-    // vo3->name = "vo3";
+        auto virtualObject = ECS::createEntity("virtualObject");
+        virtualObject.addComponent<Transform>();
+        auto parentTransform = virtualObject.getComponent<Transform>();
 
-    // auto virtualObject = ECS::createEntity("virtualObject");
-    // virtualObject.addComponent<Transform>();
-    // auto parentTransform = virtualObject.getComponent<Transform>();
+        auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
+        auto sphereMaterial = EntityCreator::createMaterial();
+        sphereMaterial->setColor("u_color", glm::vec4(0.5f));  // Material flag
+        voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+        voTransform1->getOwner().setVirtual(true);
+        voTransform1->getOwner().setActive(true);
+        voTransform1->setParent(parentTransform);
 
-    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
-    // auto sphereMaterial = EntityCreator::createMaterial();
-    // sphereMaterial->setColor("u_color", glm::vec4(0.5f)); // Material flag
-    // voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
-    // voTransform1->getOwner().setVirtual(true);
-    // voTransform1->getOwner().setActive(true);
-    // voTransform1->setParent(parentTransform);
-    
-    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
-    // auto bunnyMaterial = EntityCreator::createMaterial();
-    // bunnyMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1)); // Material flag
-    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(bunnyMaterial, 0);
-    // voTransform2->getOwner().setVirtual(true);
-    // voTransform2->getOwner().setActive(true);
-    // voTransform2->setParent(parentTransform);
+        auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
+        auto bunnyMaterial = EntityCreator::createMaterial();
+        bunnyMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1));  // Material flag
+        voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(bunnyMaterial, 0);
+        voTransform2->getOwner().setVirtual(true);
+        voTransform2->getOwner().setActive(true);
+        voTransform2->setParent(parentTransform);
 
-    // auto voTransform3 = ECSUtil::loadMeshEntities(vo3.get(), shader, "", glm::vec3(1.f), true);
-    // auto lucyMaterial = EntityCreator::createMaterial();
-    // lucyMaterial->setColor("u_color", glm::vec4(0.5f)); // Material flag
-    // voTransform3->getOwner().getComponent<MeshRenderer>()->setMaterial(lucyMaterial, 0);
-    // voTransform3->getOwner().setVirtual(true);
-    // voTransform3->getOwner().setActive(true);
-    // voTransform3->setParent(parentTransform);
+        auto voTransform3 = ECSUtil::loadMeshEntities(vo3.get(), shader, "", glm::vec3(1.f), true);
+        auto lucyMaterial = EntityCreator::createMaterial();
+        lucyMaterial->setColor("u_color", glm::vec4(0.5f));  // Material flag
+        voTransform3->getOwner().getComponent<MeshRenderer>()->setMaterial(lucyMaterial, 0);
+        voTransform3->getOwner().setVirtual(true);
+        voTransform3->getOwner().setActive(true);
+        voTransform3->setParent(parentTransform);
 
-    // BBox parentBBox = voTransform1->getBBox();
-    // parentBBox.unite(voTransform2->getBBox());
-    // parentBBox.unite(voTransform3->getBBox());
-    // parentTransform->setBBox(parentBBox);
+        BBox parentBBox = voTransform1->getBBox();
+        parentBBox.unite(voTransform2->getBBox());
+        parentBBox.unite(voTransform3->getBBox());
+        parentTransform->setBBox(parentBBox);
 
-    // auto calcPos = glm::vec3(5.37086533, 6.20498467, -4.756995) - centeringDasan613;
-    // parentTransform->setPosition(calcPos);
-    // std::cout << "calculated pos: " << calcPos << std::endl;
-    // std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
-    // virtualTransform = parentTransform;
+        auto calcPos = glm::vec3(5.37086533, 6.20498467, -4.756995) - centeringDasan613;
+        parentTransform->setPosition(calcPos);
+        std::cout << "calculated pos: " << calcPos << std::endl;
+        std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
+        virtualTransform = parentTransform;
+    }
 
-    // // Virtual Buddha
-    // auto vo1 = ResourceManager::getModel(virtualObjectDir + "buddha1_dasan106_simplified.ply");
-    // vo1->name = "vo1";
-    // auto vo2 = ResourceManager::getModel(virtualObjectDir + "buddha2_dasan106_simplified.ply");
-    // vo2->name = "vo2";
+    {
+        /* // Virtual Buddha
+        auto vo1 = ResourceManager::getModel(virtualObjectDir + "buddha1_dasan106_simplified.ply");
+        vo1->name = "vo1";
+        auto vo2 = ResourceManager::getModel(virtualObjectDir + "buddha2_dasan106_simplified.ply");
+        vo2->name = "vo2";
 
-    // auto virtualObject = ECS::createEntity("virtualObject");
-    // virtualObject.addComponent<Transform>();
-    // auto parentTransform = virtualObject.getComponent<Transform>();
+        auto virtualObject = ECS::createEntity("virtualObject");
+        virtualObject.addComponent<Transform>();
+        auto parentTransform = virtualObject.getComponent<Transform>();
 
-    // // buddha 1
-    // auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
-    // std::cout << "1 bbox: " << voTransform1->getBBox() << std::endl;
-    // // auto voTransform1 = EntityCreator::createSphere("virtualObject", glm::vec3(0),
-    // // glm::vec3(1.f)).getComponent<Transform>();
-    // auto buddhaMaterial1 = EntityCreator::createMaterial();
-    // buddhaMaterial1->setFloat("u_shininess", 255.0);
-    // buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
-    // buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
-    // buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
-    // voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
-    // voTransform1->getOwner().setVirtual(true);
-    // voTransform1->getOwner().setActive(true);
-    // voTransform1->setParent(parentTransform);
+        // buddha 1
+        auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
+        std::cout << "1 bbox: " << voTransform1->getBBox() << std::endl;
+        // auto voTransform1 = EntityCreator::createSphere("virtualObject", glm::vec3(0),
+        // glm::vec3(1.f)).getComponent<Transform>();
+        auto buddhaMaterial1 = EntityCreator::createMaterial();
+        buddhaMaterial1->setFloat("u_shininess", 255.0);
+        buddhaMaterial1->setColor("u_color", glm::vec4(1, 0, 0, 1));
+        buddhaMaterial1->setColor("u_emissionColor", glm::vec3(0.0f));
+        buddhaMaterial1->setColor("u_specularColor", glm::vec3(1.f));
+        voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial1, 0);
+        voTransform1->getOwner().setVirtual(true);
+        voTransform1->getOwner().setActive(true);
+        voTransform1->setParent(parentTransform);
 
-    // // buddha 2
-    // auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
-    // std::cout << "2 bbox: " << voTransform2->getBBox() << std::endl;
-    // auto buddhaMaterial2 = EntityCreator::createMaterial();
-    // buddhaMaterial2->setFloat("u_shininess", 255.0);
-    // buddhaMaterial2->setColor("u_color", glm::vec4(1));
-    // buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
-    // buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
-    // voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
-    // voTransform2->getOwner().setVirtual(true);
-    // voTransform2->getOwner().setActive(true);
-    // // voTransform2->setLocalPosition(glm::vec3(1, -0.5, 0));
-    // // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(180.f, 0.f, 0.f)));
-    // voTransform2->setParent(parentTransform);
+        // buddha 2
+        auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
+        std::cout << "2 bbox: " << voTransform2->getBBox() << std::endl;
+        auto buddhaMaterial2 = EntityCreator::createMaterial();
+        buddhaMaterial2->setFloat("u_shininess", 255.0);
+        buddhaMaterial2->setColor("u_color", glm::vec4(1));
+        buddhaMaterial2->setColor("u_emissionColor", glm::vec3(0.0f));
+        buddhaMaterial2->setColor("u_specularColor", glm::vec3(1.f));
+        voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(buddhaMaterial2, 0);
+        voTransform2->getOwner().setVirtual(true);
+        voTransform2->getOwner().setActive(true);
+        // voTransform2->setLocalPosition(glm::vec3(1, -0.5, 0));
+        // voTransform2->setLocalEulerAngles(glm::radians(glm::vec3(180.f, 0.f, 0.f)));
+        voTransform2->setParent(parentTransform);
 
-    // // parentTransform->setPosition(glm::vec3(5.4f, 7.05f, -4.57f));
-    // // parentTransform->setPosition();
-    // // parentTransform->setEulerAngles(glm::radians(vec3(0, 0, 180.f)));
-    // parentTransform->getOwner().setVirtual(true);
+        // parentTransform->setPosition(glm::vec3(5.4f, 7.05f, -4.57f));
+        // parentTransform->setPosition();
+        // parentTransform->setEulerAngles(glm::radians(vec3(0, 0, 180.f)));
+        parentTransform->getOwner().setVirtual(true);
 
-    // BBox parentBBox = voTransform1->getBBox();
-    // parentBBox.unite(voTransform2->getBBox());
-    // parentTransform->setBBox(parentBBox);
+        BBox parentBBox = voTransform1->getBBox();
+        parentBBox.unite(voTransform2->getBBox());
+        parentTransform->setBBox(parentBBox);
 
-    // auto calcPos = glm::vec3(6.130078, 5.9573895, -5.05876) - centeringDasan106;
-    // // parentTransform->setPosition(glm::vec3(1.8f, 0.7f, -0.75f));
-    // parentTransform->setPosition(calcPos);
-    // std::cout << "calculated pos: " << calcPos << std::endl;
+#ifdef DASAN106
+        auto calcPos = glm::vec3(6.130078, 5.9573895, -5.05876) - centeringDasan106;
+        // parentTransform->setPosition(glm::vec3(1.8f, 0.7f, -0.75f));
+        parentTransform->setPosition(calcPos);
+        std::cout << "calculated pos: " << calcPos << std::endl;
+#endif
 
-    // std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
+        std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
 
-    // virtualTransform = parentTransform;
+        virtualTransform = parentTransform; */
+    }
 
     if (sceneRootEntity) sceneRootEntity->setPosition(glm::vec3(m_scenePosition));
 }
