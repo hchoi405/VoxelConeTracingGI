@@ -156,6 +156,9 @@ void VoxelConeTracingDemo::update() {
     static bool once = true;
 
     // m_gui->selectEntity(virtualTransform->getOwner(), false);
+    if (once)
+        m_gui->showVoxelVisualizationOptions();
+
     m_renderPipeline->put<GLuint>("BackgroundTexture", backgroundImages[DEMO_SETTINGS.animateFrame]);
     static Entity camera = ECS::getEntityByName("Camera");
     static auto camTransform = camera.getComponent<Transform>();

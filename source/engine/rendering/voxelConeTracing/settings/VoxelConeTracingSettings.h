@@ -36,7 +36,7 @@ struct VisualizationSettings : VCTSettings
     VisualizationSettings() { guiElements.insert(guiElements.end(), {&voxelVisualizationAlpha, &borderWidth, &borderColor}); }
 
     SliderFloat voxelVisualizationAlpha{"Voxel Alpha", 1.0f, 0.0f, 1.0f};
-    SliderFloat borderWidth{"Border Width", 0.05f, 0.0f, 1.0f};
+    SliderFloat borderWidth{"Border Width", 0.00f, 0.0f, 1.0f};
     ColorSelection borderColor{"Border Color", glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)};
 };
 
@@ -132,7 +132,7 @@ struct DemoSettings : VCTSettings
 
     CheckBox animateLight{ "Animate Light", false };
     CheckBox animateSphere{ "Animate Sphere Roughness", false };
-    CheckBox animateCamera{ "Animate Camera Transform", false };
+    CheckBox animateCamera{ "Animate Camera Transform", true };
     SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
 
     // Rise103

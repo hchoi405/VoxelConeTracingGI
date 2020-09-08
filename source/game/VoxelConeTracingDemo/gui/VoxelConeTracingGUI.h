@@ -46,6 +46,7 @@ public:
     void selectEntity(Entity entity, bool focus = false);
 
     const std::vector<glm::vec3>& getConeDirections() const { return m_coneTool->getConeDirections(); }
+    void showVoxelVisualizationOptions();
 
 private:
     void subTree(const ComponentPtr<Transform>& transform);
@@ -56,7 +57,6 @@ private:
     void showSettings(const std::string& label, const VCTSettings* settings) const;
     void showTextures(const ImVec2& canvasSize, std::initializer_list<GUITexture> textures) const;
     void showVisualizationSettings();
-    void showVoxelVisualizationOptions();
     void showViewMenu();
     void showSceneMenu();
     void showEditorMenu();
@@ -90,7 +90,7 @@ private:
     float m_voxelSize{ 0.125f };
     Texture3D* m_visualizedVoxelTextures[2] = { nullptr, nullptr };
     bool m_isVirtual[2] = { false, false };
-    bool m_visualizeClipRegion[6]{ false, false, false, false, false, false };
+    bool m_visualizeClipRegion[6]{ true, false, false, false, false, false };
 
     bool m_showObjectCoordinateSystem{ true };
     bool m_showObjectBBox{ true };
