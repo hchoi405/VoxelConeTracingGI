@@ -220,10 +220,10 @@ float phongPdf(const vec3 w_out, const vec3 w_in, float kappa, float exponent) {
 }
 
 // Return sampled incident direction
-vec3 phongSample(const vec3 w_out, uint seed, float kappa, float exponent) {
+vec3 phongSample(const vec3 w_out, uint seed, float kappa, float exponent, out bool sampleSpecular) {
     vec2 u = rand2D(seed);
 
-    bool sampleSpecular = false;
+    sampleSpecular = false;
     if (u.x < kappa) {
         u.x /= kappa;
     } else {
@@ -260,13 +260,13 @@ vec3 phongEval(const vec3 w_out, const vec3 w_in, vec3 Kd, vec3 Ks, float expone
 // PBRT-v3 like sample_f
 // return in local coordinate
 vec3 phongSample_f(vec3 w_out, out vec3 w_in, uint seed, out float p, 
-                    vec3 Kd, vec3 Ks, float exponent) {    
+                    vec3 Kd, vec3 Ks, float exponent, out bool sampleSpecular) {    
     vec2 u = rand2D(seed);
     const float avg_diffuse = mean(Kd);
     const float avg_specular = mean(Ks);
     const float kappa = avg_specular / (avg_diffuse + avg_specular);
 
-    w_in = phongSample(w_out, seed, kappa, exponent);
+    w_in = phongSample(w_out, seed, kappa, exponent, sampleSpecular);
     if (w_out.z < 0) w_in.z *= -1;
     p = phongPdf(w_out, w_in, kappa, exponent);
     if (p == 0) return vec3(0.f);

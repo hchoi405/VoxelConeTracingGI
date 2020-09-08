@@ -72,9 +72,9 @@ private:
     std::vector<glm::quat> rotations;
     std::vector<Texture2D> backgroundImages;
 
-// #define RISE103
+#define RISE103
 // #define DASAN106
-#define DASAN613
+// #define DASAN613
 
     const std::string cameraFilename = "../camera.txt";
 #ifdef RISE103
@@ -82,23 +82,24 @@ private:
     const std::string renderingSceneDir = "../../neon/asset/rise103_rendering2/";
     const std::string sceneObjectFilename = "rise103_centered.obj";
     const std::string scenePCFilename = "cloud_rise103_learning_subsample=0.25cm_centered.ply";
-    const std::string poseFilename = "../pose_rise103_rendering2_centered.txt";
+    const std::string poseFilename = "../pose_rise103_learning6_centered.txt";
 #elif defined(DASAN613)
     const std::string learningSceneDir = "../../neon/asset/dasan613_learning1/";
-    const std::string renderingSceneDir = "../../neon/asset/dasan613_learning1/";
+    const std::string renderingSceneDir = "../../neon/asset/dasan613_rendering5-2/";
     const std::string sceneObjectFilename = "dasan613_tsdf3_centered.obj";
     const std::string scenePCFilename = "cloud_dasan613_learning_subsample=0.25cm_centered.ply";
+    const std::string poseFilename = "../pose_dasan613_rendering5-2_centered.txt";
     // const std::string poseFilename = "../pose_dasan613_rendering5-4_centered.txt";
-    const std::string poseFilename = "../pose_dasan613_learning_centered.txt";
+    // const std::string poseFilename = "../pose_dasan613_learning_centered.txt";
 #elif defined(DASAN106)
     const std::string learningSceneDir = "../../neon/asset/dasan106_learning3/";
-    const std::string renderingSceneDir = "../../neon/asset/dasan106_rendering1/";
+    const std::string renderingSceneDir = "../../neon/asset/dasan106_learning3/";
     const std::string sceneObjectFilename = "dasan106_centered.obj";
     const std::string scenePCFilename = "cloud_dasan106_learning_subsampled=0.25cm_centered.ply";
-    const std::string poseFilename = "../pose_dasan106_rendering1_centered.txt";
-    // const std::string poseFilename = "../pose_dasan106_learning3_centered.txt";
+    // const std::string poseFilename = "../pose_dasan106_rendering1_centered.txt";
+    const std::string poseFilename = "../pose_dasan106_learning3_centered.txt";
 #endif
     const glm::vec3 centeringDasan106 = glm::vec3(4.407966, 5.205061, -4.503145);
-    const glm::vec3 centeringDasan613 = glm::vec3(5.438848, 5.420742, -5.403515);
+    const glm::vec3 centeringDasan613 = glm::vec3(5.43885, 5.42074, - 5.40352);
     const glm::vec3 centeringRise103 = glm::vec3(5.015924, 4.872949, -5.523078);
 };

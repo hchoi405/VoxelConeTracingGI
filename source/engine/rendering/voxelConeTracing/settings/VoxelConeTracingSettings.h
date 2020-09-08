@@ -60,13 +60,15 @@ struct GISettings : VCTSettings
     // Dasan106, twobuddha: 0.082
     SliderFloat stepFactor{"Step Factor", 0.082f, 0.01f, 2.0f};
     SliderFloat virtualStepFactor{"Virtual Step Factor", 0.1f, 0.1f, 1.0f};
-    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 5.f, 0.1f, 15.0f};
-    // Rise103, diffuse buddha (direct, norotate): 1.9f
+    // Dasan613, mirror sphere: 10.f
+    SliderFloat realIndirectDiffuseIntensity{"Real Indirect Diffuse Intensity", 10.f, 0.1f, 15.0f};
     // Rise103, diffuse buddha test: 5.476f
     // Dasan106, twobuddha: 6.398f
     SliderFloat virtualIndirectDiffuseIntensity{"Virtual Indirect Diffuse Intensity", 6.398f, 0.1f, 15.0f};
     // Dasan613, mirror lucy: 1.34
-    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 1.34f, 0.1f, 3.0f };
+    // Dasan613, glossy lucy: 2.5f
+    // Dasan613, various, mirror ball: 2.0f
+    SliderFloat indirectSpecularIntensity{ "Indirect Specular Intensity", 2.0f, 0.1f, 3.0f };
     SliderFloat traceStartOffset{"Trace Start Offset", 1.5f, 0.0f, 8.0f};
     SliderFloat traceDirectionOffset{"Trace Direction Offset", 1.5f, 0.0f, 8.0f};
     
@@ -102,8 +104,8 @@ struct DebugSettings : VCTSettings
     CheckBox irradianceOnly{"Show irradiance (denominator) only instead of reflectance", false};
     // Dasan106, diffuse buddha: 2..f
     // Rise103, diffuse buddha: 1.f
-    // Dasan613, various, diffuse bunny: 1.5f
-    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 1.5f, 0.01f, 3.f};
+    // Dasan613, various, diffuse bunny: 2.5f
+    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 2.f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
     CheckBox secondBounce{"Trace second bounce", true};
     CheckBox realReflectance{"Apply relfectance of real object", true};
@@ -112,9 +114,9 @@ struct DebugSettings : VCTSettings
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};
-    SliderInt subsample{"Number of subsample from primary", 1, 1, 128};
+    SliderInt subsample{"Number of subsample from primary", 1, 1, 16};
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
-    SliderFloat phongShininess{"Shininess of phong", 27.8974f, 0.f, 255.f};
+    SliderFloat phongShininess{"Shininess of phong", 255.f, 0.f, 255.f};
     CheckBox rotateCone{"Rotate cone randomly", false};
     SliderFloat localRatio{"Ratio of local real", 0.5f, 0.f, 2.f};
     CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
@@ -135,16 +137,20 @@ struct DemoSettings : VCTSettings
 
     // Rise103
     // SliderInt animateFrame{ "Frame", 0, 0, 558 }; // rendering1
-    // SliderInt animateFrame{"Frame", 180, 180, 180}; // rendering1
+    // SliderInt animateFrame{"Frame", 675, 0, 1337}; // rendering1
+    SliderInt animateFrame{"Frame", 675, 675, 675}; // rendering1
 
     // Dasan106
     // SliderInt animateFrame{ "Frame", 0, 0, 450 }; // rendering1
     // SliderInt animateFrame{"Frame", 120, 120, 120}; // rendering1
-    // SliderInt animateFrame{"Frame", 575, 575, 575}; // learning3
+    // SliderInt animateFrame{"Frame", 575, 575, 575}; // learning3 
+    // SliderInt animateFrame{"Frame", 1216, 1216, 1216}; // learning3 (voxelization)
 
     // Dasan613
-    // SliderInt animateFrame{ "Frame", 0, 0, 499 }; // rendering5-4
-    // SliderInt animateFrame{"Frame", 295, 295, 295}; // rendering5-4
+    // SliderInt animateFrame{ "Frame", 0, 0, 942 }; // rendering5-4
+    // SliderInt animateFrame{"Frame", 680, 680, 680}; // rendering5-4
     // SliderInt animateFrame{"Frame", 1745, 1745, 1745}; // learning (voxelization)
-    SliderInt animateFrame{"Frame", 1300, 1300, 1300}; // learning (limitation)
+    // SliderInt animateFrame{"Frame", 1300, 1300, 1300}; // learning (limitation)
+    // SliderInt animateFrame{"Frame", 340, 340, 340}; // rendering5-2
+    // SliderInt animateFrame{"Frame", 0, 0, 577}; // rendering5-2
 };

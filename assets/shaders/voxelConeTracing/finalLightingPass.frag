@@ -594,7 +594,7 @@ mat3 skewMatrix(vec3 v) {
 }
 
 // Cast diffuse cones at primary intersection point on both real/virtual object
-vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual, uint seed = 0) {
+vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual, uint seed = 0, bool rotateCone = false) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
     c.p = startPos;  // offset is present inside castCone
@@ -602,7 +602,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
     // Random rotaiton on sphere (from Fast Random Rotation Matrices [Arvo 91])
     mat3 M = mat3(1.f);
 
-    if (u_rotateCone == 1) {
+    if (rotateCone) {
         float x1 = rand(seed), x2 = rand(seed), x3 = rand(seed);
         float sqrt3 = sqrt(x3);
         vec3 v = vec3(cos(PI2 * x2) * sqrt3, sin(PI2 * x2), sqrt(1 - x3));
@@ -825,8 +825,7 @@ void main() {
 
         // Perfect reflection (Mirror)
         if (u_material == 0) {
-        // if (diffuse[0] > 0.45f && diffuse[0] < 0.55f) {
-            
+        // if (diffuse[0] > 0.49f && diffuse[0] < 0.51f) { // Mirror ball
             c.dir = reflect(view, normal);
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
@@ -850,7 +849,7 @@ void main() {
                 if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
                     vec3 secondNormal = normalize(virtualIsect.normal);
                     vec3 secondDiffuse = virtualIsect.diffuse;
-                    // vec3 secondDiffuse = vec3(0.880392f, 0.768627f, 0.323725f); // Yellow diffuse bunny dasan613
+                    // vec3 secondDiffuse = vec3(0.48f, 0.392f, 0.114f); // Yellow glossy lucy dasan613
                     vec4 secondIntensity = 
                         castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
 
@@ -909,7 +908,7 @@ void main() {
         }
         // Diffuse
         else if (u_material == 2) {
-        // else if (diffuse[0] != 0.5f) {
+        // else if (diffuse[0] > 0.8f) { // Red Bunny
             for (int i = 0; i < u_subsample; ++i) {
                 uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
                 virtualIndirectContribution +=
@@ -923,11 +922,11 @@ void main() {
         }
         // Phong
         else if (u_material == 3) {
+        // else if (diffuse[0] < 0.499f) { // Yellow lucy
             for (int i = 0; i < u_subsample; ++i) {
                 // sample next direction (for light direction)
                 uint see = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
-                vec3 Kd = vec3(0.780392f, 0.568627f, 0.113725f);
-                // vec3 Ks = vec3(0.992157f, 0.941176f, 0.807843f);
+                vec3 Kd = diffuse;
                 vec3 Ks = vec3(1.f);
                 vec3 sumK = Kd + Ks;
                 float maxFactor = max(max(sumK[0], sumK[1]), sumK[2]);
@@ -939,49 +938,54 @@ void main() {
                 float pdf;
                 vec3 direction;
 
-                vec3 phongBRDF = phongSample_f(w_out, direction, see, pdf, Kd, Ks, exponent);
+                bool sampleSpecular = false;
+                vec3 phongBRDF = phongSample_f(w_out, direction, see, pdf, Kd, Ks, exponent, sampleSpecular);
+
                 direction = frame.to_world(direction);
-                // virtualIndirectContribution += phongBRDF;
-                // continue;
-
                 c.dir = direction;
-
-                c.p = startPos;
-                c.curLevel = realMinLevel;
-                vec3 lightIntensity = castCone(c, realScene, realIsect).rgb;
-                // vec3 lightIntensity = vec3(1.f);
-
                 c.p = startPosOffset;
-                c.curLevel = 0;  // manually set to zero for smoothness
-                vec4 occlusion = castCone(c, virtualScene, virtualIsect);
 
-                // // 1. Occluded by virtual object
-                // if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
-                //     // virtualIndirectContribution += vec3(0,0,0);
-                // }
-                // // 2. Shading using light from real object
-                // else
-                {
-                    vec3 lightDir = -c.dir;
-                    vec3 halfway = normalize(-view - lightDir);
-                    vec3 ret = phongBRDF * lightIntensity.rgb * u_indirectSpecularIntensity;
+                if (sampleSpecular) {
+                    vec3 specularContribution = vec3(0);
+                    c.aperture = MIN_SPECULAR_APERTURE;
 
-                    // vec3 blinnPhong = blinnPhongBRDF(lightColor, diffuseColor, lightColor, specColor, normal,
-                    // -lightDir, halfway, u_shininess);
+                    c.curLevel = realMinLevel;
+                    vec4 realRet = castCone(c, realScene, realIsect);
 
-                    // Diffuse, Specular
-                    // vec3 ret = occlusion.a           // Occlusion for virtual
-                    //            * lightIntensity.rgb  // Light intensity from real
-                    //            * blinnPhongBRDF(lightIntensity, Kd, lightIntensity, Ks, normal, -lightDir, halfway,
-                    //                             shininess)     // Material
-                    //            * u_indirectSpecularIntensity;  // Scaling
+                    c.curLevel = 0;  // manually set to zero for smoothness
+                    vec4 virtualRet = castCone(c, virtualScene, virtualIsect);
 
-                    virtualIndirectContribution += ret / pdf;
+                    // Occluded by virtual object
+                    if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
+                        vec3 secondNormal = normalize(virtualIsect.normal);
+                        vec3 secondDiffuse = virtualIsect.diffuse;  // intersected color (artifacts)
+
+                        vec4 secondIntensity =
+                            castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
+
+                        // Radiance from virtual object (second bounce)
+                        specularContribution.rgb +=
+                            // Virtual-virtual occlusion
+                            (1 - virtualRet.a)
+                            // Second bounce contribution (assume diffuse)
+                            * secondDiffuse * secondIntensity.rgb * u_secondIndirectDiffuseIntensity;
+
+                        // Radiance from real object (first bounce)
+                        specularContribution.rgb += virtualRet.a * realRet.rgb;
+                    }
+                    // Shading using light from real object
+                    else {
+                        specularContribution += realRet.rgb * phongBRDF / pdf;
+                    }
+                    virtualIndirectContribution += specularContribution * u_indirectSpecularIntensity;
+                } else {
+                    virtualIndirectContribution +=
+                        u_virtualIndirectDiffuseIntensity *
+                        castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false, see).rgb *
+                        phongBRDF / pdf;
                 }
-
-                if (u_rotateCone == 0) break; // No need for subsample without rotating the cone
             }
-            if (u_rotateCone == 1) virtualIndirectContribution /= u_subsample;
+            virtualIndirectContribution /= u_subsample;
         }
 
         indirectContribution.rgb += virtualIndirectContribution;
@@ -996,7 +1000,7 @@ void main() {
         for (int i = 0; i < u_subsample; ++i) {
             uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
             // Occlusion-based shadow + color bleeding from virtual object
-            indirectContribution += castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, seed);
+            indirectContribution += castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, seed, true);
         }
         indirectContribution /= u_subsample;
 

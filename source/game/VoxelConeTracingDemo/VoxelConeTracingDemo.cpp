@@ -476,6 +476,29 @@ void VoxelConeTracingDemo::createDemoScene() {
     std::string virtualEntityName = "virtualObject";
 
     {
+#ifdef DASAN613
+      /*   // Lucy
+        std::string virtualObjectFilename = "lucy_co_tri_simplified4_centered.ply";
+        ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
+        virtualTransform = ECSUtil::loadMeshEntities(virtualObjectDir + virtualObjectFilename, shader, virtualObjectDir,
+                                                     glm::vec3(1.f), false);
+        virtualTransform->setPosition(
+            // Original object center 
+            glm::vec3(5.23f, 5.90143f, -4.57f)
+             - centeringDasan613
+        );  // Dasan613
+
+        auto sphereMaterial = EntityCreator::createMaterial();
+        sphereMaterial->setColor("u_color", glm::vec4(0.48f, 0.392f, 0.114, 1.0f));
+        virtualTransform->getOwner().getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
+        // Virtual should be set at the root entity
+        m_sphere = ECS::getEntityByName(virtualEntityName);
+        m_sphere.setVirtual(true);
+        m_sphere.setActive(true); */
+#endif
+    }
+
+    {
         /*   // Cube
           std::string virtualObjectFilename = "cube_centered.obj";
           ResourceManager::getModel(virtualObjectDir + virtualObjectFilename)->name = virtualEntityName;
@@ -509,16 +532,11 @@ void VoxelConeTracingDemo::createDemoScene() {
         virtualTransform->setPosition(glm::vec3(6.2384f, 6.16864f, -5.33125f) - centeringDasan106 +
                                       glm::vec3(0, 0.0125, 0));
 #elif defined(DASAN613)
+//  ne::vec3f(5.4f, 6.35f, 4.57f)
         virtualTransform->setPosition(glm::vec3(5.4f, 6.35f, -4.57f) - centeringDasan613);
+        std::cout << virtualTransform->getPosition() << std::endl;
 #endif
 
-        auto sphereMaterial = EntityCreator::createMaterial();
-        sphereMaterial->setFloat("u_shininess", 255.0f);
-        sphereMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1.0f));
-        sphereMaterial->setColor("u_emissionColor", glm::vec3(0.0f));
-        sphereMaterial->setColor("u_specularColor", glm::vec3(1.f));
-        auto childTransform = virtualTransform->getChildren()[0];
-        childTransform->getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
         // Virtual should be set at the root entity
         m_sphere = ECS::getEntityByName(virtualEntityName);
         m_sphere.setVirtual(true);
@@ -552,19 +570,19 @@ void VoxelConeTracingDemo::createDemoScene() {
     }
 
     {
-        // sphere, bunny, lucy
-        auto vo1 = ResourceManager::getModel(virtualObjectDir + "seq4_sphere_glass_normal_centered.ply");
+       /*  // sphere, bunny, lucy
+        auto vo1 = ResourceManager::getModel(virtualObjectDir + "seq4_sphere_glass_2_centered.ply");
         vo1->name = "vo1";
-        auto vo2 = ResourceManager::getModel(virtualObjectDir + "seq4_bunny_diffuse_normal_centered.ply");
+        auto vo2 = ResourceManager::getModel(virtualObjectDir + "seq4_bunny_diffuse_2_centered.ply");
         vo2->name = "vo2";
-        auto vo3 = ResourceManager::getModel(virtualObjectDir + "seq4_lucy_glossy_normal_centered.ply");
+        auto vo3 = ResourceManager::getModel(virtualObjectDir + "seq4_lucy_glossy_2_centered.ply");
         vo3->name = "vo3";
 
         auto virtualObject = ECS::createEntity("virtualObject");
         virtualObject.addComponent<Transform>();
         auto parentTransform = virtualObject.getComponent<Transform>();
 
-        auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), true);
+        auto voTransform1 = ECSUtil::loadMeshEntities(vo1.get(), shader, "", glm::vec3(1.f), false);
         auto sphereMaterial = EntityCreator::createMaterial();
         sphereMaterial->setColor("u_color", glm::vec4(0.5f));  // Material flag
         voTransform1->getOwner().getComponent<MeshRenderer>()->setMaterial(sphereMaterial, 0);
@@ -572,17 +590,17 @@ void VoxelConeTracingDemo::createDemoScene() {
         voTransform1->getOwner().setActive(true);
         voTransform1->setParent(parentTransform);
 
-        auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), true);
+        auto voTransform2 = ECSUtil::loadMeshEntities(vo2.get(), shader, "", glm::vec3(1.f), false);
         auto bunnyMaterial = EntityCreator::createMaterial();
-        bunnyMaterial->setColor("u_color", glm::vec4(0.880392f, 0.768627f, 0.323725f, 1));  // Material flag
+        bunnyMaterial->setColor("u_color", glm::vec4(0.9f, 0.2f, 0.113725f, 1));  // Material flag
         voTransform2->getOwner().getComponent<MeshRenderer>()->setMaterial(bunnyMaterial, 0);
         voTransform2->getOwner().setVirtual(true);
         voTransform2->getOwner().setActive(true);
         voTransform2->setParent(parentTransform);
 
-        auto voTransform3 = ECSUtil::loadMeshEntities(vo3.get(), shader, "", glm::vec3(1.f), true);
+        auto voTransform3 = ECSUtil::loadMeshEntities(vo3.get(), shader, "", glm::vec3(1.f), false);
         auto lucyMaterial = EntityCreator::createMaterial();
-        lucyMaterial->setColor("u_color", glm::vec4(0.5f));  // Material flag
+        lucyMaterial->setColor("u_color", glm::vec4(0.48f, 0.392f, 0.114f, 1));  // Material flag
         voTransform3->getOwner().getComponent<MeshRenderer>()->setMaterial(lucyMaterial, 0);
         voTransform3->getOwner().setVirtual(true);
         voTransform3->getOwner().setActive(true);
@@ -593,15 +611,17 @@ void VoxelConeTracingDemo::createDemoScene() {
         parentBBox.unite(voTransform3->getBBox());
         parentTransform->setBBox(parentBBox);
 
-        auto calcPos = glm::vec3(5.37086533, 6.20498467, -4.756995) - centeringDasan613;
+        // auto calcPos = glm::vec3(5.37086533, 6.20498467, -4.756995) - centeringDasan613; // v1
+        auto calcPos = glm::vec3(5.3362, 6.3235, -4.57801) - centeringDasan613; // v2
+        
         parentTransform->setPosition(calcPos);
         std::cout << "calculated pos: " << calcPos << std::endl;
         std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
-        virtualTransform = parentTransform;
+        virtualTransform = parentTransform; */
     }
 
     {
-        /* // Virtual Buddha
+        // Virtual Buddha
         auto vo1 = ResourceManager::getModel(virtualObjectDir + "buddha1_dasan106_simplified.ply");
         vo1->name = "vo1";
         auto vo2 = ResourceManager::getModel(virtualObjectDir + "buddha2_dasan106_simplified.ply");
@@ -659,7 +679,7 @@ void VoxelConeTracingDemo::createDemoScene() {
 
         std::cout << "parent bbox: " << parentTransform->getBBox() << std::endl;
 
-        virtualTransform = parentTransform; */
+        virtualTransform = parentTransform;
     }
 
     if (sceneRootEntity) sceneRootEntity->setPosition(glm::vec3(m_scenePosition));
