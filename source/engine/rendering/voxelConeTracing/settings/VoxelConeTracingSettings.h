@@ -105,7 +105,7 @@ struct DebugSettings : VCTSettings
     // Dasan106, diffuse buddha: 2..f
     // Rise103, diffuse buddha: 1.f
     // Dasan613, various, diffuse bunny: 2.5f
-    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 2.f, 0.01f, 3.f};
+    SliderFloat secondIndirectDiffuse{"Second bounce diffuse intenfsity", 2.5f, 0.01f, 3.f};
     SliderFloat secondIndirectSpecular{"Second bounce specular intensity", 1.f, 0.01f, 3.f};
     CheckBox secondBounce{"Trace second bounce", true};
     CheckBox realReflectance{"Apply relfectance of real object", true};
@@ -114,13 +114,13 @@ struct DebugSettings : VCTSettings
     CheckBox renderVirtual{"Toggle whether render virtual fragment", true};
     SliderFloat ambientSecondIntensity{"Ambient light intensity for second bounce", 1.f, 0.01f, 1.f};
     SliderInt extraStep{"Number of steps to sample after primary", 3, 0, 100};
-    SliderInt subsample{"Number of subsample from primary", 1, 1, 16};
+    SliderInt subsample{"Number of subsample from primary", 10, 1, 16};
     SliderFloat glassEta{"Eta for glass", 1.5f, 1.f, 2.f};
     SliderFloat phongShininess{"Shininess of phong", 255.f, 0.f, 255.f};
     CheckBox rotateCone{"Rotate cone randomly", false};
     SliderFloat localRatio{"Ratio of local real", 0.5f, 0.f, 2.f};
     CheckBox exclueEmptyFace{"Exclude empty faces when rendering (custom interpol)", false};
-    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse", "Phong"}, 2);
+    ComboBox materialMode = ComboBox("Material", { "Mirror", "Glass", "Diffuse", "Phong"}, 0);
 };
 
 struct DemoSettings : VCTSettings
@@ -137,8 +137,8 @@ struct DemoSettings : VCTSettings
 
     // Rise103
     // SliderInt animateFrame{ "Frame", 0, 0, 558 }; // rendering1
-    // SliderInt animateFrame{"Frame", 675, 0, 1337}; // rendering1
-    SliderInt animateFrame{"Frame", 675, 675, 675}; // rendering1
+    // SliderInt animateFrame{"Frame", 0, 0, 1337}; // learning
+    // SliderInt animateFrame{"Frame", 675, 675, 675}; // rendering1
 
     // Dasan106
     // SliderInt animateFrame{ "Frame", 0, 0, 450 }; // rendering1
@@ -153,4 +153,5 @@ struct DemoSettings : VCTSettings
     // SliderInt animateFrame{"Frame", 1300, 1300, 1300}; // learning (limitation)
     // SliderInt animateFrame{"Frame", 340, 340, 340}; // rendering5-2
     // SliderInt animateFrame{"Frame", 0, 0, 577}; // rendering5-2
+    // SliderInt animateFrame{"Frame", 0, 0, 1746}; // full learning
 };

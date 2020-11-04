@@ -824,8 +824,8 @@ void main() {
         c.depth = 0;
 
         // Perfect reflection (Mirror)
-        if (u_material == 0) {
-        // if (diffuse[0] > 0.49f && diffuse[0] < 0.51f) { // Mirror ball
+        // if (u_material == 0) {
+        if (diffuse[0] > 0.49f && diffuse[0] < 0.51f) { // Mirror ball
             c.dir = reflect(view, normal);
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
@@ -907,8 +907,8 @@ void main() {
             virtualIndirectContribution *= u_indirectSpecularIntensity;
         }
         // Diffuse
-        else if (u_material == 2) {
-        // else if (diffuse[0] > 0.8f) { // Red Bunny
+        // else if (u_material == 2) {
+        else if (diffuse[0] > 0.8f) { // Red Bunny
             for (int i = 0; i < u_subsample; ++i) {
                 uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
                 virtualIndirectContribution +=
@@ -921,8 +921,8 @@ void main() {
             virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
         }
         // Phong
-        else if (u_material == 3) {
-        // else if (diffuse[0] < 0.499f) { // Yellow lucy
+        // else if (u_material == 3) {
+        else if (diffuse[0] < 0.499f) { // Yellow lucy
             for (int i = 0; i < u_subsample; ++i) {
                 // sample next direction (for light direction)
                 uint see = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
