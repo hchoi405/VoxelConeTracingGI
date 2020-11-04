@@ -79,7 +79,7 @@ void Engine::update()
 
     Screen::update();
 
-    // if (m_screenshotRequest)
+    if (m_screenshotRequest)
     {
         m_screenshotRequest = false;
         takeScreenshot();

@@ -688,7 +688,8 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
 
             if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 vec3 secondNormal = normalize(virtualIsect.normal);
-                vec3 secondDiffuse = virtualIsect.diffuse;  // intersected color (artifacts)
+                vec3 secondDiffuse = 
+                virtualIsect.diffuse;  // intersected color (artifacts)
                 //     vec3(0.880392f, 0.768627f, 0.323725f);  // For self-intersection in rise103 diffuse Buddha
                 // vec3(1, 0, 0);  // For inter-intersection in dasan106 two buddha
 
