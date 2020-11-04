@@ -666,7 +666,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
 
                 // Virtual object at second bounce (e.g. real->virtual) is assumed to be diffuse
                 // So cast diffuse cones
-                vec4 secondIntensity = vec4(1);
+                vec4 secondIntensity = vec4(0);
                 if (u_secondBounce == 1)
                     secondIntensity =
                         castSecondDiffuseConesToReal(virtualIsect.position, normalize(virtualIsect.normal), realMinLevel);
