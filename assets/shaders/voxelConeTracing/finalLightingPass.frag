@@ -128,7 +128,7 @@ const vec3 DIFFUSE_CONE_DIRECTIONS[32] = {vec3(0.898904, 0.435512, 0.0479745),  
                                           vec3(0.57735, -0.57735, 0.57735),      vec3(0.57735, -0.57735, -0.57735),
                                           vec3(-0.57735, 0.57735, 0.57735),      vec3(-0.57735, 0.57735, -0.57735),
                                           vec3(-0.57735, -0.57735, 0.57735),     vec3(-0.57735, -0.57735, -0.57735)};
-#else  
+#else
 
 // 16 cones for lower quality (8 on average per hemisphere)
 const vec3 DIFFUSE_CONE_NORMAL = vec3(0, 1, 0);
@@ -589,12 +589,11 @@ vec4 castSecondDiffuseConesToVirtual(vec3 startPos, vec3 normal, float virtualMi
     return indirectContribution / (DIFFUSE_CONE_COUNT * 0.5);
 }
 
-mat3 skewMatrix(vec3 v) {
-    return mat3(0, v[2], -v[1], -v[2], 0, v[0], v[1], -v[0], 0);
-}
+mat3 skewMatrix(vec3 v) { return mat3(0, v[2], -v[1], -v[2], 0, v[0], v[1], -v[0], 0); }
 
 // Cast diffuse cones at primary intersection point on both real/virtual object
-vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual, uint seed = 0, bool rotateCone = false) {
+vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virtualMinLevel, bool traceVirtual,
+                      uint seed = 0, int rotateCone = 0) {
     vec4 indirectContribution = vec4(0.0);
     VCTCone c;
     c.p = startPos;  // offset is present inside castCone
@@ -602,23 +601,16 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
     // Random rotaiton on sphere (from Fast Random Rotation Matrices [Arvo 91])
     mat3 M = mat3(1.f);
 
-    if (rotateCone) {
+    if (rotateCone == 1) {
         float x1 = rand(seed), x2 = rand(seed), x3 = rand(seed);
         float sqrt3 = sqrt(x3);
         vec3 v = vec3(cos(PI2 * x2) * sqrt3, sin(PI2 * x2), sqrt(1 - x3));
         float PI2x1 = PI2 * x1;
 
         // Column major (first 3 elements for first column)
-        mat3 R = mat3(
-            cos(PI2x1),-sin(PI2x1), 0,
-            sin(PI2x1), cos(PI2x1), 0,
-            0, 0, 1
-        );
-        mat3 v2 = mat3(
-            v[0] * v[0], v[0] * v[1], v[0] * v[2],
-            v[1] * v[0], v[1] * v[1], v[1] * v[2],
-            v[2] * v[0], v[2] * v[1], v[2] * v[2]
-        );
+        mat3 R = mat3(cos(PI2x1), -sin(PI2x1), 0, sin(PI2x1), cos(PI2x1), 0, 0, 0, 1);
+        mat3 v2 = mat3(v[0] * v[0], v[0] * v[1], v[0] * v[2], v[1] * v[0], v[1] * v[1], v[1] * v[2], v[2] * v[0],
+                       v[2] * v[1], v[2] * v[2]);
         mat3 H = mat3(1.f) - 2 * v2;
         M = -H * R;
     }
@@ -657,7 +649,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
             vec4 realRet = castCone(c, realScene, realIsect) * cosTheta;
 
             // Second hit virtual
-            if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
+            if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 // For ambient occlusion (used for DEBUGGING)
                 indirectContribution.a += virtualRet.a;
 
@@ -668,13 +660,17 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
                 // So cast diffuse cones
                 vec4 secondIntensity = vec4(0);
                 if (u_secondBounce == 1)
-                    secondIntensity =
-                        castSecondDiffuseConesToReal(virtualIsect.position, normalize(virtualIsect.normal), realMinLevel);
+                    secondIntensity = castSecondDiffuseConesToReal(virtualIsect.position,
+                                                                   normalize(virtualIsect.normal), realMinLevel);
 
                 // Radiance from virtual object
                 indirectContribution.rgb += secondIntensity.rgb * virtualDiffuse * u_secondIndirectDiffuseIntensity;
 
                 // Anti-radiance from real object (apply occlusion based smoothing)
+                indirectContribution.rgb -= (1 - virtualRet.a) * realRet.rgb;
+            }
+            // No second bounce but occlusion-considered accumulation
+            else if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 indirectContribution.rgb -= (1 - virtualRet.a) * realRet.rgb;
             }
         }
@@ -688,8 +684,7 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
 
             if (u_secondBounce == 1 && virtualIsect.hit && virtualIsect.t < realIsect.t) {
                 vec3 secondNormal = normalize(virtualIsect.normal);
-                vec3 secondDiffuse = 
-                virtualIsect.diffuse;  // intersected color (artifacts)
+                vec3 secondDiffuse = virtualIsect.diffuse;  // intersected color (artifacts)
                 //     vec3(0.880392f, 0.768627f, 0.323725f);  // For self-intersection in rise103 diffuse Buddha
                 // vec3(1, 0, 0);  // For inter-intersection in dasan106 two buddha
 
@@ -705,8 +700,10 @@ vec4 castDiffuseCones(vec3 startPos, vec3 normal, float realMinLevel, float virt
 
                 // Radiance from real object (first bounce)
                 indirectContribution.rgb += virtualRet.a * realRet.rgb;
-            } else {
-                indirectContribution.rgb += realRet.rgb * cosTheta;
+            }
+            // No second bounce but occlusion-considered accumulation
+            else {
+                indirectContribution.rgb += (virtualRet.a) * realRet.rgb;
             }
         }
     }
@@ -826,7 +823,7 @@ void main() {
 
         // Perfect reflection (Mirror)
         // if (u_material == 0) {
-        if (diffuse[0] > 0.49f && diffuse[0] < 0.51f) { // Mirror ball
+        if (diffuse[0] > 0.49f && diffuse[0] < 0.51f) {  // Mirror ball
             c.dir = reflect(view, normal);
             c.p = startPos;
             c.aperture = MIN_SPECULAR_APERTURE;
@@ -849,9 +846,9 @@ void main() {
 
                 if (virtualIsect.hit && virtualIsect.t < realIsect.t) {
                     vec3 secondNormal = normalize(virtualIsect.normal);
-                    vec3 secondDiffuse = virtualIsect.diffuse;
-                    // vec3 secondDiffuse = vec3(0.48f, 0.392f, 0.114f); // Yellow glossy lucy dasan613
-                    vec4 secondIntensity = 
+                    // vec3 secondDiffuse = virtualIsect.diffuse;
+                    vec3 secondDiffuse = vec3(0.48f, 0.392f, 0.114f); // Yellow glossy lucy dasan613
+                    vec4 secondIntensity =
                         castSecondDiffuseConesToReal(virtualIsect.position, secondNormal, realMinLevel);
 
                     // Radiance from virtual object
@@ -867,8 +864,8 @@ void main() {
         }
         // Glass
         else if (u_material == 1) {
-            float etaI = 1.0;                                       // Incident medium (Vacuum)
-            float etaT = u_glassEta;                                // Transmitted medium (Glass, 1.5-1.6)
+            float etaI = 1.0;         // Incident medium (Vacuum)
+            float etaT = u_glassEta;  // Transmitted medium (Glass, 1.5-1.6)
             vec3 refractedDir;
             if (refract(view, normal, etaI / etaT, refractedDir)) {
                 // Go further to prevent self occlusion
@@ -909,21 +906,21 @@ void main() {
         }
         // Diffuse
         // else if (u_material == 2) {
-        else if (diffuse[0] > 0.8f) { // Red Bunny
-            for (int i = 0; i < u_subsample; ++i) {
-                uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
-                virtualIndirectContribution +=
-                    castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false, seed).rgb;
-                if (u_rotateCone == 0) break; // No need for subsample without rotating the cone
-            }
-            if (u_rotateCone == 1) virtualIndirectContribution /= u_subsample;
+        else if (diffuse[0] > 0.8f) {  // Red Bunny
+                                       // for (int i = 0; i < u_subsample; ++i) {
+            // uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
+            virtualIndirectContribution +=
+                castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, false, 0, 0).rgb;
+            // if (u_rotateCone == 0) break; // No need for subsample without rotating the cone
+            // }
+            // if (u_rotateCone == 1) virtualIndirectContribution /= u_subsample;
             virtualIndirectContribution *= diffuse;
 
             virtualIndirectContribution *= u_virtualIndirectDiffuseIntensity;
         }
         // Phong
         // else if (u_material == 3) {
-        else if (diffuse[0] < 0.499f) { // Yellow lucy
+        else if (diffuse[0] < 0.499f) {  // Yellow lucy
             for (int i = 0; i < u_subsample; ++i) {
                 // sample next direction (for light direction)
                 uint see = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
@@ -1001,9 +998,11 @@ void main() {
         for (int i = 0; i < u_subsample; ++i) {
             uint seed = seed(uint(gl_FragCoord.y) * 640 + uint(gl_FragCoord.x), i);
             // Occlusion-based shadow + color bleeding from virtual object
-            indirectContribution += castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, seed, true);
+            indirectContribution +=
+                castDiffuseCones(startPosOffset, normal, realMinLevel, virtualMinLevel, true, seed, u_rotateCone);
+            if (u_rotateCone == 0) break;  // No need for subsample without rotating the cone
         }
-        indirectContribution /= u_subsample;
+        if (u_rotateCone == 1) indirectContribution /= u_subsample;
 
         if (u_realReflectance == 1) indirectContribution.rgb *= reflectance;
 

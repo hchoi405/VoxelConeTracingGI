@@ -72,8 +72,8 @@ private:
     std::vector<glm::quat> rotations;
     std::vector<Texture2D> backgroundImages;
 
-// #define RISE103
-#define DASAN106
+#define RISE103
+// #define DASAN106
 // #define DASAN613
 
     const std::string cameraFilename = "../camera.txt";
@@ -85,10 +85,10 @@ private:
     const std::string poseFilename = "../pose_rise103_learning6_centered.txt";
 #elif defined(DASAN613)
     const std::string learningSceneDir = "../../neon/asset/dasan613_learning1/";
-    const std::string renderingSceneDir = "../../neon/asset/dasan613_rendering5-4/";
+    const std::string renderingSceneDir = "../../neon/asset/dasan613_rendering5-2/";
     const std::string sceneObjectFilename = "dasan613_tsdf3_centered.obj";
     const std::string scenePCFilename = "cloud_dasan613_learning_subsample=0.25cm_centered.ply";
-    const std::string poseFilename = "../pose_dasan613_rendering5-4_centered.txt";
+    const std::string poseFilename = "../pose_dasan613_rendering5-2_centered.txt";
     // const std::string poseFilename = "../pose_dasan613_learning_centered.txt";
 #elif defined(DASAN106)
     const std::string learningSceneDir = "../../neon/asset/dasan106_learning3/";
