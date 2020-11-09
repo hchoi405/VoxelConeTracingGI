@@ -136,12 +136,12 @@ struct DemoSettings : VCTSettings
     SliderFloat cameraSpeed{ "Camera Speed", 3.0f, 1.0f, 15.0f };
 
     // Rise103
-    SliderInt animateFrame{ "Frame", 0, 0, 0 }; // rendering1
+    // SliderInt animateFrame{ "Frame", 0, 0, 0 }; // rendering1
     // SliderInt animateFrame{"Frame", 0, 0, 1337}; // learning
     // SliderInt animateFrame{"Frame", 675, 675, 675}; // rendering1
 
     // Dasan106
-    // SliderInt animateFrame{ "Frame", 120, 120, 120 }; // rendering1
+    SliderInt animateFrame{ "Frame", 0, 0, 0 }; // rendering1
     // SliderInt animateFrame{ "Frame", 0, 0, 450 }; // rendering1
     // SliderInt animateFrame{"Frame", 575, 575, 575}; // learning3 
     // SliderInt animateFrame{"Frame", 1216, 1216, 1216}; // learning3 (voxelization)

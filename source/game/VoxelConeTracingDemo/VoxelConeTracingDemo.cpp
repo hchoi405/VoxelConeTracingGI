@@ -569,7 +569,7 @@ void VoxelConeTracingDemo::createDemoScene() {
         // Virtual should be set at the root entity
         m_sphere = ECS::getEntityByName(virtualEntityName);
         m_sphere.setVirtual(true);
-        m_sphere.setActive(true);
+        m_sphere.setActive(false);
     }
 
     {

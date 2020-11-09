@@ -11,10 +11,10 @@ class CameraComponent;
 template<class T>
 class ComponentPtr;
 
-#define VIRTUAL_VOXEL_RESOLUTION 128
-#define VOXEL_RESOLUTION 256
-#define VIRTUAL_CLIP_REGION_COUNT 6
-#define CLIP_REGION_COUNT 6
+#define VIRTUAL_VOXEL_RESOLUTION 4
+#define VOXEL_RESOLUTION 512
+#define VIRTUAL_CLIP_REGION_COUNT 1
+#define CLIP_REGION_COUNT 1
 #define FACE_COUNT 6
 #define MAX_DIR_LIGHT_COUNT 3
 
